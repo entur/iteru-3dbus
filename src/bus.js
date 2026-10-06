@@ -6,6 +6,7 @@ const CLEARANCE = 320, CORNER = 90, BELLOWS_INSET = 150;
 const ARCH_GAP = 110, ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20;
 const TYRE_W = 295, TYRE_INSET = 160, TWIN_GAP = 310, TYRE_SEG = 48;
 const RIM_R = 290, HUB_R = 110, NUT_R = 18, NUT_RING = 160, NUTS = 10;
+const POD_LEN = 3200, POD_MAX = 0.5, POD_AT = 0.45, POD_W = 0.75;
 const BODY_ROUGH = 0.4, BODY_METAL = 0.05;
 const TYRE = 0x1d2124, RIM = 0xb8bfc4, HUB = 0x50585e, LINER = 0x22282c, BELLOWS = 0x56626f;
 
@@ -65,13 +66,14 @@ const wheel = (r, mats) => {
 
 /**
  * Builds the bus: per section an extruded side profile with wheel arches, arch liners and wheels,
- * with bellows between sections. Every axle but the first is twin when tyre.rear_twin is not false.
+ * with bellows between sections. The body is drawn to height_mm minus roof_equipment_mm, with a
+ * roof pod of that height on each section. Every axle but the first is twin when tyre.rear_twin is not false.
  * @param {object} inp validated bus input
  * @returns {THREE.Group} group in metres, front end at x = 0 running towards +x, ground at y = 0
  */
 export const mkBus = (inp) => {
   const w = inp.width_mm, r = tyreDia(inp.tyre) / 2;
-  const top = inp.height_mm - (inp.roof_equipment_mm ?? 0);
+  const top = inp.height_mm - (inp.roof_equipment_mm ?? 0);  // body stops below the roof pod
   const twin = inp.tyre.rear_twin ?? true;
   const zo = w / 2 - TYRE_INSET;
   const mats = {
@@ -81,7 +83,9 @@ export const mkBus = (inp) => {
     hub: std(HUB, { roughness: 0.5, metalness: 0.5 }),
     liner: std(LINER, { roughness: 1, side: THREE.BackSide }),
     bellows: std(BELLOWS, { roughness: 0.9 }),
+    pod: std(inp.base_color.hex, { roughness: 0.5 }),
   };
+  const roof = inp.roof_equipment_mm ?? 0;
 
   const parts = layout(inp).flatMap((s, i) => {
     const local = s.axles.map((a) => a - s.x0);
@@ -92,6 +96,9 @@ export const mkBus = (inp) => {
       at(new THREE.Mesh(geo, mats.body), s.x0, 0, 0),
       ...(s.bellows
         ? [at(new THREE.Mesh(new THREE.BoxGeometry(s.bellows * MM, (h - BELLOWS_INSET) * MM, (w - BELLOWS_INSET) * MM), mats.bellows), s.x0 - s.bellows / 2, CLEARANCE + h / 2, 0)]
+        : []),
+      ...(roof
+        ? [at(new THREE.Mesh(new THREE.BoxGeometry(Math.min(POD_LEN, s.len * POD_MAX) * MM, roof * MM, w * POD_W * MM), mats.pod), s.x0 + s.len * POD_AT, top + roof / 2, 0)]
         : []),
       ...s.axles.flatMap((x, j) => [
         at(liner(r, w, mats.liner), x, r, 0),

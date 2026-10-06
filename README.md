@@ -7,7 +7,7 @@ layout comes from `doors_hint`, `windows_hint` and the template defaults only.
 ## Layout
 
 - `schema/bus-input.schema.json` — input contract v2.0, verbatim from the design chat
-- `examples/` — the schema's two `examples`: rigid Volvo 8900 LE, articulated Citaro G
+- `examples/` — the schema's two `examples`: rigid Volvo 8900 LE, articulated Citaro G (with `roof_equipment_mm` added)
 - `src/validate.js` — schema + the cross-field rules the schema cannot express
 - `src/derive.js` — section layout, total length, overhangs and wheelbases from `axles_mm`, tyre diameter from `tyre.size`
 - `src/main.js` — placeholder scene: a box per section, bellows, tyres

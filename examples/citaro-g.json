@@ -7,6 +7,7 @@
   "floor_type": "low_floor",
   "width_mm": 2550,
   "height_mm": 3100,
+  "roof_equipment_mm": 250,
   "tyre": {
     "diameter_mm": 950
   },
