@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { layout, tyreDia } from './derive.js';
+import { faces } from './vector.js';
 import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, HUB_R, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
 
 const MM = 0.001;
 const ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20, TYRE_SEG = 48;
 const NUT_R = 18, NUT_RING = 160, NUTS = 10;
+const SIDE_PX = 0.34, END_PX = 0.8, ANISO = 8, END_GAP = 3;  // face texture px per mm; end planes sit just off the body
 const BODY_ROUGH = 0.4, BODY_METAL = 0.05;
 const TYRE = 0x1d2124, RIM = 0xb8bfc4, HUB = 0x50585e, LINER = 0x22282c, BELLOWS = 0x56626f;
 
@@ -14,6 +16,18 @@ const axial = (r, len, seg, mat) => {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(r * MM, r * MM, len * MM, seg), mat);
   m.rotation.x = Math.PI / 2;
   return m;
+};
+
+/** Rasterises a face map into a texture; repeat/offset place it on UVs given in metres. */
+const tex = (f, px, repeat = [1, 1], offset = [0, 0]) => {
+  f.svg.setAttribute('width', Math.round(f.w * px));
+  f.svg.setAttribute('height', Math.round(f.h * px));
+  const t = new THREE.TextureLoader().load(`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(f.svg))}`);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = ANISO;
+  t.repeat.set(...repeat);
+  t.offset.set(...offset);
+  return t;
 };
 
 /** Side profile of one section in metres: rounded box with an arch cut out over each axle. */
@@ -64,7 +78,8 @@ const wheel = (r, mats) => {
 
 /**
  * Builds the bus: per section an extruded side profile with wheel arches, arch liners and wheels,
- * with bellows between sections. The body is drawn to height_mm minus roof_equipment_mm, with a
+ * with bellows between sections. The face maps from faces() are projected onto both sides of
+ * every box, the front of the first and the rear of the last. The body is drawn to height_mm minus roof_equipment_mm, with a
  * roof pod of that height on each section. Every axle but the first is twin when tyre.rear_twin is not false.
  * @param {object} inp validated bus input
  * @returns {THREE.Group} group in metres, front end at x = 0 running towards +x, ground at y = 0
@@ -84,14 +99,29 @@ export const mkBus = (inp) => {
     pod: std(inp.base_color.hex, { roughness: 0.5 }),
   };
   const roof = inp.roof_equipment_mm ?? 0;
+  const maps = faces(inp), skin = (map) => std(0xffffff, { map, roughness: BODY_ROUGH, metalness: BODY_METAL });
+  const end = (f, x, rot) => {
+    const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX))), x, CLEARANCE + CORNER + f.h / 2, 0);
+    m.rotation.y = rot;
+    return m;
+  };
 
   const parts = layout(inp).flatMap((s, i) => {
     const local = s.axles.map((a) => a - s.x0);
     const geo = new THREE.ExtrudeGeometry(profile(s.len, top, local, r), { depth: w * MM, bevelEnabled: false, curveSegments: 8 });
     geo.translate(0, 0, (-w / 2) * MM);
-    const h = top - CLEARANCE;
+    // caps come first, z = 0 (right side) then z = w (left side); walls after
+    const [caps, walls] = geo.groups, n = caps.count / 2;
+    geo.clearGroups();
+    geo.addGroup(caps.start, n, 0);
+    geo.addGroup(caps.start + n, n, 1);
+    geo.addGroup(walls.start, walls.count, 2);
+    const h = top - CLEARANCE, L = s.len * MM, v = [1 / (h * MM), -CLEARANCE / h];
+    const sides = [tex(maps.right[i], SIDE_PX, [-1 / L, v[0]], [1, v[1]]), tex(maps.left[i], SIDE_PX, [1 / L, v[0]], [0, v[1]])];
     return [
-      at(new THREE.Mesh(geo, mats.body), s.x0, 0, 0),
+      at(new THREE.Mesh(geo, [...sides.map(skin), mats.body]), s.x0, 0, 0),
+      ...(i === 0 ? [end(maps.front[0], -END_GAP, -Math.PI / 2)] : []),
+      ...(i === maps.left.length - 1 ? [end(maps.rear[0], s.x0 + s.len + END_GAP, Math.PI / 2)] : []),
       ...(s.bellows
         ? [at(new THREE.Mesh(new THREE.BoxGeometry(s.bellows * MM, (h - BELLOWS_INSET) * MM, (w - BELLOWS_INSET) * MM), mats.bellows), s.x0 - s.bellows / 2, CLEARANCE + h / 2, 0)]
         : []),

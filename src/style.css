@@ -42,12 +42,12 @@ th { color: var(--steel); font-size: 13px; }
 .note { color: var(--steel); font-size: 13.5px; line-height: 1.4; margin: 10px 0 0; }
 figure { margin: 0 0 10px; }
 figure:last-child { margin-bottom: 0; }
-figure.front { width: 46%; }
-figcaption { color: var(--steel); font-size: 13px; margin-top: 2px; }
-.vec { display: block; width: 100%; height: auto; }
-.vec .edge { stroke: var(--steel); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.vec .ground { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.vec .badge { font-weight: 600; letter-spacing: 0.06em; text-anchor: middle; dominant-baseline: central; }
+.tabs { display: flex; gap: 2px; margin-bottom: 8px; }
+.tabs button { padding: 3px 10px; font-size: 14px; }
+figcaption { color: var(--steel); font-size: 13px; margin-top: 4px; }
+.faces { display: flex; align-items: flex-end; gap: 3px; }
+.faces.front, .faces.rear { width: 46%; }
+.face { display: block; min-width: 0; height: auto; }
 #toggle { display: none; }
 @media (max-width: 720px) {
   aside { left: 12px; right: 12px; width: auto; top: auto; bottom: 76px; max-height: 46%; display: none; }
