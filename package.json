@@ -3,9 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "files": ["dist-lib"],
+  "exports": {
+    ".": "./dist-lib/index.js",
+    "./core": "./dist-lib/core.js",
+    "./bus-2d": "./dist-lib/bus-2d.js",
+    "./bus-3d": "./dist-lib/bus-3d.js"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:lib": "vite build -c vite.lib.config.js",
     "test": "node --test",
     "validate": "node src/cli.js"
   },

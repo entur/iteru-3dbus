@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { arch, bodyTop, layout, tyreDia } from './derive.js';
-import { faces } from './vector.js';
 import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, HUB_R, MM, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
 
 const ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20, TYRE_SEG = 48;
@@ -8,6 +7,7 @@ const NUT_R = 18, NUT_RING = 160, NUTS = 10;
 const SIDE_PX = 0.34, END_PX = 0.8, ANISO = 8, END_GAP = 3;  // face texture px per mm; end planes sit just off the body
 const BODY_ROUGH = 0.4, BODY_METAL = 0.05;
 const TYRE = 0x1d2124, RIM = 0xb8bfc4, HUB = 0x50585e, LINER = 0x22282c, BELLOWS = 0x56626f;
+const NO_MAPS = 'faces must hold one side map per section and a front and a rear map, each an { svg, w, h } sized for this bus';
 
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, ...o });
 const at = (m, x, y, z) => (m.position.set(x * MM, y * MM, z * MM), m);
@@ -17,11 +17,12 @@ const axial = (r, len, seg, mat) => {
   return m;
 };
 
-/** Rasterises a face map into a texture; repeat/offset place it on UVs given in metres. */
+/** Rasterises a copy of a face map into a texture; repeat/offset place it on UVs given in metres. */
 const tex = (f, px, repeat = [1, 1], offset = [0, 0]) => {
-  f.svg.setAttribute('width', Math.round(f.w * px));
-  f.svg.setAttribute('height', Math.round(f.h * px));
-  const t = new THREE.TextureLoader().load(`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(f.svg))}`);
+  const svg = f.svg.cloneNode(true);
+  svg.setAttribute('width', Math.round(f.w * px));
+  svg.setAttribute('height', Math.round(f.h * px));
+  const t = new THREE.TextureLoader().load(`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = ANISO;
   t.repeat.set(...repeat);
@@ -75,15 +76,34 @@ const wheel = (r, mats) => {
   );
 };
 
+/** A face map of width w, and of height h where one is asked for. */
+const isFace = (f, w, h) => typeof f?.svg?.cloneNode === 'function' && f.w === w && (h === undefined ? f.h > 0 : f.h === h);
+
+/**
+ * Checks that face maps are the ones mkBus can draw for an input: one side map per section, a
+ * front and a rear map, each in the size that input gives its box.
+ * @param {object} inp validated bus input
+ * @param {object} maps face maps, as vector.js faces() returns them
+ * @returns {string[]} errors, empty when the maps fit
+ */
+export const mapErrs = (inp, maps) => {
+  const boxes = layout(inp), h = bodyTop(inp) - CLEARANCE;
+  const sides = (fs) => fs?.length === boxes.length && boxes.every((b, i) => isFace(fs[i], b.len, h));
+  const end = (fs) => isFace(fs?.[0], inp.width_mm);
+  return sides(maps?.right) && sides(maps?.left) && end(maps?.front) && end(maps?.rear) ? [] : [NO_MAPS];
+};
+
 /**
  * Builds the bus: per section an extruded side profile with wheel arches, arch liners and wheels,
- * with bellows between sections. The face maps from faces() are projected onto both sides of
- * every box, the front of the first and the rear of the last. The body is drawn to height_mm minus roof_equipment_mm, with a
+ * with bellows between sections. The face maps are projected onto both sides of every box, the
+ * front of the first and the rear of the last; they are read, never changed. The body is drawn to height_mm minus roof_equipment_mm, with a
  * roof pod of that height on each section. Every axle but the first is twin when tyre.rear_twin is not false.
  * @param {object} inp validated bus input
+ * @param {Record<'right'|'left'|'front'|'rear', {svg: SVGSVGElement, w: number, h: number}[]>} maps
+ *   face maps for inp in mm, as vector.js faces() returns them: one side map per section
  * @returns {THREE.Group} group in metres, front end at x = 0 running towards +x, ground at y = 0
  */
-export const mkBus = (inp) => {
+export const mkBus = (inp, maps) => {
   const w = inp.width_mm, r = tyreDia(inp.tyre) / 2;
   const top = bodyTop(inp), roof = inp.roof_equipment_mm ?? 0;  // body stops below the roof pod
   const twin = inp.tyre.rear_twin ?? true;
@@ -98,7 +118,7 @@ export const mkBus = (inp) => {
     pod: std(inp.base_color.hex, { roughness: 0.5 }),
   };
   const wh = wheel(r, mats), ln = liner(r, w, mats.liner);  // one of each, cloned per axle: clones share geometry
-  const maps = faces(inp), skin = (map) => std(0xffffff, { map, roughness: BODY_ROUGH, metalness: BODY_METAL });
+  const skin = (map) => std(0xffffff, { map, roughness: BODY_ROUGH, metalness: BODY_METAL });
   const end = (f, x, rot) => {
     const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX))), x, CLEARANCE + CORNER + f.h / 2, 0);
     m.rotation.y = rot;

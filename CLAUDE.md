@@ -9,6 +9,7 @@ This is v1: no ML branch (no VLM, no OpenCV). The schema's `photo` field is acce
 `docs/flowchart.html` shows the full intended pipeline including the ML branch, for reference only.
 
 Plain ES modules, no TypeScript, no framework, no linter. Vite for the browser app, `node --test` for tests.
+The renderer is two custom elements, `<bus-2d>` and `<bus-3d>`; the app in `main.js` / `ui.js` is one host of them.
 
 ## Commands
 
@@ -16,6 +17,7 @@ Plain ES modules, no TypeScript, no framework, no linter. Vite for the browser a
 npm i
 npm run dev                                   # vite; ?bus=<id> picks an example (id = file name without .json)
 npm run build
+npm run build:lib                             # the elements as ES modules in dist-lib/, three and ajv external
 npm test                                      # node --test, picks up test/*.test.js
 node --test --test-name-pattern='derives'     # single test by name
 npm run validate -- examples/*.json           # schema + cross-field rules, exit 1 on any failure
@@ -27,11 +29,16 @@ Everything flows from one validated input object (`inp`). Units are **mm** every
 three.js, where `MM = 0.001` (`dims.js`) converts to metres at the last moment.
 
 ```
-examples/*.json ──▶ validate.js ──▶ derive.js ──┬──▶ vector.js (SVG face maps, mm) ──┬──▶ bus.js (3D, textures)
-                                               │                                    └──▶ ui.js (2D card)
-                                               └──▶ dims.js (shared fixed proportions)
-main.js wires: scene.js (stage) + views.js (camera) + bus.js + ui.js
+core   validate.js  derive.js  dims.js                  pure, no DOM, no three
+2D     vector.js  bus-2d.js   <bus-2d>                  core only: no three
+3D     bus.js  scene.js  views.js  bus-3d.js  <bus-3d>  core + three: no vector.js, no bus-2d.js
+app    main.js  ui.js  index.html  style.css            imports the library, never the reverse
 ```
+
+The host connects the two elements: `map.inp = inp; bus.faces = map.faces; bus.inp = inp`. The 3D
+side takes the face maps as input and never imports what produced them; `test/lib.test.js` scans
+the imports and fails when a layer reaches the wrong way. Tabs, caption, view bar, header and
+cards are host chrome, not part of either element.
 
 - **`validate.js`** — Ajv (draft 2020-12) against the schema, then the `rules` array for what JSON
   Schema cannot express. The rules are numbered (1)–(5) in the schema's top-level `$comment`;
@@ -45,30 +52,42 @@ main.js wires: scene.js (stage) + views.js (camera) + bus.js + ui.js
   by the 2D and 3D sides. Anything both `vector.js` and `bus.js` must agree on lives here.
 - **`vector.js`** — `faces(inp)` returns SVG maps per box side (`right`/`left` one per section,
   `front`/`rear` one each), in mm, as seen from outside. This is the **single source** for both the
-  3D face textures and the "2D vector map" card: the card must show exactly what is on the model,
+  3D face textures and the `<bus-2d>` element: it must show exactly what is on the model,
   so nothing that is separate geometry (wheels, bellows, roof pod) goes into a face map. New surface
   detail (doors, windows, front/rear templates) belongs here, not as extra meshes in `bus.js`.
-- **`bus.js`** — `mkBus(inp)`: per section an extruded side profile with arch cut-outs, liners,
+- **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
   `height_mm - roof_equipment_mm`. The side profile in `profile()` and the SVG path in
   `vector.js` `side()` describe the same outline and must change together. The extrude geometry's
   groups are re-split so the two caps (right, left) take separate face textures; the SVGs are
-  rasterised via data URLs and placed with texture `repeat`/`offset` on metre-valued UVs.
+  rasterised via data URLs and placed with texture `repeat`/`offset` on metre-valued UVs. Face
+  maps are read-only for consumers: `tex` rasterises a clone.
 - **`scene.js`** — `mkStage(el)`: renderer, sky/fog, lights, shadows, ground, orbit controls;
-  day/night palette from the OS colour scheme. `ticks` are per-frame callbacks; `drop` disposes
-  geometry, materials and maps.
-- **`views.js`** — named camera views and animated flights between them (registered as a stage tick).
-- **`ui.js`** — header and details cards, built with the tiny `el()` DOM builder.
+  day/night palette from the OS colour scheme. The canvas follows `el` through a `ResizeObserver`.
+  `ticks` are per-frame callbacks, `fits` per-resize ones; `drop` disposes geometry, materials and
+  maps of a model, `dispose` the stage itself.
+- **`views.js`** — `VIEWS` and animated flights between them (registered as a stage tick). No buttons.
+- **`elem.js`** — what both elements share: `define`, `shadow`, `emit`, `upgrade`, and a `Base`
+  class that lets the modules load where there is no DOM.
+- **`bus-2d.js`** — `<bus-2d>`: `inp` in, `faces` out (synchronously), shows the side named by
+  `face`. It shows clones, so the maps it hands out stay detached and untouched.
+- **`bus-3d.js`** — `<bus-3d>`: needs both `inp` and `faces`; setting either queues one rebuild in
+  a microtask. The first rebuild aims at `view`, later ones keep the camera, so a host that wants
+  a re-aim calls `go()` on `busrender`. An invalid `inp`, or maps that do not fit its sections,
+  fire `buserror` and leave the last render. Disconnecting disposes the stage; reconnecting rebuilds.
+- **`core.js`**, **`index.js`** — package entries (`./core`, `.`), next to `./bus-2d` and `./bus-3d`.
+- **`ui.js`** — header, view bar and details cards, built with the tiny `el()` DOM builder.
 - **`main.js`** — loads every `examples/*.json` through `import.meta.glob`, so any file dropped in
-  `examples/` becomes a selectable bus. Selecting validates first and shows errors in `#err`.
+  `examples/` becomes a selectable bus. Selecting validates first and shows errors in `#err`. Owns
+  what is app layout: the view offset that keeps the bus clear of the details panel.
 
 ### Coordinate conventions
 
 - `mkBus` returns a group with the front end at x = 0 running towards +x, ground at y = 0, z centred;
-  `main.js` then shifts it by `-len/2` so the bus is centred with the front towards −x.
+  `bus-3d.js` then shifts it by `-len/2` so the bus is centred with the front towards −x.
 - Extrude caps: z = 0 is the right side, z = w the left side.
 - Right-side face maps are mirrored (front points right): axle x is flipped in `faces()`, the
-  texture uses a negative `repeat.x`, and the card reverses section order for that tab.
+  texture uses a negative `repeat.x`, and `<bus-2d>` reverses section order for that side.
 
 ### Schema and examples
 
