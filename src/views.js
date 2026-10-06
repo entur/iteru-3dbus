@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
 const AIM = [0, 1.5, 0], REF_LEN = 12.4, FIT = 0.45;
-const VIEWS = {
+/** Named camera views: a label and the eye position in metres for a bus of REF_LEN. */
+export const VIEWS = {
   quarter: ['3/4', [-13.2, 3.2, -15.2]],
   left: ['Left', [0, 2, 24]],
   right: ['Right', [0, 2, -24]],
@@ -35,14 +36,13 @@ const frame = (cam0, group, pos, tgt) => {
 };
 
 /**
- * Builds the camera-view bar and flies the camera between named views. Long moves rise towards
- * the top on the way; dragging the scene cancels a flight.
+ * Flies the camera between named views. Long moves rise towards the top on the way; dragging
+ * the scene cancels a flight.
  * @param {{cam: THREE.PerspectiveCamera, ctl: object, ticks: (() => void)[]}} stage from mkStage
- * @param {HTMLElement} nav container for the view buttons
  * @param {() => {group: THREE.Object3D, len: number}} model current model and its length in metres
  * @returns {(v?: string, instant?: boolean) => void} go: fly to view v (default: the current one)
  */
-export const mkViews = (stage, nav, model) => {
+export const mkViews = (stage, model) => {
   const { cam, ctl } = stage;
   let cur = 'quarter', anim = null;
 
@@ -53,7 +53,6 @@ export const mkViews = (stage, nav, model) => {
     const k = Math.max(1, FIT / half(cam)) * Math.max(1, len / REF_LEN);
     const eye = new THREE.Vector3(...VIEWS[v][1]).sub(aim).multiplyScalar(k).add(aim);
     const [to, tt] = v === 'top' ? [eye, aim] : frame(cam, group, eye, aim);
-    [...nav.children].forEach((b) => (b.ariaPressed = String(b.dataset.view === v)));
     if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) {
       cam.position.copy(to);
       ctl.target.copy(tt);
@@ -85,12 +84,5 @@ export const mkViews = (stage, nav, model) => {
   });
   ctl.addEventListener('start', () => (anim = null));
 
-  nav.replaceChildren(
-    ...Object.entries(VIEWS).map(([v, [label]]) => {
-      const b = Object.assign(document.createElement('button'), { textContent: label, onclick: () => go(v) });
-      b.dataset.view = v;
-      return b;
-    }),
-  );
   return go;
 };
