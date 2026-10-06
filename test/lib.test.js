@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const SRC = new URL('../src/', import.meta.url);
-const LIB = ['core.js', 'bus-2d.js', 'bus-3d.js', 'index.js'], APP = ['./main.js', './ui.js'];
+const LIB = ['core.js', 'bus-2d.js', 'bus-3d.js', 'index.js'], APP = ['./main.js', './ui.js', './edit.js', /^@preact/];
 const D3 = ['./bus.js', './scene.js', './views.js', './bus-3d.js'], D2 = ['./vector.js', './bus-2d.js'];
 const IMPORT = /(?:import|export)\s[^'";]*?from\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]/g;
 
