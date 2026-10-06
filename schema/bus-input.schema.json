@@ -1,0 +1,602 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bus-model:input:2.0",
+  "title": "Bus model input",
+  "description": "The single input to the bus pipeline: identity, Bus Nordic classification, dimensions per body section, colour, and optional door/window hints for the template fallback. Dimension names follow NeTEx VehicleType (Length, Width, Height, LowFloor) in snake_case with explicit mm units.",
+  "$comment": "Rules JSON Schema cannot express, checked in code: (1) each section's axles_mm ascending and inside 0..length_mm; (2) total length = sum(length_mm) + sum(bellows_ahead_mm) <= 18750 for class I/II articulated, per Bus Nordic tables; (3) Bus Nordic 7.2: total length > 9500 mm needs >= 2 doors when doors_hint is given; (4) axle_gap < number of axles - 1; (5) door hints in the same zone and gap must not overlap once placed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "brand",
+    "model",
+    "body",
+    "bus_class",
+    "floor_type",
+    "width_mm",
+    "height_mm",
+    "tyre",
+    "base_color",
+    "sections"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "2.0"
+    },
+    "brand": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Manufacturer, e.g. Volvo. Also the default front badge text."
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model and variant as marketed, e.g. 8900 LE 12.4 m. Used in the VLM prompt and template lookup, not drawn."
+    },
+    "body": {
+      "enum": [
+        "rigid",
+        "articulated",
+        "bi_articulated"
+      ],
+      "description": "Body layout. Must match the number of sections: rigid 1, articulated 2, bi_articulated 3."
+    },
+    "bus_class": {
+      "enum": [
+        "A",
+        "B",
+        "I",
+        "II",
+        "III"
+      ],
+      "description": "Bus Nordic 2.0 / ECE R107 class. A, B: up to 22 passengers. I: city, standing areas. II: suburban/regional, mostly seated. III: coach, seated only. Drives door-count defaults for the template fallback. Rendering: picks the front template and default door count."
+    },
+    "floor_type": {
+      "enum": [
+        "low_floor",
+        "low_entry",
+        "normal_floor",
+        "low_floor_lower_level"
+      ],
+      "description": "Bus Nordic floor types. low_floor: step-free throughout. low_entry: step-free between doors 1 and 2, step up behind. normal_floor: steps at all doors. low_floor_lower_level: double-deck with a low lower deck. NeTEx LowFloor = true for low_floor and low_entry. Rendering: sets the default window band height and whether doors get visible steps; low_floor_lower_level draws two decks."
+    },
+    "width_mm": {
+      "type": "integer",
+      "minimum": 2000,
+      "maximum": 2550,
+      "description": "Body width without mirrors. NeTEx Width."
+    },
+    "height_mm": {
+      "type": "integer",
+      "minimum": 2400,
+      "maximum": 4400,
+      "description": "Height including roof equipment, as on spec sheets. NeTEx Height."
+    },
+    "roof_equipment_mm": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 600,
+      "default": 0,
+      "description": "Height of roof pods (batteries, HVAC) included in height_mm. The body box is drawn to height_mm minus this, with a roof pod on top."
+    },
+    "tyre": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Give a size string, a diameter, or both. Code derives the diameter from the size if needed.",
+      "properties": {
+        "size": {
+          "type": "string",
+          "pattern": "^\\d{3}/\\d{2} ?R\\d{2}(\\.\\d)?$",
+          "examples": [
+            "295/80 R22.5",
+            "275/70 R22.5"
+          ]
+        },
+        "diameter_mm": {
+          "type": "integer",
+          "minimum": 700,
+          "maximum": 1200
+        },
+        "rear_twin": {
+          "type": "boolean",
+          "default": true,
+          "description": "Twin tyres on driven axles."
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "size"
+          ]
+        },
+        {
+          "required": [
+            "diameter_mm"
+          ]
+        }
+      ]
+    },
+    "base_color": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hex"
+      ],
+      "properties": {
+        "hex": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human name, e.g. white or Ruter red."
+        }
+      }
+    },
+    "door_side": {
+      "enum": [
+        "right",
+        "left"
+      ],
+      "default": "right",
+      "description": "Side with the service doors. Right for all Nordic markets."
+    },
+    "front": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "template": {
+          "enum": [
+            "city",
+            "intercity",
+            "coach"
+          ],
+          "description": "Front SVG template. Defaults from bus_class: A/I city, II intercity, B/III coach."
+        },
+        "badge_text": {
+          "type": "string",
+          "description": "Text in place of the grille. Defaults to brand."
+        }
+      }
+    },
+    "photo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri"
+      ],
+      "description": "Entry-side (right) photo for the VLM path. Omit to render from hints and templates only.",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "straight": {
+          "type": "boolean",
+          "description": "Articulated only: true if the bus is not bent at the joint, so one 1D map can span all sections."
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "description": "Body sections front to rear. One item for a rigid bus, two for articulated, three for bi-articulated.",
+      "minItems": 1,
+      "maxItems": 3,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/lead_section"
+        }
+      ],
+      "items": {
+        "$ref": "#/$defs/trailer_section"
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Bookkeeping only. Nothing here affects the 3D model.",
+      "properties": {
+        "operator": {
+          "type": "string",
+          "description": "Operating company, e.g. Innlandstrafikk. Informational."
+        },
+        "fleet_number": {
+          "type": "string",
+          "description": "Operator fleet number, if known. Informational."
+        },
+        "netex_vehicle_type_ref": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}:VehicleType:[A-Za-z0-9_\\-]+$",
+          "description": "Optional link to a NeTEx Nordic profile VehicleType id, e.g. RUT:VehicleType:Citaro_G. Not used for rendering."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "section_common": {
+      "type": "object",
+      "properties": {
+        "length_mm": {
+          "type": "integer",
+          "minimum": 2000,
+          "maximum": 15000,
+          "description": "Section length, excluding bellows."
+        },
+        "axles_mm": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Axle centres, measured from the front of this section. Wheelbase and overhangs are derived."
+        },
+        "doors_hint": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/door_hint"
+          },
+          "maxItems": 4
+        },
+        "windows_hint": {
+          "$ref": "#/$defs/windows_hint"
+        }
+      },
+      "required": [
+        "length_mm",
+        "axles_mm"
+      ]
+    },
+    "lead_section": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/section_common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "properties": {
+        "axles_mm": {
+          "minItems": 2,
+          "maxItems": 3
+        }
+      }
+    },
+    "trailer_section": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/section_common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "bellows_ahead_mm"
+      ],
+      "properties": {
+        "axles_mm": {
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "bellows_ahead_mm": {
+          "type": "integer",
+          "minimum": 300,
+          "maximum": 1200,
+          "description": "Length of the joint bellows between this section and the one in front."
+        }
+      }
+    },
+    "door_hint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "zone",
+        "leaves"
+      ],
+      "description": "Where a door roughly is, relative to the section's axles. Used by the template fallback and checked against the VLM result.",
+      "properties": {
+        "zone": {
+          "enum": [
+            "front_overhang",
+            "between_axles",
+            "rear_overhang"
+          ]
+        },
+        "axle_gap": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "For between_axles with 3 axles: 0 = first gap, 1 = second."
+        },
+        "bias": {
+          "enum": [
+            "front",
+            "middle",
+            "rear"
+          ],
+          "default": "middle",
+          "description": "Position inside the zone. rear in between_axles = just ahead of the rear arch."
+        },
+        "leaves": {
+          "enum": [
+            1,
+            2
+          ],
+          "description": "1 = single door (default width about 900 mm), 2 = double door (about 1250 mm)."
+        },
+        "width_mm": {
+          "type": "integer",
+          "minimum": 600,
+          "maximum": 1600,
+          "description": "Overrides the width implied by leaves."
+        },
+        "glazed": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "windows_hint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Side windows in this section on the entry side, door glass excluded."
+        },
+        "band_mm": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 300
+            },
+            {
+              "type": "integer",
+              "maximum": 4400
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Window band [bottom, top], height above ground."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "2.0",
+      "brand": "Volvo",
+      "model": "8900 LE 12.4 m",
+      "body": "rigid",
+      "bus_class": "II",
+      "floor_type": "low_entry",
+      "width_mm": 2550,
+      "height_mm": 3300,
+      "tyre": {
+        "size": "295/80 R22.5",
+        "rear_twin": true
+      },
+      "base_color": {
+        "hex": "#E9ECEC",
+        "name": "white"
+      },
+      "front": {
+        "template": "intercity"
+      },
+      "photo": {
+        "uri": "photos/innlandstrafikk_8900_right.jpg"
+      },
+      "sections": [
+        {
+          "length_mm": 12396,
+          "axles_mm": [
+            2769,
+            9099
+          ],
+          "doors_hint": [
+            {
+              "zone": "front_overhang",
+              "leaves": 2
+            },
+            {
+              "zone": "between_axles",
+              "bias": "rear",
+              "leaves": 2
+            }
+          ]
+        }
+      ],
+      "meta": {
+        "operator": "Innlandstrafikk"
+      },
+      "roof_equipment_mm": 0
+    },
+    {
+      "$comment": "Articulated city bus. Section lengths and axle positions are illustrative.",
+      "schema_version": "2.0",
+      "brand": "Mercedes-Benz",
+      "model": "Citaro G",
+      "body": "articulated",
+      "bus_class": "I",
+      "floor_type": "low_floor",
+      "width_mm": 2550,
+      "height_mm": 3100,
+      "tyre": {
+        "diameter_mm": 950
+      },
+      "base_color": {
+        "hex": "#D6001C",
+        "name": "red"
+      },
+      "sections": [
+        {
+          "length_mm": 10600,
+          "axles_mm": [
+            2700,
+            8600
+          ],
+          "doors_hint": [
+            {
+              "zone": "front_overhang",
+              "leaves": 2
+            },
+            {
+              "zone": "between_axles",
+              "bias": "middle",
+              "leaves": 2
+            }
+          ]
+        },
+        {
+          "length_mm": 7000,
+          "bellows_ahead_mm": 600,
+          "axles_mm": [
+            4700
+          ],
+          "doors_hint": [
+            {
+              "zone": "front_overhang",
+              "bias": "front",
+              "leaves": 2
+            },
+            {
+              "zone": "rear_overhang",
+              "leaves": 2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "allOf": [
+    {
+      "$comment": "body ↔ number of sections",
+      "if": {
+        "properties": {
+          "body": {
+            "const": "rigid"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sections": {
+            "minItems": 1,
+            "maxItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "body": {
+            "const": "articulated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sections": {
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "body": {
+            "const": "bi_articulated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sections": {
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      }
+    },
+    {
+      "$comment": "Bus Nordic: classes A and B are up to 9.5 m, so rigid only",
+      "if": {
+        "properties": {
+          "bus_class": {
+            "enum": [
+              "A",
+              "B"
+            ]
+          }
+        },
+        "required": [
+          "bus_class"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "const": "rigid"
+          },
+          "sections": {
+            "prefixItems": [
+              {
+                "properties": {
+                  "length_mm": {
+                    "maximum": 9500
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "Bus Nordic class III tables list rigid coaches only",
+      "if": {
+        "properties": {
+          "bus_class": {
+            "const": "III"
+          }
+        },
+        "required": [
+          "bus_class"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "const": "rigid"
+          }
+        }
+      }
+    },
+    {
+      "$comment": "Double-deck needs double-deck height",
+      "if": {
+        "properties": {
+          "floor_type": {
+            "const": "low_floor_lower_level"
+          }
+        },
+        "required": [
+          "floor_type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "height_mm": {
+            "minimum": 3800
+          },
+          "body": {
+            "const": "rigid"
+          }
+        }
+      }
+    }
+  ]
+}

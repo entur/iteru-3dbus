@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bus side layout: who does what</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#E9EDF0;--surface:#FFFFFF;--ink:#17202B;--muted:#56626F;--lane:#E1E6EA;--lane2:#DAE0E5;--line:#6B7785;
+  --glass:#2B3540;--bodyc:#D3DAE0;--refl:#8A97A4;--user:#5A6878;--code:#1F7A55;--vlm:#6C43C9;--cv:#B7860B;--spa:#2563C9;--warn:#B4442F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141B23;--surface:#1C2530;--ink:#E7ECF1;--muted:#9AA7B4;--lane:#18212B;--lane2:#1A2430;--line:#8C99A7;
+    --glass:#0B1016;--bodyc:#6E7B88;--refl:#3E4A57;--user:#9AAABB;--code:#4FC08D;--vlm:#A88BF0;--cv:#E2B23A;--spa:#6B9BF0;--warn:#E57A62;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141B23;--surface:#1C2530;--ink:#E7ECF1;--muted:#9AA7B4;--lane:#18212B;--lane2:#1A2430;--line:#8C99A7;
+  --glass:#0B1016;--bodyc:#6E7B88;--refl:#3E4A57;--user:#9AAABB;--code:#4FC08D;--vlm:#A88BF0;--cv:#E2B23A;--spa:#6B9BF0;--warn:#E57A62;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Overpass","Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.5}
+main{max-width:1060px;margin:0 auto;padding:2.5rem 1.25rem 3rem}
+h1{font-size:clamp(1.7rem,4vw,2.6rem);font-weight:800;line-height:1.1;letter-spacing:-.01em;margin:0 0 .5rem;max-width:22ch}
+.lede{color:var(--muted);max-width:62ch;margin:0 0 2rem;font-size:1.02rem}
+h2{font-size:1.1rem;font-weight:800;margin:0 0 .9rem}
+.actors{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:.75rem;margin-bottom:2.5rem}
+.actor{background:var(--surface);border-radius:10px;padding:.9rem 1rem 1rem;border-top:5px solid var(--c)}
+.actor h3{margin:0 0 .35rem;font-size:1rem;color:var(--c);font-weight:800}
+.actor p{margin:0;font-size:.88rem;color:var(--ink)}
+.actor .no{margin-top:.45rem;color:var(--muted);font-size:.82rem}
+.scroll{overflow-x:auto;background:var(--surface);border-radius:12px;padding:.5rem}
+svg{display:block;min-width:820px;width:100%;height:auto}
+.lane{fill:var(--lane)} .lane.alt{fill:var(--lane2)}
+.h rect{fill:var(--c)} .h text{fill:var(--surface);font-weight:800;font-size:13px;text-anchor:middle}
+.n rect{fill:var(--surface);stroke:var(--c);stroke-width:2}
+.n .t{fill:var(--c)}
+.t{font-size:13px;font-weight:800;text-anchor:middle;fill:var(--ink)}
+.d{font-size:11.5px;text-anchor:middle;fill:var(--ink)}
+.dm{fill:var(--surface);stroke:var(--code);stroke-width:2}
+.e{fill:none;stroke:var(--line);stroke-width:1.6}
+.e.warn{stroke:var(--warn)} .e.ok{stroke:var(--code)}
+.ah{fill:var(--line)}
+.lbl{font-size:11px;fill:var(--muted);font-style:italic}
+.user{--c:var(--user)} .code{--c:var(--code)} .vlm{--c:var(--vlm)} .cv{--c:var(--cv)} .spa{--c:var(--spa)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;margin-top:2rem;font-size:.92rem}
+.notes p{margin:.2rem 0 0;color:var(--muted)}
+.notes strong{color:var(--ink)}
+.concepts{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;margin-top:2.5rem}
+.concept{background:var(--surface);border-radius:12px;padding:1.2rem 1.25rem 1.3rem}
+.concept h3{margin:0 0 .6rem;font-size:1.15rem;font-weight:800}
+.concept p{margin:.65rem 0 0;font-size:.93rem;max-width:62ch}
+.concept svg{min-width:0;margin:.4rem 0 .2rem}
+.concept code{font-family:inherit;font-weight:600;background:var(--lane);padding:.05rem .35rem;border-radius:4px}
+.glass{fill:var(--glass)} .bodyc{fill:var(--bodyc)} .refl{fill:var(--refl)}
+.curve{fill:none;stroke:var(--cv);stroke-width:2}
+.tick{stroke:var(--ink);stroke-width:1.4} .tick.d{stroke-dasharray:3 3;stroke:var(--line)}
+.ax{stroke:var(--line);stroke-width:1}
+.sl{font-size:11px;fill:var(--muted)} .sl.b{fill:var(--ink);font-weight:600}
+.busside{fill:var(--bodyc);stroke:var(--line);stroke-width:1}
+.wheel{fill:var(--glass)}
+.anc{fill:var(--vlm)}
+.ruler{stroke:var(--ink);stroke-width:1.4}
+.concept.wide{margin-top:1rem}
+.split{display:grid;grid-template-columns:minmax(260px,440px) 1fr;gap:1.5rem;align-items:start}
+@media (max-width:760px){.split{grid-template-columns:1fr}}
+.split p:first-child{margin-top:0}
+.badpt{fill:var(--warn)} .resid{stroke:var(--warn);stroke-width:2.5}
+.tablewrap{overflow-x:auto;margin-top:1.2rem}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:540px}
+th{text-align:left;font-weight:800;padding:.5rem .7rem;border-bottom:2px solid var(--line)}
+td{padding:.55rem .7rem;border-bottom:1px solid var(--lane2);vertical-align:top}
+td:first-child{font-weight:600;white-space:nowrap}
+.fine{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Bus side layout: who does what</h1>
+<p class="lede">From one entry-side photo and user-supplied dimensions to a rendered boxy bus. The VLM judges, OpenCV measures, plain code does the arithmetic. Two VLM calls per bus, both returning small JSON.</p>
+
+<h2>Actors</h2>
+<section class="actors">
+  <div class="actor user"><h3>User</h3><p>Supplies brand, model, length, wheelbase, front overhang, base colour and one entry-side photo.</p><p class="no">Their values override everything else.</p></div>
+  <div class="actor code"><h3>Code</h3><p>Validation, arithmetic, the 1D homography, sanity checks and JSON assembly. Python or Java.</p><p class="no">Deterministic, no inference.</p></div>
+  <div class="actor vlm"><h3>VLM subagent</h3><p>Judgment: where things roughly are, and what each proposed box is.</p><p class="no">Never counts, never measures pixels.</p></div>
+  <div class="actor cv"><h3>OpenCV</h3><p>Precise pixels: scans the window band, finds pillar edges, draws the numbered overlay.</p><p class="no">Over-segments on purpose; the VLM decides.</p></div>
+  <div class="actor spa"><h3>three.js SPA</h3><p>Reads vehicle.json and renders the fixed boxy bus with a template front and brand badge.</p><p class="no">No photo, no inference.</p></div>
+</section>
+
+<h2>Flow</h2>
+<div class="scroll"><svg viewBox="0 0 1000 1050" role="img" aria-label="Flowchart of the window and door detection pipeline"><defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><rect class="lane" x="20" y="0" width="192" height="1050"/><g class="h user"><rect x="36" y="12" width="160" height="28" rx="14"/><text x="116" y="31">User</text></g><rect class="lane alt" x="212" y="0" width="192" height="1050"/><g class="h code"><rect x="228" y="12" width="160" height="28" rx="14"/><text x="308" y="31">Code</text></g><rect class="lane" x="404" y="0" width="192" height="1050"/><g class="h vlm"><rect x="420" y="12" width="160" height="28" rx="14"/><text x="500" y="31">VLM subagent</text></g><rect class="lane alt" x="596" y="0" width="192" height="1050"/><g class="h cv"><rect x="612" y="12" width="160" height="28" rx="14"/><text x="692" y="31">OpenCV</text></g><rect class="lane" x="788" y="0" width="192" height="1050"/><g class="h spa"><rect x="804" y="12" width="160" height="28" rx="14"/><text x="884" y="31">three.js SPA</text></g><polyline class="e" points="116,120 116,145"/><polyline class="e" points="116,145 500,145"/><polyline class="e" points="308,145 308,168" marker-end="url(#ar)"/><polyline class="e" points="500,145 500,168" marker-end="url(#ar)"/><text class="lbl" x="404" y="139" text-anchor="middle">in parallel</text><polyline class="e" points="308,230 308,558" marker-end="url(#ar)"/><text class="lbl" x="300" y="420" text-anchor="middle" transform="rotate(-90 300 420)">axle + end x (mm)</text><polyline class="e" points="500,230 500,252 692,252 692,268" marker-end="url(#ar)"/><text class="lbl" x="596" y="246" text-anchor="middle">band y, search region</text><polyline class="e" points="692,330 692,358" marker-end="url(#ar)"/><polyline class="e" points="610,390 500,390 500,458" marker-end="url(#ar)"/><text class="lbl" x="555" y="384" text-anchor="middle">overlay image</text><polyline class="e" points="500,520 500,590 392,590" marker-end="url(#ar)"/><text class="lbl" x="446" y="584" text-anchor="middle">labels JSON</text><polyline class="e" points="308,620 308,650" marker-end="url(#ar)"/><polygon class="dm" points="308,652 378,690 308,728 238,690"/><text class="t" x="308" y="687">Sanity</text><text class="t" x="308" y="702">checks pass?</text><polyline class="e warn" points="378,690 550,690 550,522" marker-end="url(#ar)"/><text class="lbl" x="464" y="684" text-anchor="middle">fail, 1st try</text><polyline class="e warn" points="550,690 592,690 592,200 584,200" marker-end="url(#ar)"/><text class="lbl" x="604" y="560" text-anchor="middle" transform="rotate(-90 604 560)">map fails: redo pass 1</text><text class="lbl" x="542" y="606" text-anchor="middle" transform="rotate(-90 542 606)">features fail: redo pass 2</text><polyline class="e warn" points="308,728 308,758" marker-end="url(#ar)"/><text class="lbl" x="316" y="747" text-anchor="start">fail again</text><polyline class="e ok" points="238,690 218,690 218,890 224,890" marker-end="url(#ar)"/><text class="lbl" x="212" y="790" text-anchor="middle" transform="rotate(-90 212 790)">pass</text><polyline class="e" points="308,820 308,858" marker-end="url(#ar)"/><polyline class="e" points="308,920 308,945 884,945 884,968" marker-end="url(#ar)"/><text class="lbl" x="596" y="939" text-anchor="middle">vehicle.json</text><g class="n user"><rect x="34.0" y="60.0" width="164" height="60" rx="9"/>
+<text class="t" x="116" y="80">Input</text><text class="d" x="116" y="96">JSON: brand, model, dims</text><text class="d" x="116" y="110">+ entry-side photo</text></g><g class="n code"><rect x="226.0" y="170.0" width="164" height="60" rx="9"/>
+<text class="t" x="308" y="190">Validate dims</text><text class="d" x="308" y="206">rear OH = L − WB − FO</text><text class="d" x="308" y="220">axle + end x in mm</text></g><g class="n vlm"><rect x="418.0" y="170.0" width="164" height="60" rx="9"/>
+<text class="t" x="500" y="190">Pass 1: rough layout</text><text class="d" x="500" y="206">bus ends, wheel centres</text><text class="d" x="500" y="220">window band y, door hints</text></g><g class="n cv"><rect x="610.0" y="270.0" width="164" height="60" rx="9"/>
+<text class="t" x="692" y="290">Scan window band</text><text class="d" x="692" y="306">colour distance + Sobel</text><text class="d" x="692" y="320">over-segment pillars</text></g><g class="n cv"><rect x="610.0" y="360.0" width="164" height="60" rx="9"/>
+<text class="t" x="692" y="380">Numbered overlay</text><text class="d" x="692" y="396">candidate boxes drawn</text><text class="d" x="692" y="410">onto the photo</text></g><g class="n vlm"><rect x="418.0" y="460.0" width="164" height="60" rx="9"/>
+<text class="t" x="500" y="480">Pass 2: label boxes</text><text class="d" x="500" y="496">window, door, pillar</text><text class="d" x="500" y="510">or split → merge list</text></g><g class="n code"><rect x="226.0" y="560.0" width="164" height="60" rx="9"/>
+<text class="t" x="308" y="580">Pixels to mm</text><text class="d" x="308" y="596">merge split boxes</text><text class="d" x="308" y="610">1D homography, 4 anchors</text></g><g class="n code"><rect x="226.0" y="760.0" width="164" height="60" rx="9"/>
+<text class="t" x="308" y="780">Template fallback</text><text class="d" x="308" y="796">default layout</text><text class="d" x="308" y="810">for this bus type</text></g><g class="n code"><rect x="226.0" y="860.0" width="164" height="60" rx="9"/>
+<text class="t" x="308" y="880">Build vehicle.json</text><text class="d" x="308" y="896">derive left side</text><text class="d" x="308" y="910">user > VLM > template</text></g><g class="n spa"><rect x="802.0" y="970.0" width="164" height="60" rx="9"/>
+<text class="t" x="884" y="990">Render</text><text class="d" x="884" y="1006">box, arches, wheels</text><text class="d" x="884" y="1020">side SVGs, front badge</text></g></svg></div>
+
+<section class="concepts">
+<div class="concept"><h3>Sobel: finding pillars by edges</h3><svg viewBox="0 0 420 200" role="img" aria-label="Window band and its horizontal Sobel edge score">
+<text class="sl" x="0" y="12">Window band, as OpenCV sees it</text><rect class="bodyc" x="0" y="20" width="30" height="46"/><rect class="glass" x="30" y="20" width="80" height="46"/><rect class="bodyc" x="110" y="20" width="16" height="46"/><rect class="glass" x="126" y="20" width="80" height="46"/><rect class="bodyc" x="206" y="20" width="16" height="46"/><rect class="glass" x="222" y="20" width="80" height="46"/><rect class="bodyc" x="302" y="20" width="16" height="46"/><rect class="glass" x="318" y="20" width="80" height="46"/><rect class="bodyc" x="398" y="20" width="22" height="46"/><rect class="refl" x="262" y="20" width="7" height="46" transform="skewX(-8) translate(6,0)"/>
+<text class="sl" x="0" y="88">Sobel edge score per column</text>
+<line class="ax" x1="0" y1="160" x2="420" y2="160"/>
+<polyline class="curve" points="0,160.0 2,160.0 4,160.0 6,160.0 8,160.0 10,160.0 12,160.0 14,160.0 16,160.0 18,160.0 20,159.9 22,159.0 24,154.2 26,139.8 28,117.2 30,105.0 32,117.2 34,139.8 36,154.2 38,159.0 40,159.9 42,160.0 44,160.0 46,160.0 48,160.0 50,160.0 52,160.0 54,160.0 56,160.0 58,160.0 60,160.0 62,160.0 64,160.0 66,160.0 68,160.0 70,160.0 72,160.0 74,160.0 76,160.0 78,160.0 80,160.0 82,160.0 84,160.0 86,160.0 88,160.0 90,160.0 92,160.0 94,160.0 96,160.0 98,160.0 100,159.9 102,159.0 104,154.2 106,139.8 108,117.2 110,105.0 112,117.2 114,139.8 116,154.1 118,158.0 120,154.1 122,139.8 124,117.2 126,105.0 128,117.2 130,139.8 132,154.2 134,159.0 136,159.9 138,160.0 140,160.0 142,160.0 144,160.0 146,160.0 148,160.0 150,160.0 152,160.0 154,160.0 156,160.0 158,160.0 160,160.0 162,160.0 164,160.0 166,160.0 168,160.0 170,160.0 172,160.0 174,160.0 176,160.0 178,160.0 180,160.0 182,160.0 184,160.0 186,160.0 188,160.0 190,160.0 192,160.0 194,160.0 196,159.9 198,159.0 200,154.2 202,139.8 204,117.2 206,105.0 208,117.2 210,139.8 212,154.1 214,158.0 216,154.1 218,139.8 220,117.2 222,105.0 224,117.2 226,139.8 228,154.2 230,159.0 232,159.9 234,160.0 236,160.0 238,160.0 240,160.0 242,160.0 244,160.0 246,160.0 248,160.0 250,160.0 252,160.0 254,160.0 256,160.0 258,159.6 260,157.1 262,149.4 264,139.7 266,139.7 268,149.4 270,157.1 272,159.6 274,160.0 276,160.0 278,160.0 280,160.0 282,160.0 284,160.0 286,160.0 288,160.0 290,160.0 292,159.9 294,159.0 296,154.2 298,139.8 300,117.2 302,105.0 304,117.2 306,139.8 308,154.1 310,158.0 312,154.1 314,139.8 316,117.2 318,105.0 320,117.2 322,139.8 324,154.2 326,159.0 328,159.9 330,160.0 332,160.0 334,160.0 336,160.0 338,160.0 340,160.0 342,160.0 344,160.0 346,160.0 348,160.0 350,160.0 352,160.0 354,160.0 356,160.0 358,160.0 360,160.0 362,160.0 364,160.0 366,160.0 368,160.0 370,160.0 372,160.0 374,160.0 376,160.0 378,160.0 380,160.0 382,160.0 384,160.0 386,160.0 388,159.9 390,159.0 392,154.2 394,139.8 396,117.2 398,105.0 400,117.2 402,139.8 404,154.2 406,159.0 408,159.9 410,160.0 412,160.0 414,160.0 416,160.0 418,160.0 420,160.0"/>
+<text class="sl b" x="118" y="182" text-anchor="middle">pillar: two peaks</text>
+<text class="sl b" x="266" y="196" text-anchor="middle">reflection: false peak</text>
+<line class="tick d" x1="266" y1="140" x2="266" y2="185"/>
+</svg>
+<p>A Sobel filter measures how sharply brightness changes from one pixel to the next, here left to right. Flat areas, like the inside of a window or a painted panel, score near zero. The border between glass and a pillar scores high.</p>
+<p>OpenCV averages the score down each column of the window band, giving one number per column. Every pillar then shows up as a pair of peaks, one for each of its edges.</p>
+<p>This still works where colour fails: black pillars behind flush glazing usually keep a visible frame edge. The catch is that reflections, stickers and seals make peaks too. So OpenCV keeps every peak as a possible boundary, and the VLM throws out the false ones in pass 2.</p></div>
+<div class="concept"><h3>Four anchors: pixels to millimetres</h3><svg viewBox="0 0 420 200" role="img" aria-label="Four anchors in the photo mapped to millimetre positions">
+<polygon class="busside" points="20,20.0 400,45.0 400,90.0 20,110.0"/><circle class="wheel" cx="167" cy="102.26315789473685" r="15"/><circle class="wheel" cx="346" cy="92.84210526315789" r="9.5"/><line class="tick" x1="20" y1="16.0" x2="20" y2="128"/><circle class="anc" cx="20" cy="128" r="3.5"/><line class="tick d" x1="20" y1="131" x2="20.0" y2="170"/><line class="tick" x1="167" y1="25.671052631578945" x2="167" y2="128"/><circle class="anc" cx="167" cy="128" r="3.5"/><line class="tick d" x1="167" y1="131" x2="104.9" y2="170"/><line class="tick" x1="346" y1="37.44736842105263" x2="346" y2="128"/><circle class="anc" cx="346" cy="128" r="3.5"/><line class="tick d" x1="346" y1="131" x2="298.9" y2="170"/><line class="tick" x1="400" y1="41.0" x2="400" y2="128"/><circle class="anc" cx="400" cy="128" r="3.5"/><line class="tick d" x1="400" y1="131" x2="400.0" y2="170"/><line class="ruler" x1="20" y1="171" x2="400" y2="171"/><text class="sl b" x="20" y="10" text-anchor="start">front end</text><line class="ruler" x1="20.0" y1="166" x2="20.0" y2="176"/><text class="sl" x="20.0" y="192" text-anchor="start">0 mm</text><text class="sl b" x="167" y="10" text-anchor="middle">front axle</text><line class="ruler" x1="104.9" y1="166" x2="104.9" y2="176"/><text class="sl" x="104.9" y="192" text-anchor="middle">2 769 mm</text><text class="sl b" x="346" y="10" text-anchor="middle">rear axle</text><line class="ruler" x1="298.9" y1="166" x2="298.9" y2="176"/><text class="sl" x="298.9" y="192" text-anchor="end">9 099 mm</text><text class="sl b" x="400" y="34" text-anchor="end">rear end</text><line class="ruler" x1="400.0" y1="166" x2="400.0" y2="176"/><text class="sl" x="400.0" y="192" text-anchor="end">12 396 mm</text>
+<text class="sl" x="28" y="146">pixels in photo</text>
+<text class="sl" x="210" y="160" text-anchor="middle">mm along the bus</text>
+</svg>
+<p>In a photo, equal lengths along the bus don't take equal pixels. The far end is squeezed, so one mm-per-pixel scale would place every window wrong.</p>
+<p>Along a straight line seen in perspective, pixel column <code>u</code> maps to position <code>x</code> by a 1D projective map, <code>x = (a·u + b) / (c·u + 1)</code>. It has three unknowns, so three points known in both pixels and mm fix it.</p>
+<p>The user's dimensions give four such points for free: front end at 0, front axle at the front overhang, rear axle one wheelbase further, rear end at the full length. The VLM only has to say where they are in the photo.</p>
+<p>The fourth point is the check. Fit the map on all four and look at the leftover error: if one anchor misses by more than about 1–2 % of the length, pass 1 put it in the wrong place, typically a cut-off bus end or a wheel centre misread, and the sanity check fails.</p>
+<p>This assumes vertical edges look vertical, which holds for a roughly level camera, so a pillar's pixel column is the same at wheel height and window height.</p></div>
+</section>
+<section class="concept wide">
+<h3>How the 1D map drives the sanity checks</h3>
+<div class="split"><div><svg viewBox="0 0 440 210" role="img" aria-label="Fitted pixel-to-mm curve with one anchor off the curve">
+<line class="ax" x1="40" y1="180" x2="410" y2="180"/><line class="ax" x1="40" y1="20" x2="40" y2="180"/>
+<text class="sl" x="225" y="202" text-anchor="middle">pixel column in photo</text>
+<text class="sl" x="14" y="100" text-anchor="middle" transform="rotate(-90 14 100)">mm along bus</text>
+<polyline class="curve" points="40.0,180.0 43.6,179.3 47.2,178.6 50.8,177.9 54.4,177.2 58.0,176.5 61.6,175.8 65.2,175.0 68.8,174.3 72.4,173.5 76.0,172.8 79.6,172.0 83.2,171.2 86.8,170.5 90.4,169.7 94.0,168.9 97.6,168.0 101.2,167.2 104.8,166.4 108.4,165.5 112.0,164.7 115.6,163.8 119.2,163.0 122.8,162.1 126.4,161.2 130.0,160.3 133.6,159.3 137.2,158.4 140.8,157.5 144.4,156.5 148.0,155.5 151.6,154.6 155.2,153.6 158.8,152.6 162.4,151.5 166.0,150.5 169.6,149.5 173.2,148.4 176.8,147.3 180.4,146.2 184.0,145.1 187.6,144.0 191.2,142.9 194.8,141.7 198.4,140.5 202.0,139.3 205.6,138.1 209.2,136.9 212.8,135.7 216.4,134.4 220.0,133.1 223.6,131.8 227.2,130.5 230.8,129.2 234.4,127.8 238.0,126.4 241.6,125.0 245.2,123.6 248.8,122.2 252.4,120.7 256.0,119.2 259.6,117.7 263.2,116.1 266.8,114.6 270.4,113.0 274.0,111.3 277.6,109.7 281.2,108.0 284.8,106.3 288.4,104.6 292.0,102.8 295.6,101.0 299.2,99.2 302.8,97.3 306.4,95.4 310.0,93.5 313.6,91.5 317.2,89.5 320.8,87.4 324.4,85.4 328.0,83.2 331.6,81.1 335.2,78.8 338.8,76.6 342.4,74.3 346.0,71.9 349.6,69.6 353.2,67.1 356.8,64.6 360.4,62.1 364.0,59.5 367.6,56.8 371.2,54.1 374.8,51.3 378.4,48.5 382.0,45.6 385.6,42.6 389.2,39.6 392.8,36.4 396.4,33.3 400.0,30.0"/><circle class="anc" cx="40.0" cy="180.0" r="4.5"/><circle class="anc" cx="179.5" cy="146.5" r="4.5"/><circle class="badpt" cx="292.0" cy="69.9" r="4.5"/><circle class="anc" cx="400.0" cy="30.0" r="4.5"/><line class="resid" x1="292.0" y1="102.8" x2="292.0" y2="69.9"/>
+<text class="sl b" x="282.0" y="73.9" text-anchor="end">rear axle, as pass 1 placed it</text>
+<text class="sl b" x="300.0" y="90.3">error</text>
+<text class="sl" x="238.0" y="148.4">map fitted on the other three</text>
+</svg></div><div>
+<p>Each anchor gives one equation, and the map has three unknowns. Rewritten as <code>a·u + b − c·u·x = x</code> it is linear, so fitting is plain least squares. Four anchors means one spare.</p>
+<p>Use the spare one at a time: fit on three anchors, predict where the fourth should land in mm, and compare with its known position. Doing this for each of the four shows which anchor is wrong, not just that one is. The steered front wheel and a cropped bus end are the usual suspects.</p>
+<p>The map also makes the feature checks possible. In pixels, the far windows look narrower than the near ones, so “all windows are about the same width” can only be tested after converting to mm.</p>
+</div></div>
+<div class="tablewrap"><table>
+<thead><tr><th>Check</th><th>Passes when</th><th>On fail</th></tr></thead>
+<tbody>
+<tr><td>Anchor fit</td><td>Each anchor, predicted from the other three, lands within 1.5&nbsp;% of length (about 185&nbsp;mm on a 12.4&nbsp;m bus)</td><td>Redo pass 1, naming the worst anchor</td></tr>
+<tr><td>Map shape</td><td>Mm increase left to right, the vanishing point lies outside the bus, and the far end is squeezed less than 3×</td><td>Redo pass 1</td></tr>
+<tr><td>Inside the body</td><td>Every box edge maps to between 0 and the length, give or take 50&nbsp;mm</td><td>Redo pass 2</td></tr>
+<tr><td>Arches clear</td><td>No door overlaps a wheel arch (axle ± tyre radius + 100&nbsp;mm)</td><td>Redo pass 2</td></tr>
+<tr><td>Even windows</td><td>Each window is within ±25&nbsp;% of the median width</td><td>Redo pass 2; usually a missed split or merge</td></tr>
+<tr><td>Glazed share</td><td>Windows plus doors cover 55–90&nbsp;% of the length</td><td>Redo pass 2</td></tr>
+</tbody></table></div>
+<p class="fine">The map checks need only pass 1 and the dimensions, so they can run before OpenCV starts. Thresholds are starting points to tune on real runs.</p>
+</section>
+<section class="concept wide">
+<h3>Why OpenCV draws numbered boxes for the VLM</h3>
+<p>Asked “how many windows are on this bus?”, a VLM often gets the number wrong: models are unreliable at counting rows of similar-looking things.</p>
+<p>So the VLM is never asked to count. In the <strong>Numbered overlay</strong> step, OpenCV draws a box with a number around every segment it found between possible pillars, and sends that marked-up photo to the VLM. In <strong>Pass 2: label boxes</strong>, the VLM answers one small question per box: is box 3 a window, a door, a pillar, or half a window that belongs with box 4?</p>
+<p>Code then merges the halves and counts the boxes labelled window. The count comes from a list, not from the model’s guess.</p>
+</section>
+</main>
+</body>
+</html>
