@@ -24,7 +24,7 @@ npm run validate -- examples/*.json           # schema + cross-field rules, exit
 ## Architecture
 
 Everything flows from one validated input object (`inp`). Units are **mm** everywhere except inside
-three.js, where `MM = 0.001` converts to metres at the last moment.
+three.js, where `MM = 0.001` (`dims.js`) converts to metres at the last moment.
 
 ```
 examples/*.json ──▶ validate.js ──▶ derive.js ──┬──▶ vector.js (SVG face maps, mm) ──┬──▶ bus.js (3D, textures)
@@ -38,8 +38,9 @@ main.js wires: scene.js (stage) + views.js (camera) + bus.js + ui.js
   (1)–(4) are implemented, (5) (door overlap) waits for door placement. Cross-field rules only run
   when the schema passes. Returns `string[]`, empty when valid.
 - **`derive.js`** — pure functions, no DOM, no three: `layout` (per-section `x0`, absolute axle x,
-  bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`. Input axles are section-relative;
-  `layout` makes them absolute from the front end. Node-safe, so it is what the tests cover.
+  bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `hints`, `arch` (the
+  wheel-arch circle both renderers cut out). Input axles are section-relative; `layout` gives both
+  `axles` (absolute from the front end) and `local`. Node-safe, so it is what the tests cover.
 - **`dims.js`** — fixed body proportions (clearance, corner radius, arch gap, tyre, roof pod) shared
   by the 2D and 3D sides. Anything both `vector.js` and `bus.js` must agree on lives here.
 - **`vector.js`** — `faces(inp)` returns SVG maps per box side (`right`/`left` one per section,

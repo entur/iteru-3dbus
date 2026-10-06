@@ -1,12 +1,12 @@
 import './style.css';
 import { mkBus } from './bus.js';
 import { total } from './derive.js';
+import { MM } from './dims.js';
 import { mkStage } from './scene.js';
 import { cards, header } from './ui.js';
 import { validate } from './validate.js';
 import { mkViews } from './views.js';
 
-const MM = 0.001;
 const FIRST = 'volvo-8900';
 
 const srcs = import.meta.glob('../examples/*.json', { eager: true, query: '?url', import: 'default' });

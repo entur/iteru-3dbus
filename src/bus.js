@@ -1,9 +1,8 @@
 import * as THREE from 'three';
-import { layout, tyreDia } from './derive.js';
+import { arch, bodyTop, layout, tyreDia } from './derive.js';
 import { faces } from './vector.js';
-import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, HUB_R, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
+import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, HUB_R, MM, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
 
-const MM = 0.001;
 const ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20, TYRE_SEG = 48;
 const NUT_R = 18, NUT_RING = 160, NUTS = 10;
 const SIDE_PX = 0.34, END_PX = 0.8, ANISO = 8, END_GAP = 3;  // face texture px per mm; end planes sit just off the body
@@ -32,8 +31,8 @@ const tex = (f, px, repeat = [1, 1], offset = [0, 0]) => {
 
 /** Side profile of one section in metres: rounded box with an arch cut out over each axle. */
 const profile = (len, top, axles, r) => {
-  const L = len * MM, H = top * MM, G = CLEARANCE * MM, c = CORNER * MM, R = (r + ARCH_GAP) * MM, cy = r * MM;
-  const dl = Math.asin((cy - G) / R);
+  const L = len * MM, H = top * MM, G = CLEARANCE * MM, c = CORNER * MM, cy = r * MM;
+  const ar = arch(r), R = ar.R * MM, dl = ar.dl;
   const s = new THREE.Shape();
   s.moveTo(c, G);
   axles.forEach((ax) =>
@@ -54,7 +53,7 @@ const profile = (len, top, axles, r) => {
 
 /** Dark inner wall of a wheel arch: an open half-pipe across the width, cut off at the skirt. */
 const liner = (r, w, mat) => {
-  const R = r + ARCH_GAP - LINER_GAP, dl = Math.asin((r - CLEARANCE) / R);
+  const { R, dl } = arch(r, r + ARCH_GAP - LINER_GAP);
   const m = new THREE.Mesh(
     new THREE.CylinderGeometry(R * MM, R * MM, (w - LINER_INSET) * MM, 40, 1, true, Math.PI / 2 - dl, Math.PI + 2 * dl),
     mat,
@@ -86,7 +85,7 @@ const wheel = (r, mats) => {
  */
 export const mkBus = (inp) => {
   const w = inp.width_mm, r = tyreDia(inp.tyre) / 2;
-  const top = inp.height_mm - (inp.roof_equipment_mm ?? 0);  // body stops below the roof pod
+  const top = bodyTop(inp), roof = inp.roof_equipment_mm ?? 0;  // body stops below the roof pod
   const twin = inp.tyre.rear_twin ?? true;
   const zo = w / 2 - TYRE_INSET;
   const mats = {
@@ -98,7 +97,7 @@ export const mkBus = (inp) => {
     bellows: std(BELLOWS, { roughness: 0.9 }),
     pod: std(inp.base_color.hex, { roughness: 0.5 }),
   };
-  const roof = inp.roof_equipment_mm ?? 0;
+  const wh = wheel(r, mats), ln = liner(r, w, mats.liner);  // one of each, cloned per axle: clones share geometry
   const maps = faces(inp), skin = (map) => std(0xffffff, { map, roughness: BODY_ROUGH, metalness: BODY_METAL });
   const end = (f, x, rot) => {
     const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX))), x, CLEARANCE + CORNER + f.h / 2, 0);
@@ -107,8 +106,7 @@ export const mkBus = (inp) => {
   };
 
   const parts = layout(inp).flatMap((s, i) => {
-    const local = s.axles.map((a) => a - s.x0);
-    const geo = new THREE.ExtrudeGeometry(profile(s.len, top, local, r), { depth: w * MM, bevelEnabled: false, curveSegments: 8 });
+    const geo = new THREE.ExtrudeGeometry(profile(s.len, top, s.local, r), { depth: w * MM, bevelEnabled: false, curveSegments: 8 });
     geo.translate(0, 0, (-w / 2) * MM);
     // caps come first, z = 0 (right side) then z = w (left side); walls after
     const [caps, walls] = geo.groups, n = caps.count / 2;
@@ -129,9 +127,9 @@ export const mkBus = (inp) => {
         ? [at(new THREE.Mesh(new THREE.BoxGeometry(Math.min(POD_LEN, s.len * POD_MAX) * MM, roof * MM, w * POD_W * MM), mats.pod), s.x0 + s.len * POD_AT, top + roof / 2, 0)]
         : []),
       ...s.axles.flatMap((x, j) => [
-        at(liner(r, w, mats.liner), x, r, 0),
+        at(ln.clone(), x, r, 0),
         ...[-1, 1].flatMap((side) =>
-          (twin && i + j > 0 ? [zo, zo - TWIN_GAP] : [zo]).map((z) => at(wheel(r, mats), x, r, side * z)),
+          (twin && i + j > 0 ? [zo, zo - TWIN_GAP] : [zo]).map((z) => at(wh.clone(), x, r, side * z)),
         ),
       ]),
     ];
