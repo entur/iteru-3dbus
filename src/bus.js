@@ -7,6 +7,7 @@ const NUT_R = 18, NUT_RING = 160, NUTS = 10;
 const SIDE_PX = 0.34, END_PX = 0.8, ANISO = 8, END_GAP = 3;  // face texture px per mm; end planes sit just off the body
 const BODY_ROUGH = 0.4, BODY_METAL = 0.05;
 const TYRE = 0x1d2124, RIM = 0xb8bfc4, HUB = 0x50585e, LINER = 0x22282c, BELLOWS = 0x56626f;
+const NO_MAPS = 'faces must hold one side map per section and a front and a rear map, each an { svg, w, h } sized for this bus';
 
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, ...o });
 const at = (m, x, y, z) => (m.position.set(x * MM, y * MM, z * MM), m);
@@ -73,6 +74,23 @@ const wheel = (r, mats) => {
     axial(HUB_R, TYRE_W + 30, 24, mats.hub),
     ...nuts,
   );
+};
+
+/** A face map of width w, and of height h where one is asked for. */
+const isFace = (f, w, h) => typeof f?.svg?.cloneNode === 'function' && f.w === w && (h === undefined ? f.h > 0 : f.h === h);
+
+/**
+ * Checks that face maps are the ones mkBus can draw for an input: one side map per section, a
+ * front and a rear map, each in the size that input gives its box.
+ * @param {object} inp validated bus input
+ * @param {object} maps face maps, as vector.js faces() returns them
+ * @returns {string[]} errors, empty when the maps fit
+ */
+export const mapErrs = (inp, maps) => {
+  const boxes = layout(inp), h = bodyTop(inp) - CLEARANCE;
+  const sides = (fs) => fs?.length === boxes.length && boxes.every((b, i) => isFace(fs[i], b.len, h));
+  const end = (fs) => isFace(fs?.[0], inp.width_mm);
+  return sides(maps?.right) && sides(maps?.left) && end(maps?.front) && end(maps?.rear) ? [] : [NO_MAPS];
 };
 
 /**

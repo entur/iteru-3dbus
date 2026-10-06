@@ -1,4 +1,4 @@
-import { mkBus } from './bus.js';
+import { mapErrs, mkBus } from './bus.js';
 import { total } from './derive.js';
 import { MM } from './dims.js';
 import { Base, define, emit, shadow, upgrade } from './elem.js';
@@ -8,14 +8,11 @@ import { VIEWS, mkViews } from './views.js';
 
 const TAG = 'bus-3d', FIRST = 'quarter';
 const CSS = ':host{display:block}:host([hidden]){display:none}div{width:100%;height:100%;overflow:hidden}canvas{display:block;touch-action:none}';
-const NO_MAPS = 'faces must hold one side map per section, and a front and a rear map';
 
 /** Errors that stop a rebuild: an invalid input, or face maps that do not fit its sections. */
 const check = (inp, maps) => {
   const errs = validate(inp);
-  if (errs.length) return errs;
-  const n = inp.sections.length;
-  return maps.right?.length === n && maps.left?.length === n && maps.front?.[0] && maps.rear?.[0] ? [] : [NO_MAPS];
+  return errs.length ? errs : mapErrs(inp, maps);
 };
 
 /**
@@ -145,10 +142,11 @@ export class Bus3d extends Base {
     if (!this.#stage || !inp || !maps) return;
     const errs = check(inp, maps);
     if (errs.length) return emit(this, 'buserror', { errors: errs });
+    const next = mkBus(inp, maps);  // before the drop: a build that throws leaves the last render
     this.#aim ||= !this.#cur;
     this.#cur && this.#stage.drop(this.#cur);
     this.#len = total(inp) * MM;
-    this.#cur = mkBus(inp, maps);
+    this.#cur = next;
     this.#cur.position.x = -this.#len / 2;
     this.#stage.add(this.#cur);
     this.#settle();

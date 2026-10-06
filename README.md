@@ -13,8 +13,8 @@ npm run validate -- examples/*.json
 As components, in any host (`npm run build:lib` builds them to `dist-lib/`):
 
 ```js
-import './src/bus-2d.js';  // <bus-2d>: the 2D face maps, no three.js
-import './src/bus-3d.js';  // <bus-3d>: the 3D model, takes the maps as input
+import '3dbus/bus-2d';  // <bus-2d>: the 2D face maps, no three.js
+import '3dbus/bus-3d';  // <bus-3d>: the 3D model, takes the maps as input
 
 map.inp = inp;             // synchronous: map.faces is current on the next line
 bus.faces = map.faces;
