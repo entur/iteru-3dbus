@@ -1,4 +1,5 @@
 import { spans, total, tyreDia } from './derive.js';
+import { frontSvg, sideSvg } from './vector.js';
 
 const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
 const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
@@ -40,12 +41,19 @@ export const header = (buses, id, pick) => {
 };
 
 /**
- * Fills the details panel with one card each for dimensions, sections and classification.
+ * Fills the details panel: the 2D vector map of the entry side and front, then one card each
+ * for dimensions, sections and classification.
  * @param {object} inp validated bus input
  */
 export const cards = (inp) => {
   const doors = inp.sections.flatMap((s) => s.doors_hint ?? []);
+  const side = inp.door_side ?? 'right';
   document.getElementById('info').replaceChildren(
+    card(
+      '2D vector map',
+      el('figure', {}, sideSvg(inp), el('figcaption', {}, `Entry side (${side}), to scale`)),
+      el('figure', { className: 'front' }, frontSvg(inp), el('figcaption', {}, 'Front')),
+    ),
     card(
       'Dimensions',
       rows(['mm', ''], [
@@ -69,7 +77,7 @@ export const cards = (inp) => {
         ['Body', BODY[inp.body]],
         ['Class', CLASS[inp.bus_class]],
         ['Floor', FLOOR[inp.floor_type]],
-        ['Doors', doors.length ? `${doors.length} hinted, ${inp.door_side ?? 'right'} side` : 'class default'],
+        ['Doors', doors.length ? `${doors.length} hinted, ${side} side` : 'class default'],
       ]),
       el('p', { className: 'note' }, NOTE),
     ),

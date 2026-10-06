@@ -1,12 +1,10 @@
 import * as THREE from 'three';
 import { layout, tyreDia } from './derive.js';
+import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, HUB_R, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
 
 const MM = 0.001;
-const CLEARANCE = 320, CORNER = 90, BELLOWS_INSET = 150;
-const ARCH_GAP = 110, ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20;
-const TYRE_W = 295, TYRE_INSET = 160, TWIN_GAP = 310, TYRE_SEG = 48;
-const RIM_R = 290, HUB_R = 110, NUT_R = 18, NUT_RING = 160, NUTS = 10;
-const POD_LEN = 3200, POD_MAX = 0.5, POD_AT = 0.45, POD_W = 0.75;
+const ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20, TYRE_SEG = 48;
+const NUT_R = 18, NUT_RING = 160, NUTS = 10;
 const BODY_ROUGH = 0.4, BODY_METAL = 0.05;
 const TYRE = 0x1d2124, RIM = 0xb8bfc4, HUB = 0x50585e, LINER = 0x22282c, BELLOWS = 0x56626f;
 

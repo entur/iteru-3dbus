@@ -36,6 +36,14 @@ td:first-child, th:first-child { text-align: left; padding-left: 0; }
 tr:last-child td { border-bottom: 0; }
 th { color: var(--steel); font-size: 13px; }
 .note { color: var(--steel); font-size: 13.5px; line-height: 1.4; margin: 10px 0 0; }
+figure { margin: 0 0 10px; }
+figure:last-child { margin-bottom: 0; }
+figure.front { width: 46%; }
+figcaption { color: var(--steel); font-size: 13px; margin-top: 2px; }
+.vec { display: block; width: 100%; height: auto; }
+.vec .edge { stroke: var(--steel); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.vec .ground { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.vec .badge { font-weight: 600; letter-spacing: 0.06em; text-anchor: middle; dominant-baseline: central; }
 #toggle { display: none; }
 @media (max-width: 720px) {
   aside { left: 12px; right: 12px; width: auto; top: auto; bottom: 76px; max-height: 46%; display: none; }
