@@ -19,13 +19,15 @@ export const el = (tag, props = {}, ...kids) => {
 };
 
 /**
- * Fills the header: one button per bus, then title, fleet-number plate and operator line.
- * @param {{id: string, inp: object}[]} buses all selectable buses
+ * Fills the header: one button per bus, then the title with a link to the selected bus's raw
+ * input JSON beside it, fleet-number plate and operator line.
+ * @param {{id: string, inp: object, src: string}[]} buses all selectable buses, src is the JSON url
  * @param {string} id the selected bus
  * @param {(id: string) => void} pick called when another bus is chosen
  */
 export const header = (buses, id, pick) => {
-  const { inp } = buses.find((b) => b.id === id);
+  const { inp, src } = buses.find((b) => b.id === id);
+  Object.assign(document.getElementById('src'), { href: src, title: `Raw input JSON for ${inp.brand} ${inp.model}` });
   document.getElementById('models').replaceChildren(
     ...buses.map((b) =>
       el('button', { onclick: () => pick(b.id), ariaPressed: String(b.id === id) }, `${b.inp.brand} ${b.inp.model.split(' ')[0]}`),

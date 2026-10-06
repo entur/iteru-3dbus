@@ -9,9 +9,11 @@ import { mkViews } from './views.js';
 const MM = 0.001;
 const FIRST = 'volvo-8900';
 
+const srcs = import.meta.glob('../examples/*.json', { eager: true, query: '?url', import: 'default' });
 const buses = Object.entries(import.meta.glob('../examples/*.json', { eager: true, import: 'default' })).map(([p, inp]) => ({
   id: p.match(/([^/]+)\.json$/)[1],
   inp,
+  src: srcs[p],
 }));
 const stage = mkStage(document.getElementById('stage'));
 const err = document.getElementById('err');
