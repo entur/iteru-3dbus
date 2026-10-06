@@ -20,9 +20,9 @@ const dispose = (g) =>
  * Sets up the stage: renderer with shadows, sky and fog, three lights, a ground disc and
  * orbit controls. Colours follow the OS colour scheme.
  * @param {HTMLElement} el container the canvas fills
- * @returns {{scene: THREE.Scene, cam: THREE.PerspectiveCamera, ctl: OrbitControls,
- *   add: (g: THREE.Object3D) => void, drop: (g: THREE.Object3D) => void, fit: () => void,
- *   ticks: (() => void)[]}} add/drop swap a model in and out, ticks run before each frame
+ * @returns {{cam: THREE.PerspectiveCamera, ctl: OrbitControls, add: (g: THREE.Object3D) => void,
+ *   drop: (g: THREE.Object3D) => void, ticks: (() => void)[]}} add/drop swap a model in and out,
+ *   ticks run before each frame
  */
 export const mkStage = (el) => {
   const pal = matchMedia('(prefers-color-scheme: dark)').matches ? NIGHT : DAY;
@@ -40,6 +40,7 @@ export const mkStage = (el) => {
   sun.castShadow = true;
   sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
   sun.shadow.bias = SHADOW_BIAS;
+  sun.shadow.autoUpdate = false;  // nothing moves: the shadow map is redrawn only when the model is swapped
   Object.assign(sun.shadow.camera, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: SHADOW_FAR });
   const fill = new THREE.DirectionalLight(0xdfe8ff, FILL);
   fill.position.set(...FILL_AT);
@@ -66,8 +67,8 @@ export const mkStage = (el) => {
   gl.setAnimationLoop(() => (ticks.forEach((f) => f()), ctl.update(), gl.render(scene, cam)));
 
   return {
-    scene, cam, ctl, fit, ticks,
-    add: (g) => (g.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true)), scene.add(g)),
-    drop: (g) => (scene.remove(g), dispose(g)),
+    cam, ctl, ticks,
+    add: (g) => (g.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true)), scene.add(g), (sun.shadow.needsUpdate = true)),
+    drop: (g) => (scene.remove(g), dispose(g), (sun.shadow.needsUpdate = true)),
   };
 };

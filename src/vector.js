@@ -1,5 +1,5 @@
-import { layout, tyreDia } from './derive.js';
-import { ARCH_GAP, CLEARANCE, CORNER } from './dims.js';
+import { arch, bodyTop, layout, tyreDia } from './derive.js';
+import { CLEARANCE, CORNER } from './dims.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const BADGE_AT = 0.3, BADGE_W = 0.5, BADGE_H = 260, BADGE_FONT = 170, BADGE_R = 40;
@@ -16,7 +16,7 @@ const plain = (w, h, fill) => svg('rect', { x: 0, y: 0, width: w, height: h, fil
 
 /** Side face of one box: skirt to roof, with an arch cut out over each axle (x from the left edge). */
 const side = (len, top, axles, r, fill) => {
-  const h = top - CLEARANCE, R = r + ARCH_GAP, dx = Math.sqrt(R * R - (r - CLEARANCE) ** 2), c = CORNER;
+  const h = top - CLEARANCE, { R, dx } = arch(r), c = CORNER;
   const d = [
     `M${c},${h}`,
     ...axles.map((a) => `L${a - dx},${h} A${R},${R} 0 1 1 ${a + dx},${h}`),
@@ -46,12 +46,12 @@ const front = (w, h, fill, text) => {
  * @returns {Record<'right'|'left'|'front'|'rear', {svg: SVGSVGElement, w: number, h: number}[]>}
  */
 export const faces = (inp) => {
-  const top = inp.height_mm - (inp.roof_equipment_mm ?? 0), r = tyreDia(inp.tyre) / 2, fill = inp.base_color.hex;
-  const boxes = layout(inp).map((s) => ({ len: s.len, axles: s.axles.map((a) => a - s.x0) }));
+  const top = bodyTop(inp), r = tyreDia(inp.tyre) / 2, fill = inp.base_color.hex;
+  const boxes = layout(inp);
   const w = inp.width_mm, h = top - CLEARANCE - 2 * CORNER;
   return {
-    right: boxes.map((b) => side(b.len, top, b.axles.map((a) => b.len - a).reverse(), r, fill)),
-    left: boxes.map((b) => side(b.len, top, b.axles, r, fill)),
+    right: boxes.map((b) => side(b.len, top, b.local.map((a) => b.len - a).reverse(), r, fill)),
+    left: boxes.map((b) => side(b.len, top, b.local, r, fill)),
     front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand)],
     rear: [face(w, h, plain(w, h, fill))],
   };

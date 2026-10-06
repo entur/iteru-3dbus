@@ -1,13 +1,11 @@
 import Ajv from 'ajv/dist/2020.js';
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { total } from './derive.js';
+import { hints, total } from './derive.js';
 
 const MAX_ARTIC_LEN = 18750, TWO_DOOR_LEN = 9500;
 
 const ajv = new Ajv({ allErrors: true, strict: false, formats: { 'uri-reference': true } });
 const chk = ajv.compile(schema);
-
-const hints = (inp) => inp.sections.flatMap((s) => s.doors_hint ?? []);
 
 /** Cross-field rules (1)-(4) from the schema's top-level $comment. (5), door overlap, waits for placement. */
 const rules = [

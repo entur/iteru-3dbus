@@ -40,5 +40,5 @@ test('derives spans and layout', () => {
   assert.equal(tyreDia(volvo.tyre), 1044);
   assert.equal(tyreDia(citaro.tyre), 950);
   assert.equal(total(citaro), 18200);
-  assert.deepEqual(layout(citaro)[1], { x0: 11200, len: 7000, axles: [15900], bellows: 600 });
+  assert.deepEqual(layout(citaro)[1], { x0: 11200, len: 7000, axles: [15900], local: [4700], bellows: 600 });
 });

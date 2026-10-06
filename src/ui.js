@@ -1,4 +1,4 @@
-import { spans, total, tyreDia } from './derive.js';
+import { hints, spans, total, tyreDia } from './derive.js';
 import { faces } from './vector.js';
 
 const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
@@ -30,13 +30,13 @@ export const el = (tag, props = {}, ...kids) => {
  */
 export const header = (buses, id, pick) => {
   const { inp, src } = buses.find((b) => b.id === id);
-  Object.assign(document.getElementById('src'), { href: src, title: `Raw input JSON for ${inp.brand} ${inp.model}` });
+  const title = `${inp.brand} ${inp.model}`;
+  Object.assign(document.getElementById('src'), { href: src, title: `Raw input JSON for ${title}` });
   document.getElementById('models').replaceChildren(
     ...buses.map((b) =>
       el('button', { onclick: () => pick(b.id), ariaPressed: String(b.id === id) }, `${b.inp.brand} ${b.inp.model.split(' ')[0]}`),
     ),
   );
-  const title = `${inp.brand} ${inp.model}`;
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;
   const plate = document.getElementById('plate');
@@ -72,7 +72,7 @@ const faceTabs = (inp) => {
  * @param {object} inp validated bus input
  */
 export const cards = (inp) => {
-  const doors = inp.sections.flatMap((s) => s.doors_hint ?? []);
+  const doors = hints(inp);
   const side = inp.door_side ?? 'right';
   document.getElementById('info').replaceChildren(
     card(
