@@ -4,9 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>3dbus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="stage"></div>
+    <header>
+      <nav id="models" aria-label="Choose bus"></nav>
+      <h1 id="title"></h1>
+      <p><span class="plate" id="plate"></span><span id="sub"></span></p>
+    </header>
     <pre id="err"></pre>
     <script type="module" src="/src/main.js"></script>
   </body>
