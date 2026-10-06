@@ -26,7 +26,10 @@ header p { margin: 4px 0 0; color: var(--steel); font-size: 15px; }
 .plate[hidden] { display: none; }
 #models { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(8px); }
 #models button { font-weight: 500; }
+#views { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(8px); }
 @media (max-width: 720px) {
+  #views button { padding: 7px 9px; font-size: 14px; }
   header { max-width: calc(100vw - 110px); }
   #models button { padding: 6px 9px; font-size: 14px; }
 }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
