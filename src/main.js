@@ -2,7 +2,7 @@ import './style.css';
 import { mkBus } from './bus.js';
 import { total } from './derive.js';
 import { mkStage } from './scene.js';
-import { header } from './ui.js';
+import { cards, header } from './ui.js';
 import { validate } from './validate.js';
 import { mkViews } from './views.js';
 
@@ -32,6 +32,10 @@ const select = (id) => {
   stage.add(cur);
   go(undefined, first);
   header(buses, id, select);
+  cards(inp);
 };
+
+const info = document.getElementById('info'), toggle = document.getElementById('toggle');
+toggle.onclick = () => (toggle.ariaExpanded = String(info.classList.toggle('open')));
 
 select(new URLSearchParams(location.search).get('bus') ?? FIRST);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const FOV = 32, FOV_TALL = 48, NEAR = 0.1, FAR = 300, MAX_DPR = 2;
+const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
 const FOG_NEAR = 40, FOG_FAR = 110, GROUND_R = 80;
 const HEMI = 2.4, SUN = 2.7, FILL = 0.8;
 const SUN_AT = [-14, 22, -18], FILL_AT = [15, 8, 10];
@@ -57,6 +58,7 @@ export const mkStage = (el) => {
     gl.setSize(w, h);
     cam.aspect = w / h;
     cam.fov = w < h ? FOV_TALL : FOV;
+    w > WIDE ? cam.setViewOffset(w, h, PANEL_SHIFT, 0, w, h) : cam.clearViewOffset();
     cam.updateProjectionMatrix();
   };
   addEventListener('resize', fit);

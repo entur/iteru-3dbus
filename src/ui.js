@@ -1,4 +1,14 @@
+import { spans, total, tyreDia } from './derive.js';
+
 const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
+const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
+const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'Normal floor', low_floor_lower_level: 'Double deck, low lower deck' };
+const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows and roof pod. Doors, windows and the front and rear templates are not drawn yet.';
+
+const fmt = (n) => n.toLocaleString('en').replace(/,/g, '\u2009');
+const rows = (head, body) =>
+  el('table', {}, ...(head ? [el('tr', {}, ...head.map((h) => el('th', {}, h)))] : []), ...body.map((r) => el('tr', {}, ...r.map((c) => el('td', {}, String(c))))));
+const card = (title, ...kids) => el('section', { className: 'card' }, el('h2', {}, title), ...kids);
 
 /** Tiny DOM builder: el('td', { className: 'ok' }, 'text', child). */
 export const el = (tag, props = {}, ...kids) => {
@@ -27,4 +37,41 @@ export const header = (buses, id, pick) => {
   plate.textContent = inp.meta?.fleet_number ?? '';
   plate.hidden = !inp.meta?.fleet_number;
   document.getElementById('sub').textContent = [inp.meta?.operator, `${BODY[inp.body]}, class ${inp.bus_class}`].filter(Boolean).join(' · ');
+};
+
+/**
+ * Fills the details panel with one card each for dimensions, sections and classification.
+ * @param {object} inp validated bus input
+ */
+export const cards = (inp) => {
+  const doors = inp.sections.flatMap((s) => s.doors_hint ?? []);
+  document.getElementById('info').replaceChildren(
+    card(
+      'Dimensions',
+      rows(['mm', ''], [
+        ['Length', fmt(total(inp))],
+        ['Width', fmt(inp.width_mm)],
+        ['Height', fmt(inp.height_mm)],
+        ['Roof equipment', fmt(inp.roof_equipment_mm ?? 0)],
+        ['Tyre diameter', fmt(tyreDia(inp.tyre))],
+      ]),
+    ),
+    card(
+      'Sections',
+      rows(['mm', 'Length', 'Front', 'Wheelbase', 'Rear'], inp.sections.map((s, i) => {
+        const sp = spans(s);
+        return [i + 1, fmt(s.length_mm), fmt(sp.front), sp.wheelbases.map(fmt).join(' + ') || '–', fmt(sp.rear)];
+      })),
+    ),
+    card(
+      'Classification',
+      rows(null, [
+        ['Body', BODY[inp.body]],
+        ['Class', CLASS[inp.bus_class]],
+        ['Floor', FLOOR[inp.floor_type]],
+        ['Doors', doors.length ? `${doors.length} hinted, ${inp.door_side ?? 'right'} side` : 'class default'],
+      ]),
+      el('p', { className: 'note' }, NOTE),
+    ),
+  );
 };
