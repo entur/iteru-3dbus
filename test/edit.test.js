@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { FIELDS, GROUPS, SECTION, addAxle, axleLim, get, rmAxle, same, set, spec } from '../src/edit.js';
+import { FIELDS, GROUPS, SECTION, addAxle, axleLim, get, rmAxle, same, set, shifted, spec } from '../src/edit.js';
+import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
 const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
@@ -24,6 +25,18 @@ test('every schema value has a row', () => {
 test('the editable set is the drawn fields plus brand', () => {
   assert.deepEqual(paths(FIELDS.filter((f) => f.edit)), EDITABLE);
   assert.deepEqual(paths(SECTION.filter((f) => f.edit)), SEC_EDITABLE);
+  assert.deepEqual(FIELDS.filter((f) => f.of && f.edit).map((f) => [f.label, f.to.join('.')]), [['Length', 'sections.0.length_mm']]);
+});
+
+test('an edit of the total length lands on the first section', () => {
+  const len = FIELDS.find((f) => f.to);
+  const out = set(citaro, len.to, shifted(citaro, len, 18000));
+  assert.equal(total(out), 18000);
+  assert.equal(out.sections[0].length_mm, citaro.sections[0].length_mm - 200);
+  assert.deepEqual(out.sections.slice(1), citaro.sections.slice(1));
+  assert.deepEqual(validate(out), []);
+  assert.equal(shifted(volvo, len, total(volvo)), volvo.sections[0].length_mm);
+  assert.equal(shifted(volvo, len, undefined), undefined);
 });
 
 test('set returns a new object and leaves the input alone', () => {

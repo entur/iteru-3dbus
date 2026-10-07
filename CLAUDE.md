@@ -78,6 +78,8 @@ cards are host chrome, not part of either element.
 - **`core.js`**, **`index.js`** — package entries (`./core`, `.`), next to `./bus-2d` and `./bus-3d`.
 - **`edit.js`** — pure, node-safe: `FIELDS` / `SECTION` list every schema value as a row (group,
   path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
+  The total length is the one derived row that is editable: `to` names the input value its edits
+  land on (the first section's length) and `shifted` gives the value to write there.
   `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `spec` and
   `axleLim` read limits and defaults from the schema. `test/edit.test.js` fails when a schema
   value has no row, or when the editable set changes: making a field editable is deliberate.

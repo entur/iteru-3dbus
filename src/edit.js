@@ -12,7 +12,8 @@ const doors = (inp) => (hints(inp).length ? `${hints(inp).length} hinted, ${inp.
  * One row per input value outside the sections, plus the derived rows. A row has a `path` into
  * the input or an `of` that derives its value; `edit` marks the values the renderer draws, with
  * `kind` (text, int, bool, color) picking the control. `hint` gives the placeholder of an empty
- * control, `unit` the unit of a derived value.
+ * control, `unit` the unit of a derived value. A derived row that is editable names in `to` the
+ * input value its edits land on (see `shifted`).
  */
 export const FIELDS = [
   { group: 'Identity', label: 'Brand', path: ['brand'], kind: 'text', edit: true },
@@ -23,6 +24,7 @@ export const FIELDS = [
   { group: 'Classification', label: 'Floor', path: ['floor_type'] },
   { group: 'Classification', label: 'Door side', path: ['door_side'] },
   { group: 'Classification', label: 'Doors', of: doors },
+  { group: 'Dimensions', label: 'Length', of: total, unit: 'mm', kind: 'int', edit: true, to: ['sections', 0, 'length_mm'] },
   { group: 'Dimensions', label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Height', path: ['height_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Roof equipment', path: ['roof_equipment_mm'], kind: 'int', edit: true },
@@ -42,7 +44,7 @@ export const FIELDS = [
 ];
 
 /** Derived values shown on the title row of the groups they sum up, so they are readable with the group closed. */
-export const SUMS = [{ groups: ['Dimensions', 'Sections'], label: 'Tot.len', of: total, unit: 'mm' }];
+export const SUMS = [{ groups: ['Sections'], label: 'Tot.len', of: total, unit: 'mm' }];
 
 /**
  * Rows of one section, as FIELDS but with `path` and `of` relative to the section. `trailer`
@@ -101,6 +103,16 @@ export const same = (a, b) => {
   const ks = Object.keys(a);
   return ks.length === Object.keys(b).length && ks.every((k) => k in b && same(a[k], b[k]));
 };
+
+/**
+ * The value to write at `f.to` so that the derived value of row f becomes v: the difference is
+ * added there, everything else is left alone.
+ * @param {object} inp bus input
+ * @param {{of: (inp: object) => number, to: (string|number)[]}} f editable derived row
+ * @param {number|undefined} v the wanted derived value
+ * @returns {number|undefined} the value for `f.to`, undefined when v is
+ */
+export const shifted = (inp, f, v) => (v === undefined ? undefined : get(inp, f.to) + v - f.of(inp));
 
 /**
  * The schema of the value at a path: limits, default, enum.

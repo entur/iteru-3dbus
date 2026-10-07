@@ -1,7 +1,7 @@
 import { computed, effect } from '@preact/signals-core';
 import { FACES } from './bus-2d.js';
 import { VIEWS } from './bus-3d.js';
-import { FIELDS, GROUPS, SECTION, SUMS, axleLim, get, spec } from './edit.js';
+import { FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec } from './edit.js';
 
 const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
 const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
@@ -131,11 +131,17 @@ const framed = (f) => {
   };
 };
 
-/** Control for one editable value: shows the draft, commits through on.set, marked while an edit of it has the draft invalid. */
+/** Id of the control of an editable row; a derived row has its own, apart from the value its edits land on. */
+const fid = (f) => `f-${f.to ? 'of-' : ''}${key(f.to ?? f.path)}`;
+
+/**
+ * Control for one editable value: shows the draft, commits through on.set, marked while an edit of it has the draft invalid.
+ * A derived row shows its value of the draft and commits to `f.to`, without that value's limits.
+ */
 const input = (st, on, f, more = {}) => {
-  const { path, kind } = f, k = key(path), sp = spec(path);
-  const val = () => get(st.draft.value, path);
-  const base = { type: TYPE[kind], id: `f-${k}`, ariaInvalid: () => String(st.marks.value.includes(k)), ...more };
+  const { kind } = f, path = f.to ?? f.path, k = key(path), sp = f.to ? {} : spec(path);
+  const val = () => (f.to ? f.of(st.draft.value) : get(st.draft.value, path));
+  const base = { type: TYPE[kind], id: fid(f), ariaInvalid: () => String(st.marks.value.includes(k)), ...more };
   if (kind === 'bool') return el('input', { ...base, checked: () => val() ?? sp.default ?? false, onchange: (e) => on.set(path, e.target.checked) });
   if (kind === 'color') {
     const pick = framed((v) => on.set(path, v));
@@ -147,7 +153,7 @@ const input = (st, on, f, more = {}) => {
     ...(kind === 'int' ? { min: sp.minimum ?? '', max: sp.maximum ?? '', step: 1 } : {}),
     ...(f.hint ? { placeholder: () => f.hint(st.draft.value) ?? '' } : {}),
     value: () => val() ?? '',
-    onchange: (e) => on.set(path, read(e.target.value.trim())),
+    onchange: (e) => on.set(path, ((v) => (f.to ? shifted(st.draft.peek(), f, v) : v))(read(e.target.value.trim()))),
   });
 };
 
@@ -183,9 +189,9 @@ const fixed = (inp, path) => {
 
 /** Label and value cell of one row: derived rows follow the valid input, editable ones the draft. */
 const row = (st, on, f, at = (x) => x) => {
-  if (f.of) return [name(f), () => show(f.of(at(st.ok.value)))];
+  if (f.of && !f.edit) return [name(f), () => show(f.of(at(st.ok.value)))];
   if (!f.edit) return [name(f), fixed(st.ok.peek(), f.path)];
-  return f.kind === 'axles' ? [axles(st, on, f)] : [name(f, `f-${key(f.path)}`), input(st, on, f)];
+  return f.kind === 'axles' ? [axles(st, on, f)] : [name(f, fid(f)), input(st, on, f)];
 };
 
 /** Title row of a group: its name, then greyed the derived values that sum it up. */
