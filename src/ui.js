@@ -121,12 +121,13 @@ export const mapCard = (map) => {
 const key = (path) => path.join('.');
 const unit = (f) => f.unit ?? (String(f.path?.at(-1)).endsWith('_mm') ? 'mm' : '');
 const name = (f, id) => el(id ? 'label' : 'span', id ? { htmlFor: id } : {}, f.label, ...(unit(f) ? [el('small', {}, ` ${unit(f)}`)] : []));
-/** At most one call per animation frame, with the latest argument. */
+/** At most one call per animation frame, with the latest argument. The enclosing scoped() call drops a pending one and any later. */
 const framed = (f) => {
-  let v, due = false;
+  let v, id = 0, off = false;
+  scope?.push(() => ((off = true), cancelAnimationFrame(id)));
   return (x) => {
     v = x;
-    due ||= (requestAnimationFrame(() => ((due = false), f(v))), true);
+    off || (id ||= requestAnimationFrame(() => ((id = 0), f(v))));
   };
 };
 
