@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "files": ["dist-lib"],
+  "files": [
+    "dist-lib"
+  ],
   "exports": {
     ".": "./dist-lib/index.js",
     "./core": "./dist-lib/core.js",
@@ -22,6 +24,7 @@
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@preact/signals-core": "^1.14.4",
     "vite": "^7.1.0"
   }
 }

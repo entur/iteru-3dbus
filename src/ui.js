@@ -1,21 +1,56 @@
+import { computed, effect } from '@preact/signals-core';
 import { FACES } from './bus-2d.js';
 import { VIEWS } from './bus-3d.js';
-import { hints, spans, total, tyreDia } from './derive.js';
+import { FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec } from './edit.js';
 
 const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
 const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
 const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'Normal floor', low_floor_lower_level: 'Double deck, low lower deck' };
+const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR };
 const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows and roof pod. Doors, windows and the front and rear templates are not drawn yet.';
+const NONE = '–', BLACK = '#000000';
+const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
+
+const open = new Set(['Dimensions', 'Sections']);  // accordion groups that are open; survives edits and bus switches
+let scope = null;  // disposers of the effects made while a scoped() call runs
 
 const fmt = (n) => n.toLocaleString('en').replace(/,/g, '\u2009');
+const show = (v) => [v].flat().map((x) => (typeof x === 'number' ? fmt(x) : String(x))).join(' + ') || NONE;
+const cell = (c) => (c instanceof Node || typeof c === 'function' ? c : String(c));
 const rows = (head, body) =>
-  el('table', {}, ...(head ? [el('tr', {}, ...head.map((h) => el('th', {}, h)))] : []), ...body.map((r) => el('tr', {}, ...r.map((c) => el('td', {}, String(c))))));
+  el('table', {}, ...(head ? [el('tr', {}, ...head.map((h) => el('th', {}, h)))] : []), ...body.map((r) => el('tr', {}, ...r.map((c) => el('td', r.length === 1 ? { colSpan: 2 } : {}, cell(c))))));
 const card = (title, ...kids) => el('section', { className: 'card' }, el('h2', {}, title), ...kids);
 
-/** Tiny DOM builder: el('td', { className: 'ok' }, 'text', child). */
+/** Runs f as an effect that the enclosing scoped() call disposes. */
+const bind = (f) => {
+  const stop = effect(f);
+  scope?.push(stop);
+  return stop;
+};
+/** Runs f and returns its result with one function that disposes every effect f bound. */
+const scoped = (f) => {
+  const outer = scope, mine = [];
+  scope = mine;
+  try {
+    return [f(), () => mine.splice(0).forEach((stop) => stop())];
+  } finally {
+    scope = outer;
+  }
+};
+const live = (f) => {
+  const t = document.createTextNode('');
+  bind(() => (t.data = f()));
+  return t;
+};
+
+/**
+ * Tiny DOM builder: el('td', { className: 'ok' }, 'text', child). A function as a prop (other
+ * than an on* handler) or as a child is bound: the prop, or a text node, follows the signals it reads.
+ */
 export const el = (tag, props = {}, ...kids) => {
-  const e = Object.assign(document.createElement(tag), props);
-  e.append(...kids);
+  const e = document.createElement(tag);
+  Object.entries(props).forEach(([k, v]) => (typeof v === 'function' && !k.startsWith('on') ? bind(() => (e[k] = v())) : (e[k] = v)));
+  e.append(...kids.map((k) => (typeof k === 'function' ? live(k) : k)));
   return e;
 };
 
@@ -24,10 +59,11 @@ export const el = (tag, props = {}, ...kids) => {
  * input JSON beside it, fleet-number plate and operator line.
  * @param {{id: string, inp: object, src: string}[]} buses all selectable buses, src is the JSON url
  * @param {string} id the selected bus
+ * @param {object} inp what is shown of it: its input with the valid edits applied
  * @param {(id: string) => void} pick called when another bus is chosen
  */
-export const header = (buses, id, pick) => {
-  const { inp, src } = buses.find((b) => b.id === id);
+export const header = (buses, id, inp, pick) => {
+  const { src } = buses.find((b) => b.id === id);
   const title = `${inp.brand} ${inp.model}`;
   Object.assign(document.getElementById('src'), { href: src, title: `Raw input JSON for ${title}` });
   document.getElementById('models').replaceChildren(
@@ -58,13 +94,18 @@ export const viewBar = (bus) => {
   mark();
 };
 
-/** Tab bar and caption around the bus-2d element: one tab per side of the box; its face is the open tab. */
-const faceTabs = (map) => {
+/**
+ * The 2D vector map card: tab bar and caption around the bus-2d element, one tab per side of the
+ * box. The element's face is the open tab; the caption follows the maps it recomputes.
+ * @param {HTMLElement} map the bus-2d element
+ * @returns {HTMLElement} the card, built once and kept across buses and edits
+ */
+export const mapCard = (map) => {
   const cap = el('figcaption'), bar = el('div', { className: 'tabs' });
-  const show = (k) => {
+  const show = (k = map.face) => {
     map.face = k;
-    const fs = map.faces[k];
-    cap.textContent = `${fs.map((f) => fmt(f.w)).join(' + ')} × ${fmt(fs[0].h)} mm` + (fs.length > 1 ? `, ${fs.length} boxes` : '');
+    const fs = map.faces?.[k] ?? [];
+    cap.textContent = fs.length ? `${fs.map((f) => fmt(f.w)).join(' + ')} × ${fmt(fs[0].h)} mm` + (fs.length > 1 ? `, ${fs.length} boxes` : '') : '';
     [...bar.children].forEach((b) => (b.ariaPressed = String(b.dataset.face === k)));
   };
   bar.append(...Object.entries(FACES).map(([k, label]) => {
@@ -72,50 +113,118 @@ const faceTabs = (map) => {
     b.dataset.face = k;
     return b;
   }));
-  show(map.face);
-  return [bar, el('figure', {}, map, cap)];
+  map.addEventListener('busfaces', () => show());
+  show();
+  return card('2D vector map', bar, el('figure', {}, map, cap));
 };
 
+const key = (path) => path.join('.');
+const unit = (f) => f.unit ?? (String(f.path?.at(-1)).endsWith('_mm') ? 'mm' : '');
+const name = (f, id) => el(id ? 'label' : 'span', id ? { htmlFor: id } : {}, f.label, ...(unit(f) ? [el('small', {}, ` ${unit(f)}`)] : []));
+/** At most one call per animation frame, with the latest argument. The enclosing scoped() call drops a pending one and any later. */
+const framed = (f) => {
+  let v, id = 0, off = false;
+  scope?.push(() => ((off = true), cancelAnimationFrame(id)));
+  return (x) => {
+    v = x;
+    off || (id ||= requestAnimationFrame(() => ((id = 0), f(v))));
+  };
+};
+
+/** Id of the control of an editable row; a derived row has its own, apart from the value its edits land on. */
+const fid = (f) => `f-${f.to ? 'of-' : ''}${key(f.to ?? f.path)}`;
+
 /**
- * Fills the details panel: the 2D face maps projected onto the bus boxes, then one card each
- * for dimensions, sections and classification.
- * @param {object} inp validated bus input
- * @param {HTMLElement} map bus-2d element already holding the maps for inp
+ * Control for one editable value: shows the draft, commits through on.set, marked while an edit of it has the draft invalid.
+ * A derived row shows its value of the draft and commits to `f.to`, without that value's limits.
  */
-export const cards = (inp, map) => {
-  const doors = hints(inp);
-  const side = inp.door_side ?? 'right';
-  document.getElementById('info').replaceChildren(
-    card(
-      '2D vector map',
-      ...faceTabs(map),
-    ),
-    card(
-      'Dimensions',
-      rows(['mm', ''], [
-        ['Length', fmt(total(inp))],
-        ['Width', fmt(inp.width_mm)],
-        ['Height', fmt(inp.height_mm)],
-        ['Roof equipment', fmt(inp.roof_equipment_mm ?? 0)],
-        ['Tyre diameter', fmt(tyreDia(inp.tyre))],
-      ]),
-    ),
-    card(
-      'Sections',
-      rows(['mm', 'Length', 'Front', 'Wheelbase', 'Rear'], inp.sections.map((s, i) => {
-        const sp = spans(s);
-        return [i + 1, fmt(s.length_mm), fmt(sp.front), sp.wheelbases.map(fmt).join(' + ') || '–', fmt(sp.rear)];
-      })),
-    ),
-    card(
-      'Classification',
-      rows(null, [
-        ['Body', BODY[inp.body]],
-        ['Class', CLASS[inp.bus_class]],
-        ['Floor', FLOOR[inp.floor_type]],
-        ['Doors', doors.length ? `${doors.length} hinted, ${side} side` : 'class default'],
-      ]),
+const input = (st, on, f, more = {}) => {
+  const { kind } = f, path = f.to ?? f.path, k = key(path), sp = f.to ? {} : spec(path);
+  const val = () => (f.to ? f.of(st.draft.value) : get(st.draft.value, path));
+  const base = { type: TYPE[kind], id: fid(f), ariaInvalid: () => String(st.marks.value.includes(k)), ...more };
+  if (kind === 'bool') return el('input', { ...base, checked: () => val() ?? sp.default ?? false, onchange: (e) => on.set(path, e.target.checked) });
+  if (kind === 'color') {
+    const pick = framed((v) => on.set(path, v));
+    return el('span', { className: 'swatch' }, el('code', {}, () => val() ?? NONE), el('input', { ...base, value: () => val() ?? BLACK, oninput: (e) => pick(e.target.value) }));
+  }
+  const read = (v) => (v === '' ? undefined : kind === 'int' ? Number(v) : v);
+  return el('input', {
+    ...base,
+    ...(kind === 'int' ? { min: sp.minimum ?? '', max: sp.maximum ?? '', step: 1 } : {}),
+    ...(f.hint ? { placeholder: () => f.hint(st.draft.value) ?? '' } : {}),
+    value: () => val() ?? '',
+    onchange: (e) => on.set(path, ((v) => (f.to ? shifted(st.draft.peek(), f, v) : v))(read(e.target.value.trim()))),
+  });
+};
+
+/** One full-width row: the axle inputs of section i with remove and add. Only the inputs are rebuilt, and only when the count changes. */
+const axles = (st, on, f) => {
+  const i = f.path[1];
+  const step = (f, to) => (e) => (f(i), e.target.disabled && e.target[to].focus());  // a button that hits its limit hands focus to the other
+  const path = ['sections', i, 'axles_mm'], lim = axleLim(i), sec = `section ${i + 1}`;
+  const n = computed(() => get(st.draft.value, path)?.length ?? 0);
+  const list = el('span', { className: 'list' });
+  bind(() => {
+    const [kids, stop] = scoped(() =>
+      Array.from({ length: n.value }, (_, j) => input(st, on, { path: [...path, j], kind: 'int' }, { ariaLabel: `Section ${i + 1} axle ${j + 1}` })),
+    );
+    list.replaceChildren(...kids);
+    return stop;
+  });
+  return el(
+    'div', { className: 'axles' }, name(f), list,
+    el('button', { type: 'button', ariaLabel: `Remove the last axle of ${sec}`, disabled: () => n.value <= lim.min, onclick: step(on.rm, 'nextSibling') }, '−'),
+    el('button', { type: 'button', ariaLabel: `Add an axle to ${sec}`, disabled: () => n.value >= lim.max, onclick: step(on.add, 'previousSibling') }, '+'),
+  );
+};
+
+const pairs = (o) => Object.entries(o).map(([k, v]) => `${k.replace(/_mm$/, '')} ${[v].flat().join('–')}`).join(', ').replace(/_/g, ' ');
+/** Read-only value: the label for an enum, one line per item of a list of objects, the schema default when absent. */
+const fixed = (inp, path) => {
+  const v = get(inp, path) ?? spec(path).default;
+  if (v === undefined) return NONE;
+  if (typeof v === 'object') return el('span', {}, ...[v].flat().map((o) => el('div', {}, pairs(o))));
+  return typeof v === 'boolean' ? (v ? 'yes' : 'no') : (NAMES[path[0]]?.[v] ?? String(v));
+};
+
+/** Label and value cell of one row: derived rows follow the valid input, editable ones the draft. */
+const row = (st, on, f, at = (x) => x) => {
+  if (f.of && !f.edit) return [name(f), () => show(f.of(at(st.ok.value)))];
+  if (!f.edit) return [name(f), fixed(st.ok.peek(), f.path)];
+  return f.kind === 'axles' ? [axles(st, on, f)] : [name(f, fid(f)), input(st, on, f)];
+};
+
+/** Title row of a group: its name, then greyed the derived values that sum it up. */
+const title = (st, g) =>
+  el('summary', {}, g, ...SUMS.filter((f) => f.groups.includes(g)).map((f) => el('small', { className: 'sum' }, `${f.label} `, () => show(f.of(st.ok.value)), ` ${f.unit}`)));
+
+const group = (st, on, g) =>
+  g === 'Sections'
+    ? st.ok.peek().sections.flatMap((_, i) => [
+        el('h3', {}, `Section ${i + 1}`),
+        rows(null, SECTION.filter((f) => !f.trailer || i).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path] } : f, (inp) => inp.sections[i]))),
+      ])
+    : [rows(null, FIELDS.filter((f) => f.group === g).map((f) => row(st, on, f)))];
+
+/**
+ * Builds the input card: one accordion group per part of the schema, every value in it, the
+ * drawn ones editable. Built once per selected bus; the controls then follow the signals.
+ * @param {{draft: object, ok: object, marks: object, dirty: object}} st signals: the edited
+ *   input, its last valid state, the keys of the edits made since it was last valid, and whether
+ *   the draft differs from the source
+ * @param {{set: (path: (string|number)[], v: unknown) => void, add: (i: number) => void,
+ *   rm: (i: number) => void, reset: () => void}} on edit callbacks: a value, an axle more or
+ *   less on section i, drop all edits
+ * @returns {[HTMLElement, () => void]} the card and the function that disposes its effects
+ */
+export const form = (st, on) =>
+  scoped(() =>
+    el(
+      'section', { className: 'card input' },
+      el('div', { className: 'head' }, el('h2', {}, 'Input'), el('button', { type: 'button', hidden: () => !st.dirty.value, onclick: on.reset }, 'Reset')),
+      ...GROUPS.map((g) =>
+        el('details', { open: open.has(g), ontoggle: (e) => (e.target.open ? open.add(g) : open.delete(g)) }, title(st, g), ...group(st, on, g)),
+      ),
       el('p', { className: 'note' }, NOTE),
     ),
   );
-};

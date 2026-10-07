@@ -32,7 +32,7 @@ three.js, where `MM = 0.001` (`dims.js`) converts to metres at the last moment.
 core   validate.js  derive.js  dims.js                  pure, no DOM, no three
 2D     vector.js  bus-2d.js   <bus-2d>                  core only: no three
 3D     bus.js  scene.js  views.js  bus-3d.js  <bus-3d>  core + three: no vector.js, no bus-2d.js
-app    main.js  ui.js  index.html  style.css            imports the library, never the reverse
+app    main.js  ui.js  edit.js  index.html  style.css   imports the library, never the reverse
 ```
 
 The host connects the two elements: `map.inp = inp; bus.faces = map.faces; bus.inp = inp`. The 3D
@@ -76,10 +76,27 @@ cards are host chrome, not part of either element.
   a re-aim calls `go()` on `busrender`. An invalid `inp`, or maps that do not fit its sections,
   fire `buserror` and leave the last render. Disconnecting disposes the stage; reconnecting rebuilds.
 - **`core.js`**, **`index.js`** — package entries (`./core`, `.`), next to `./bus-2d` and `./bus-3d`.
-- **`ui.js`** — header, view bar and details cards, built with the tiny `el()` DOM builder.
+- **`edit.js`** — pure, node-safe: `FIELDS` / `SECTION` list every schema value as a row (group,
+  path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
+  The total length is the one derived row that is editable: `to` names the input value its edits
+  land on (the first section's length) and `shifted` gives the value to write there.
+  `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `spec` and
+  `axleLim` read limits and defaults from the schema. `test/edit.test.js` fails when a schema
+  value has no row, or when the editable set changes: making a field editable is deliberate.
+- **`ui.js`** — header, view bar, map card and the input card (`form`): one accordion group per
+  part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
+  those effects so a form is disposed as one. The form is built once per selected bus and its
+  controls follow the signals, so focus survives an edit; only a section's axle inputs are rebuilt,
+  when their count changes.
 - **`main.js`** — loads every `examples/*.json` through `import.meta.glob`, so any file dropped in
   `examples/` becomes a selectable bus. Selecting validates first and shows errors in `#err`. Owns
   what is app layout: the view offset that keeps the bus clear of the details panel.
+  State is `@preact/signals-core` (app only, banned from the library by `test/lib.test.js`):
+  `src` the example as loaded, `draft` with every edit, `ok` the last valid draft. Everything
+  drawn (model, maps, header, derived rows) reads `ok`; the controls read `draft`, so an invalid
+  edit stays in its field, marked, while the last valid bus stays on screen. Only another bus
+  re-aims the camera. The source link warns through `<dialog id="drift">` once `draft` differs
+  from `src`.
 
 ### Coordinate conventions
 
