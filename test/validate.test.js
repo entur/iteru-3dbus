@@ -26,6 +26,8 @@ const bad = {
   'a 40 % band above the doors and windows': { ...volvo, band_above_doors_and_windows_pct: 40 },
   'one door on a 12.4 m bus': sec(volvo, 0, { doors_hint: [{ zone: 'front_overhang', leaves: 2 }] }),
   'an empty door list on a 12.4 m bus': sec(volvo, 0, { doors_hint: [] }),
+  'a window band upside down': sec(volvo, 0, { windows_hint: { band_mm: [2000, 1500] } }),
+  'a window band above the body': sec(citaro, 0, { windows_hint: { band_mm: [1250, 2900] } }),
 };
 
 test('examples pass', () => {
@@ -38,6 +40,17 @@ Object.entries(bad).forEach(([name, inp]) =>
 );
 
 test('accepts a band above the doors and windows', () => assert.deepEqual(validate({ ...volvo, band_above_doors_and_windows_pct: 10 }), []));
+
+test('accepts a windows hint, down to an empty one and up to a band that ends on the body top', () => {
+  assert.deepEqual(validate(sec(volvo, 0, { windows_hint: { count: 5, band_mm: [1300, 2900] } })), []);
+  assert.deepEqual(validate(sec(citaro, 1, { windows_hint: { band_mm: [1250, 2850] } })), []);
+  assert.deepEqual(validate(sec(citaro, 0, { windows_hint: {} })), []);
+});
+
+test('names the section whose window band is wrong, and how', () => {
+  assert.deepEqual(validate(sec(volvo, 0, { windows_hint: { band_mm: [2000, 1500] } })), ['sections[0].windows_hint.band_mm must ascend']);
+  assert.deepEqual(validate(sec(citaro, 1, { windows_hint: { band_mm: [1250, 2900] } })), ['sections[1].windows_hint.band_mm must end at or below the body top, 2850 mm']);
+});
 
 test('doors and windows end 8 % of the body height below its top, or the share given', () => {
   assert.equal(lintel(volvo), 3036);

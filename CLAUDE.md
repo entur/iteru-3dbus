@@ -41,8 +41,8 @@ the imports and fails when a layer reaches the wrong way. Tabs, caption, view ba
 cards are host chrome, not part of either element.
 
 - **`validate.js`** — Ajv (draft 2020-12) against the schema, then the `rules` array for what JSON
-  Schema cannot express. The rules are numbered (1)–(5) in the schema's top-level `$comment`;
-  (1)–(4) are implemented, (5) (door overlap) is not checked yet. Cross-field rules only run
+  Schema cannot express. The rules are numbered (1)–(6) in the schema's top-level `$comment`;
+  (5) (door overlap) is not checked yet, the others are. Cross-field rules only run
   when the schema passes. Returns `string[]`, empty when valid.
 - **`derive.js`** — pure functions, no DOM, no three: `layout` (per-section `x0`, absolute axle x,
   bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `hints`, `arch` (the
