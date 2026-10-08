@@ -49,8 +49,10 @@ test('a side map has no wheel arches: it follows neither the axles nor the tyre'
   assert.deepEqual(faces(citaro).left.map((f) => f.svg.kids.map((k) => k.tag)), [['path'], ['path']]);
 });
 
-/** The window panes drawn on a side map. */
-const glass = (f) => f.svg.kids.filter((k) => k.attrs.class === 'window').map((k) => k.attrs);
+/** The windows drawn on a side map: per window its frame and the pane in it. */
+const glazing = (f) => f.svg.kids.filter((k) => k.attrs.class === 'window').map(({ kids: [frame, pane] }) => ({ frame: frame?.attrs, pane: pane?.attrs }));
+/** What each window of a side map takes up: its frame. */
+const glass = (f) => glazing(f).map((w) => w.frame);
 const across = ({ x, width }) => [x, x + width], down = ({ y, height }) => [y, y + height];
 
 test('the right side shows its windows mirrored, the left side none', () => {
@@ -70,11 +72,20 @@ test('a pane spans the window band, and a hinted band moves the door tops of its
   assert.deepEqual([down(glass(trailer)[0]), down(drawn(trailer)[0].frame)], [[350, 1450], [350, 2490]]);
 });
 
-test('every right side has panes, all glass, none on a door', () =>
+test('every right side has windows, their panes glass, none on a door', () =>
   [volvo, citaro].flatMap((inp) => faces(inp).right.map((f) => [inp, f])).forEach(([inp, f]) => {
-    assert.ok(glass(f).length > 0);
-    glass(f).forEach((p) => {
-      assert.notEqual(p.fill, inp.base_color.hex);
-      assert.ok(drawn(f).map(span).every(([d0, d1]) => across(p)[1] < d0 || across(p)[0] > d1));
+    assert.ok(glazing(f).length > 0);
+    glazing(f).forEach(({ frame, pane }) => {
+      assert.ok(![inp.base_color.hex, frame.fill].includes(pane.fill));
+      assert.ok(drawn(f).map(span).every(([d0, d1]) => across(frame)[1] < d0 || across(frame)[0] > d1));
     });
   }));
+
+test('a window is framed like a door: the same colour, width and corners around its glass', () => {
+  const f = faces(volvo).right[0], [{ frame: df, panes: [dp] }] = drawn(f), [{ frame: wf, pane: wp }] = glazing(f);
+  const w = dp.x - df.x;
+  assert.ok(w > 0);
+  assert.deepEqual(f.svg.kids.find((k) => k.attrs.class === 'window').kids.map((k) => k.tag), ['rect', 'rect']);
+  assert.deepEqual([wp.x - wf.x, wf.x + wf.width - wp.x - wp.width, wp.y - wf.y, wf.y + wf.height - wp.y - wp.height], [w, w, w, w]);
+  assert.deepEqual([wf.fill, wf.rx, wp.fill, wp.rx], [df.fill, df.rx, dp.fill, dp.rx]);
+});

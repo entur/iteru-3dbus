@@ -4,9 +4,9 @@ import { CLEARANCE, CORNER } from './dims.js';
 const NS = 'http://www.w3.org/2000/svg';
 const BADGE_AT = 0.3, BADGE_W = 0.5, BADGE_H = 260, BADGE_FONT = 170, BADGE_R = 40;
 const BADGE = '#2b3136', BADGE_INK = '#eef2f5', FONT = 'Arial, Helvetica, sans-serif';
-const DOOR_SILL = 40, DOOR_RIM = 45, DOOR_R = 30;  // sill above the skirt, frame around a pane
-const WIN_R = 40;
-const FRAME = '#2b3136', GLASS = '#6f8797';
+const DOOR_SILL = 40;  // door sill above the skirt
+const FRAME = '#2b3136', FRAME_W = 45, FRAME_R = 30;  // around every pane of a door or window: colour, width, corner radius
+const GLASS = '#6f8797';
 
 const svg = (tag, attrs = {}, ...kids) => {
   const e = document.createElementNS(NS, tag);
@@ -17,19 +17,22 @@ const svg = (tag, attrs = {}, ...kids) => {
 const face = (w, h, ...kids) => ({ w, h, svg: svg('svg', { viewBox: `0 0 ${w} ${h}`, class: 'face' }, ...kids) });
 const plain = (w, h, fill) => svg('rect', { x: 0, y: 0, width: w, height: h, fill });
 
-/** A door on a side face, from y down to its sill at y1: a frame with one pane per leaf, glass or body colour. */
-const door = (y, y1, fill) => ({ x0, x1, leaves, glazed }) => {
-  const dh = y1 - y, pw = (x1 - x0 - (leaves + 1) * DOOR_RIM) / leaves;
+/** A frame on a side face across a span, from y down to y1, with n panes of one fill side by side in it. */
+const framed = (cls, { x0, x1 }, y, y1, n, fill) => {
+  const h = y1 - y, pw = (x1 - x0 - (n + 1) * FRAME_W) / n;
   return svg(
-    'g', { class: 'door' },
-    svg('rect', { x: x0, y, width: x1 - x0, height: dh, rx: DOOR_R, fill: FRAME }),
-    ...Array.from({ length: leaves }, (_, i) =>
-      svg('rect', { x: x0 + DOOR_RIM + i * (pw + DOOR_RIM), y: y + DOOR_RIM, width: pw, height: dh - 2 * DOOR_RIM, rx: DOOR_R, fill: glazed ? GLASS : fill })),
+    'g', { class: cls },
+    svg('rect', { x: x0, y, width: x1 - x0, height: h, rx: FRAME_R, fill: FRAME }),
+    ...Array.from({ length: n }, (_, i) =>
+      svg('rect', { x: x0 + FRAME_W + i * (pw + FRAME_W), y: y + FRAME_W, width: pw, height: h - 2 * FRAME_W, rx: FRAME_R, fill })),
   );
 };
 
-/** A window pane on a side face, from y down to y1. */
-const pane = (y, y1) => ({ x0, x1 }) => svg('rect', { class: 'window', x: x0, y, width: x1 - x0, height: y1 - y, rx: WIN_R, fill: GLASS });
+/** A door on a side face, from y down to its sill at y1: a frame with one pane per leaf, glass or body colour. */
+const door = (y, y1, fill) => (d) => framed('door', d, y, y1, d.leaves, d.glazed ? GLASS : fill);
+
+/** A window on a side face, from y down to y1: one pane of glass in a frame like a door's. */
+const pane = (y, y1) => (w) => framed('window', w, y, y1, 1, GLASS);
 
 /** A door or window span as it lies on the mirrored right side of a box. */
 const flip = (len) => (d) => ({ ...d, x0: len - d.x1, x1: len - d.x0 });

@@ -64,7 +64,8 @@ cards are host chrome, not part of either element.
   nothing the model cuts out of a box either: a side map has no wheel arches. New surface
   detail (front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors and
   window panes from `derive.js` `doors` / `windows` are drawn on the right side only, mirrored by
-  `flip`: the panes across the section's `band`, the doors from their sill up to its top.
+  `flip`: the panes across the section's `band`, the doors from their sill up to its top, both
+  in the same frame (`framed`: one colour, width and corner radius).
   `test/vector.test.js` runs `faces` against a stand-in `document`.
 - **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
