@@ -1,5 +1,5 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { doorWidth, hints, spans, total, tyreDia } from './derive.js';
+import { doorWidth, hints, spans, total, tyreDia, windows } from './derive.js';
 
 const DEFS = schema.$defs;
 
@@ -28,7 +28,8 @@ export const FIELDS = [
   { group: 'Dimensions', label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Height', path: ['height_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Roof equipment', path: ['roof_equipment_mm'], kind: 'int', edit: true },
-  { group: 'Dimensions', label: 'Band above doors', path: ['band_above_doors_and_windows_pct'], unit: '%', kind: 'int', edit: true, hint: () => spec(['band_above_doors_and_windows_pct']).default },
+  { group: 'Dimensions', label: 'Band above doors', path: ['band_above_mm'], kind: 'int', edit: true, hint: () => spec(['band_above_mm']).default },
+  { group: 'Dimensions', label: 'Window band height', path: ['win_band_height_mm'], kind: 'int', edit: true, hint: () => spec(['win_band_height_mm']).default },
   { group: 'Tyre', label: 'Size', path: ['tyre', 'size'], kind: 'text', edit: true },
   { group: 'Tyre', label: 'Diameter', path: ['tyre', 'diameter_mm'], kind: 'int', edit: true },
   { group: 'Tyre', label: 'Effective diameter', of: (inp) => tyreDia(inp.tyre), unit: 'mm' },
@@ -50,7 +51,7 @@ export const SUMS = [{ groups: ['Sections'], label: 'Tot.len', of: total, unit: 
 /**
  * Rows of one section, as FIELDS but with `path` and `of` relative to the section. `trailer`
  * rows exist from the second section on; kinds `axles` and `doors` are lists with their add and
- * remove.
+ * remove. `hint` reads the last valid input and the section's index.
  */
 export const SECTION = [
   { label: 'Length', path: ['length_mm'], kind: 'int', edit: true },
@@ -60,7 +61,7 @@ export const SECTION = [
   { label: 'Wheelbase', of: (s) => spans(s).wheelbases, unit: 'mm' },
   { label: 'Rear overhang', of: (s) => spans(s).rear, unit: 'mm' },
   { label: 'Doors', path: ['doors_hint'], kind: 'doors', edit: true },
-  { label: 'Windows hint', path: ['windows_hint'] },
+  { label: 'Windows', path: ['windows_hint', 'count'], kind: 'int', edit: true, hint: (inp, i) => windows(inp)[i].length },
 ];
 
 /**
@@ -129,18 +130,19 @@ export const same = (a, b) => {
  */
 export const shifted = (inp, f, v) => (v === undefined ? undefined : get(inp, f.to) + v - f.of(inp));
 
+const deref = (n) => (n.$ref ? DEFS[n.$ref.split('/').at(-1)] : n);
 /** The schema one step down: a property, or for an index the items of a list; a $ref is followed. */
-const down = (s, k) => ((n) => (n.$ref ? DEFS[n.$ref.split('/').at(-1)] : n))(typeof k === 'number' ? s.items : s.properties[k]);
+const down = (s, k) => deref(typeof k === 'number' ? s.items : s.properties[k]);
 
 /**
  * The schema of the value at a path: limits, default, enum.
  * @param {(string|number)[]} path keys from the root; under sections the index picks lead or trailer
  * @returns {object} schema node; for a value of a section, section_common merged with the lead
- *   or trailer rules, and from there on down into its lists
+ *   or trailer rules, and from there on down into its lists and its windows hint
  */
 export const spec = ([k, ...rest]) =>
   k === 'sections'
-    ? rest.slice(2).reduce(down, { ...DEFS.section_common.properties[rest[1]], ...(rest[0] ? DEFS.trailer_section : DEFS.lead_section).properties[rest[1]] })
+    ? rest.slice(2).reduce(down, deref({ ...DEFS.section_common.properties[rest[1]], ...(rest[0] ? DEFS.trailer_section : DEFS.lead_section).properties[rest[1]] }))
     : rest.reduce((s, x) => s.properties[x], schema.properties[k]);
 
 /**

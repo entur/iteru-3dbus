@@ -9,7 +9,7 @@ const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'N
 const ZONE = { front_overhang: 'Front overhang', between_axles: 'Between axles', rear_overhang: 'Rear overhang' };
 const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES = { 1: '1 leaf', 2: '2 leaves' };
 const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
-const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod and the hinted doors. Windows and the front and rear templates are not drawn yet.';
+const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and on the right side the hinted doors and the windows. The left side and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
@@ -218,12 +218,10 @@ const doorList = (st, on, f) => {
 };
 
 const LISTS = { axles, doors: doorList };
-const pairs = (o) => Object.entries(o).map(([k, v]) => `${k.replace(/_mm$/, '')} ${[v].flat().join('–')}`).join(', ').replace(/_/g, ' ');
-/** Read-only value: the label for an enum, one line per item of a list of objects, the schema default when absent. */
+/** Read-only value: the label for an enum, the schema default when absent. */
 const fixed = (inp, path) => {
   const v = get(inp, path) ?? spec(path).default;
   if (v === undefined) return NONE;
-  if (typeof v === 'object') return el('span', {}, ...[v].flat().map((o) => el('div', {}, pairs(o))));
   return typeof v === 'boolean' ? (v ? 'yes' : 'no') : (NAMES[path[0]]?.[v] ?? String(v));
 };
 
@@ -242,7 +240,7 @@ const group = (st, on, g) =>
   g === 'Sections'
     ? st.ok.peek().sections.flatMap((_, i) => [
         el('h3', {}, `Section ${i + 1}`),
-        rows(null, SECTION.filter((f) => !f.trailer || i).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path] } : f, (inp) => inp.sections[i]))),
+        rows(null, SECTION.filter((f) => !f.trailer || i).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path], hint: f.hint && (() => f.hint(st.ok.value, i)) } : f, (inp) => inp.sections[i]))),
       ])
     : [rows(null, FIELDS.filter((f) => f.group === g).map((f) => row(st, on, f)))];
 

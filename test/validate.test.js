@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validate } from '../src/validate.js';
-import { doorWidth, doors, layout, lintel, spans, total, tyreDia } from '../src/derive.js';
+import { doorWidth, doors, layout, lintel, sill, spans, total, tyreDia, windows } from '../src/derive.js';
 
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
@@ -23,9 +23,12 @@ const bad = {
   'axle gap 1 on a two-axle section': sec(volvo, 0, { doors_hint: [{ zone: 'between_axles', axle_gap: 1, leaves: 2 }, { zone: 'front_overhang', leaves: 2 }] }),
   'a door between the axles of a one-axle section': sec(citaro, 1, { doors_hint: [{ zone: 'between_axles', leaves: 2 }, { zone: 'rear_overhang', leaves: 2 }] }),
   'missing tyre size and diameter': { ...volvo, tyre: { rear_twin: true } },
-  'a 40 % band above the doors and windows': { ...volvo, band_above_doors_and_windows_pct: 40 },
+  'a band of 1.2 m above the doors and windows': { ...volvo, band_above_mm: 1200 },
+  'a window band 200 mm high': { ...volvo, win_band_height_mm: 200 },
+  'the band above as a percentage': { ...volvo, band_above_doors_and_windows_pct: 10 },
   'one door on a 12.4 m bus': sec(volvo, 0, { doors_hint: [{ zone: 'front_overhang', leaves: 2 }] }),
   'an empty door list on a 12.4 m bus': sec(volvo, 0, { doors_hint: [] }),
+  'a window band hinted per section': sec(volvo, 0, { windows_hint: { band_mm: [1250, 2900] } }),
 };
 
 test('examples pass', () => {
@@ -37,12 +40,25 @@ Object.entries(bad).forEach(([name, inp]) =>
   test(`rejects ${name}`, () => assert.notEqual(validate(JSON.parse(JSON.stringify(inp))).length, 0)),
 );
 
-test('accepts a band above the doors and windows', () => assert.deepEqual(validate({ ...volvo, band_above_doors_and_windows_pct: 10 }), []));
+test('accepts a band above the doors and windows and a window band height', () =>
+  assert.deepEqual(validate({ ...volvo, band_above_mm: 300, win_band_height_mm: 1200 }), []));
 
-test('doors and windows end 8 % of the body height below its top, or the share given', () => {
-  assert.equal(lintel(volvo), 3036);
-  assert.equal(lintel(citaro), 2622);
-  assert.equal(lintel({ ...volvo, band_above_doors_and_windows_pct: 10 }), 2970);
+test('accepts a windows hint, down to an empty one', () => {
+  assert.deepEqual(validate(sec(volvo, 0, { windows_hint: { count: 5 } })), []);
+  assert.deepEqual(validate(sec(citaro, 0, { windows_hint: {} })), []);
+});
+
+test('doors and windows end 250 mm below the body top, or as far as given', () => {
+  assert.equal(lintel(volvo), 3050);
+  assert.equal(lintel(citaro), 2600);
+  assert.equal(lintel({ ...volvo, band_above_mm: 330 }), 2970);
+});
+
+test('the window band hangs from that line, 1400 mm high or as given, and stops at the skirt', () => {
+  assert.equal(sill(volvo), 1650);
+  assert.equal(sill(citaro), 1200);
+  assert.equal(sill({ ...volvo, band_above_mm: 500, win_band_height_mm: 1000 }), 1800);
+  assert.equal(sill({ ...citaro, win_band_height_mm: 2500 }), 320);
 });
 
 test('derives spans and layout', () => {
@@ -84,3 +100,62 @@ test('a door wider than its zone is centred on it, whatever the bias', () =>
 
 test('a door is as wide as given, else as its leaves imply', () =>
   assert.deepEqual([{ leaves: 1 }, { leaves: 2 }, { leaves: 2, width_mm: 1400 }].map(doorWidth), [900, 1250, 1400]));
+
+const pane = (x0, x1) => ({ x0, x1 });
+const glazed = (inp, i, hint) => windows(sec(inp, i, { windows_hint: hint }))[i];
+const fo = { zone: 'front_overhang', leaves: 2 }, ba = { zone: 'between_axles', leaves: 2 }, ro = { zone: 'rear_overhang', leaves: 2 };
+
+test('glazes the examples with equal panes between the doors', () => {
+  assert.deepEqual(windows(volvo), [
+    [pane(1715, 2944), pane(3024, 4253), pane(4333, 5561), pane(5641, 6870), pane(8280, 9532), pane(9612, 10864), pane(10944, 12196)],
+  ]);
+  assert.deepEqual(windows(citaro), [
+    [pane(1698, 3282), pane(3362, 4945), pane(6355, 7650), pane(7730, 9025), pane(9105, 10400)],
+    [pane(1480, 2767), pane(2847, 4135), pane(4215, 5502)],
+  ]);
+});
+
+test('panes stay 200 mm off the body ends and 80 mm off each other and the doors', () =>
+  [volvo, citaro].forEach((inp) =>
+    windows(inp).forEach((ws, i) =>
+      ws.forEach((w, k) => {
+        assert.ok(w.x0 >= 200 && w.x1 <= inp.sections[i].length_mm - 200);
+        assert.ok(k === 0 || w.x0 - ws[k - 1].x1 >= 80);
+        assert.ok(doors(inp)[i].every((d) => w.x1 <= d.x0 - 80 || w.x0 >= d.x1 + 80));
+      }),
+    ),
+  ));
+
+test('wheel arches do not interrupt the panes, however far down the band reaches', () => {
+  const over = (ws) => volvo.sections[0].axles_mm.map((a) => ws.some((w) => w.x0 < a && a < w.x1));
+  assert.deepEqual(over(windows(volvo)[0]), [true, true]);
+  assert.deepEqual(windows({ ...volvo, win_band_height_mm: 2500 }), windows(volvo));
+});
+
+test('a section without doors is glazed from end to end', () => {
+  const ws = windows(sec(volvo, 0, { doors_hint: undefined }))[0];
+  assert.equal(ws.length, 8);
+  assert.deepEqual([ws[0].x0, ws.at(-1).x1], [200, 12196]);
+});
+
+test('windows_hint.count fixes the number of panes, the longest run first', () => {
+  assert.deepEqual(glazed(volvo, 0, { count: 1 }), [pane(1715, 6870)]);
+  assert.deepEqual(glazed(volvo, 0, { count: 3 }), [pane(1715, 4253), pane(4333, 6870), pane(8280, 12196)]);
+  assert.deepEqual(glazed(volvo, 0, { count: 7 }), windows(volvo)[0]);
+  assert.equal(glazed(volvo, 0, { count: 9 }).length, 9);
+});
+
+test('a count the section has no room for stops at panes 300 mm wide', () => {
+  const ws = glazed(citaro, 1, { count: 20 });
+  assert.equal(ws.length, 10);
+  assert.ok(ws.every((w) => w.x1 - w.x0 >= 300));
+});
+
+test('an empty windows hint draws the default panes', () => assert.deepEqual(glazed(volvo, 0, {}), windows(volvo)[0]));
+
+test('doors that fill a section, lie on each other or stick out leave no pane on them', () => {
+  const full = sec(citaro, 1, { length_mm: 2600, axles_mm: [1300], doors_hint: [{ ...fo, width_mm: 1600 }, { ...ro, width_mm: 1600 }], windows_hint: { count: 4 } });
+  assert.deepEqual(windows(full)[1], []);
+  assert.deepEqual(windows(sec(volvo, 0, { doors_hint: [fo, fo, ba] })), windows(sec(volvo, 0, { doors_hint: [fo, ba] })));
+  assert.deepEqual(windows(sec(citaro, 1, { doors_hint: [{ ...ro, width_mm: 1600 }, fo] }))[1], [pane(200, 1288), pane(2698, 3973), pane(4053, 5327)]);
+});

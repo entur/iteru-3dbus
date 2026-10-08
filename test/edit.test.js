@@ -5,8 +5,8 @@ import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, 
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
-const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_doors_and_windows_pct', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
-const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint'];
+const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
+const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
@@ -18,7 +18,8 @@ const paths = (fs) => fs.filter((f) => f.path).map((f) => f.path.join('.'));
 test('every schema value has a row', () => {
   const { sections, ...top } = schema.properties;
   assert.deepEqual(paths(FIELDS).sort(), leaves(top).sort());
-  assert.deepEqual(paths(SECTION).sort(), [...Object.keys(schema.$defs.section_common.properties), 'bellows_ahead_mm'].sort());
+  const { windows_hint: _, ...common } = schema.$defs.section_common.properties;
+  assert.deepEqual(paths(SECTION).sort(), [...Object.keys(common), ...leaves({ windows_hint: schema.$defs.windows_hint }), 'bellows_ahead_mm'].sort());
   assert.deepEqual(paths(DOOR).sort(), Object.keys(schema.$defs.door_hint.properties).sort());
   assert.deepEqual([...new Set(FIELDS.map((f) => f.group))].filter((g) => !GROUPS.includes(g)), []);
 });
@@ -85,6 +86,8 @@ test('spec reads limits and defaults from the schema', () => {
   assert.deepEqual(spec(['sections', 0, 'doors_hint', 1, 'zone']).enum, ['front_overhang', 'between_axles', 'rear_overhang']);
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'width_mm']).maximum, 1600);
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'glazed']).default, true);
+  assert.equal(spec(['sections', 0, 'windows_hint', 'count']).maximum, 20);
+  assert.deepEqual([spec(['band_above_mm']).default, spec(['win_band_height_mm']).default], [250, 1400]);
 });
 
 test('a door is added with two leaves, in the zone that holds the fewest', () => {
@@ -106,4 +109,22 @@ test('a door is removed by its index, and the list with its last door', () => {
   assert.deepEqual(rmDoor(addDoor(volvo, 0), 0, 2), volvo);
   assert.equal('doors_hint' in rmDoor(rmDoor(volvo, 0, 0), 0, 0).sections[0], false);
   assert.equal(volvo.sections[0].doors_hint.length, 2);
+});
+
+const WIN = ['sections', 0, 'windows_hint'];
+
+test('the windows row hints at the panes drawn while no count is given', () => {
+  const [count] = SECTION.filter((f) => f.path?.[0] === 'windows_hint');
+  assert.deepEqual([count.hint(volvo, 0), count.hint(citaro, 0), count.hint(citaro, 1)], [7, 5, 3]);
+});
+
+test('the bands are rows of Dimensions, their schema defaults as hints', () => {
+  const rows = FIELDS.filter((f) => ['band_above_mm', 'win_band_height_mm'].includes(f.path?.[0]));
+  assert.deepEqual(rows.map((f) => [f.group, f.hint(volvo)]), [['Dimensions', 250], ['Dimensions', 1400]]);
+});
+
+test('emptying the window count takes windows_hint with it', () => {
+  const counted = set(volvo, [...WIN, 'count'], 5);
+  assert.deepEqual(get(counted, WIN), { count: 5 });
+  assert.ok(same(set(counted, [...WIN, 'count'], undefined), volvo));
 });

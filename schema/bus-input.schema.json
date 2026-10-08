@@ -79,12 +79,19 @@
       "default": 0,
       "description": "Height of roof pods (batteries, HVAC) included in height_mm. The body box is drawn to height_mm minus this, with a roof pod on top."
     },
-    "band_above_doors_and_windows_pct": {
+    "band_above_mm": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 30,
-      "default": 8,
-      "description": "Band of body between the top of the doors and side windows and the top of the body, as a percentage of the body height (height_mm minus roof_equipment_mm). Rendering: doors and side windows are drawn up to this line."
+      "maximum": 1000,
+      "default": 250,
+      "description": "Band of body between the top of the doors and side windows and the top of the body (height_mm minus roof_equipment_mm). Rendering: doors and side windows are drawn up to this line."
+    },
+    "win_band_height_mm": {
+      "type": "integer",
+      "minimum": 300,
+      "maximum": 2500,
+      "default": 1400,
+      "description": "Height of the side window band, measured down from the line band_above_mm gives. Rendering: side windows are this high, stopping at the skirt on a body too low for it."
     },
     "tyre": {
       "type": "object",
@@ -349,23 +356,7 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 20,
-          "description": "Side windows in this section on the entry side, door glass excluded."
-        },
-        "band_mm": {
-          "type": "array",
-          "prefixItems": [
-            {
-              "type": "integer",
-              "minimum": 300
-            },
-            {
-              "type": "integer",
-              "maximum": 4400
-            }
-          ],
-          "minItems": 2,
-          "maxItems": 2,
-          "description": "Window band [bottom, top], height above ground."
+          "description": "Side windows in this section on the entry side, door glass excluded. Omitted: the band is filled with panes of about the same width."
         }
       }
     }

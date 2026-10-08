@@ -5,7 +5,9 @@ const INCH = 25.4;
 const SIZE = /^(\d{3})\/(\d{2}) ?R(\d{2}(?:\.\d)?)$/;
 const DOOR_W = { 1: 900, 2: 1250 }, DOOR_END = 150, DOOR_ARCH = 300;  // width by leaves; kept clear of a body end and of an arch
 const BIAS = { front: 0, middle: 0.5, rear: 1 };  // share of a zone's slack ahead of the door
-const BAND_PCT = schema.properties.band_above_doors_and_windows_pct.default;
+const BAND_ABOVE = schema.properties.band_above_mm.default, WIN_BAND = schema.properties.win_band_height_mm.default;
+const WIN_W = 1400, WIN_MIN = 300;  // pane width aimed at; narrowest pane drawn
+const PILLAR = 80, WIN_END = 200;  // body between two panes and beside a door; kept clear of a body end
 
 /**
  * Lays the sections out along the bus, front to rear.
@@ -32,9 +34,17 @@ export const bodyTop = (inp) => inp.height_mm - (inp.roof_equipment_mm ?? 0);
 /**
  * The line the doors and side windows reach up to: the body top less the band above them.
  * @param {object} inp validated bus input
- * @returns {number} mm above ground, rounded
+ * @returns {number} mm above ground
  */
-export const lintel = (inp) => Math.round(bodyTop(inp) * (1 - (inp.band_above_doors_and_windows_pct ?? BAND_PCT) / 100));
+export const lintel = (inp) => bodyTop(inp) - (inp.band_above_mm ?? BAND_ABOVE);
+
+/**
+ * The line the side windows reach down to: the window band hangs from the lintel, and stops at
+ * the skirt on a body too low for it.
+ * @param {object} inp validated bus input
+ * @returns {number} mm above ground
+ */
+export const sill = (inp) => Math.max(lintel(inp) - (inp.win_band_height_mm ?? WIN_BAND), CLEARANCE);
 
 /**
  * All door hints, front to rear.
@@ -76,6 +86,47 @@ export const doors = (inp) => {
       return { x0, x1: x0 + w, leaves: d.leaves, glazed: d.glazed ?? true };
     }),
   );
+};
+
+/** What the blocks leave of a span, as runs front to rear. Blocks may overlap and stick out. */
+const clear = (span, blocks) =>
+  blocks.reduce((runs, [b0, b1]) => runs.flatMap(([x0, x1]) => [[x0, Math.min(x1, b0)], [Math.max(x0, b1), x1]].filter(([p, q]) => q > p)), [span]);
+
+/**
+ * Panes per run. A count is dealt out one pane at a time, each to the run it leaves the widest
+ * panes in; without one every run gets the panes nearest WIN_W wide. No run takes more than stay
+ * WIN_MIN wide in it, so a run shorter than that takes none.
+ */
+const deal = (runs, count) => {
+  const len = runs.map(([x0, x1]) => x1 - x0 + PILLAR), room = len.map((l) => Math.floor(l / (WIN_MIN + PILLAR)));
+  if (count === undefined) return len.map((l, k) => Math.min(room[k], Math.max(1, Math.round(l / (WIN_W + PILLAR)))));
+  return Array.from({ length: count }).reduce((ns) => {
+    const pitch = ns.map((n, j) => (n < room[j] ? len[j] / (n + 1) : 0)), k = pitch.indexOf(Math.max(...pitch));
+    return pitch[k] ? ns.map((n, j) => (j === k ? n + 1 : n)) : ns;
+  }, len.map(() => 0));
+};
+
+/** n equal panes across a run, a pillar between each two. */
+const panes = ([x0, x1], n) => {
+  const w = (x1 - x0 - (n - 1) * PILLAR) / n;
+  return Array.from({ length: n }, (_, k) => x0 + k * (w + PILLAR)).map((x) => ({ x0: Math.round(x), x1: Math.round(x + w) }));
+};
+
+/**
+ * Places the side windows of the entry side: each section is glazed with equal panes, a pillar
+ * between each two, in the runs its doors leave. Wheel arches do not interrupt a run: where the
+ * window band reaches down into one, the pane runs on across it. windows_hint.count fixes a
+ * section's number of panes, as far as they fit.
+ * @param {object} inp validated bus input
+ * @returns {{x0: number, x1: number}[][]} per section its panes front to rear, as spans in mm
+ *   from the section's own front
+ */
+export const windows = (inp) => {
+  const placed = doors(inp);
+  return inp.sections.map((s, i) => {
+    const runs = clear([WIN_END, s.length_mm - WIN_END], placed[i].map((d) => [d.x0 - PILLAR, d.x1 + PILLAR]));
+    return deal(runs, s.windows_hint?.count).flatMap((n, k) => panes(runs[k], n));
+  });
 };
 
 /**

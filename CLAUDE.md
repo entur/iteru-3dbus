@@ -46,26 +46,32 @@ cards are host chrome, not part of either element.
   when the schema passes. Returns `string[]`, empty when valid.
 - **`derive.js`** — pure functions, no DOM, no three: `layout` (per-section `x0`, absolute axle x,
   bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `hints`, `arch` (the
-  wheel-arch circle both renderers cut out), `doors` (every hint placed as a span per section:
+  wheel-arch circle the model cuts out), `doors` (every hint placed as a span per section:
   the zone gives a span clear of body ends and arches, the bias a position in it), `lintel` (the
-  line doors and side windows reach up to: the body top less `band_above_doors_and_windows_pct`,
-  whose default is read from the schema). Input axles are
+  line doors and side windows reach up to: the body top less `band_above_mm`), `sill` (the line
+  side windows reach down to: `win_band_height_mm` below `lintel`, never below the skirt; both
+  are root values of the input for the whole bus, their defaults read from the schema), `windows`
+  (per section equal panes, a pillar between each two, in the runs its doors leave, straight
+  across the wheel arches; `windows_hint.count` fixes how many). Input axles are
   section-relative; `layout` gives both `axles` (absolute from the front end) and `local`.
   Node-safe, so it is what the tests cover.
 - **`dims.js`** — fixed body proportions (clearance, corner radius, arch gap, tyre, roof pod) shared
   by the 2D and 3D sides. Anything both `vector.js` and `bus.js` must agree on lives here.
 - **`vector.js`** — `faces(inp)` returns SVG maps per box side (`right`/`left` one per section,
   `front`/`rear` one each), in mm, as seen from outside. This is the **single source** for both the
-  3D face textures and the `<bus-2d>` element: it must show exactly what is on the model,
-  so nothing that is separate geometry (wheels, bellows, roof pod) goes into a face map. New surface
-  detail (windows, front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors
-  from `derive.js` `doors` are drawn on the right side only, flipped like the axles, from their
-  sill up to `lintel`.
+  3D face textures and the `<bus-2d>` element: it shows exactly what is projected onto the model,
+  so nothing that is separate geometry (wheels, bellows, roof pod) goes into a face map, and
+  nothing the model cuts out of a box either: a side map has no wheel arches. New surface
+  detail (front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors and
+  window panes from `derive.js` `doors` / `windows` are drawn on the right side only, mirrored by
+  `flip`: the panes from `sill` up to `lintel`, the doors from their own sill up to `lintel`,
+  both in the same frame (`framed`: one colour, width and corner radius).
   `test/vector.test.js` runs `faces` against a stand-in `document`.
 - **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
   `height_mm - roof_equipment_mm`. The side profile in `profile()` and the SVG path in
-  `vector.js` `side()` describe the same outline and must change together. The extrude geometry's
+  `vector.js` `side()` share the box outline (skirt, roof, corners) and must change together; the
+  arch cut-outs are in `profile()` alone, the map runs on under them. The extrude geometry's
   groups are re-split so the two caps (right, left) take separate face textures; the SVGs are
   rasterised via data URLs and placed with texture `repeat`/`offset` on metre-valued UVs. Face
   maps are read-only for consumers: `tex` rasterises a clone.
@@ -87,11 +93,13 @@ cards are host chrome, not part of either element.
   path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
   The total length is the one derived row that is editable: `to` names the input value its edits
   land on (the first section's length) and `shifted` gives the value to write there.
-  `DOOR` lists the values of one door hint the same way, all editable.
+  `DOOR` lists the values of one door hint the same way, all editable. `windows_hint.count` is
+  a row of `SECTION`, with the panes drawn by default as its hint.
   `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `addDoor` (two
   leaves, in the zone holding the fewest doors) / `rmDoor` (by index; the last one takes the
   `doors_hint` key with it); `spec` and `axleLim` read limits and defaults from the schema, `spec`
-  also down into a section's lists. `test/edit.test.js` fails when a schema value has no row, or
+  also down into a section's lists and its windows hint.
+  `test/edit.test.js` fails when a schema value has no row, or
   when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card and the input card (`form`): one accordion group per
   part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
@@ -113,7 +121,7 @@ cards are host chrome, not part of either element.
 - `mkBus` returns a group with the front end at x = 0 running towards +x, ground at y = 0, z centred;
   `bus-3d.js` then shifts it by `-len/2` so the bus is centred with the front towards −x.
 - Extrude caps: z = 0 is the right side, z = w the left side.
-- Right-side face maps are mirrored (front points right): axle x is flipped in `faces()`, the
+- Right-side face maps are mirrored (front points right): `faces()` flips the spans it draws, the
   texture uses a negative `repeat.x`, and `<bus-2d>` reverses section order for that side.
 
 ### Schema and examples
@@ -130,7 +138,7 @@ cards are host chrome, not part of either element.
 Tracked in `README.md`; these are parsed/validated but not drawn:
 
 - The door-overlap rule (5) for the placed doors
-- Windows: equal panes in the band, skipping door spans; left side derived, not mirrored
+- The left side: derived from the entry side, not mirrored; it has neither doors nor windows yet
 - Default door set per `bus_class`, window band per `floor_type`
 - Front template (`front.template`) and rear template; the front map only has the badge
 - Two decks for `low_floor_lower_level`; `door_side`
