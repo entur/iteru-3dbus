@@ -3,6 +3,8 @@
 Boxy 3D bus rendered in three.js from one input JSON (`schema/bus-input.schema.json`).
 v1 has no ML branch: the schema's `photo` field is accepted and ignored.
 
+Live: <https://entur.github.io/iteru-3dbus/> ([`?bus=citaro-g`](https://entur.github.io/iteru-3dbus/?bus=citaro-g)), deployed from `main` by `.github/workflows/pages.yml`.
+
 ```sh
 npm i
 npm run dev                              # ?bus=citaro-g picks the other example
