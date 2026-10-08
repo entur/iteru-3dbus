@@ -55,7 +55,9 @@ cards are host chrome, not part of either element.
   from the lower edge of the flat front), `dash` (the line the windshield reaches down to:
   `band_below_windshield_mm` from that same edge, or 200 mm below `sill` when missing), `windows`
   (per section equal panes, a pillar between each two, in the runs its doors leave, straight
-  across the wheel arches; `windows_hint.count` fixes how many). Input axles are
+  across the wheel arches; `windows_hint.count` fixes how many), `windowsLeft`
+  (the side across from the doors: per section one run of equal panes, as many as the entry
+  side has panes and doors there). Input axles are
   section-relative; `layout` gives both `axles` (absolute from the front end) and `local`.
   Node-safe, so it is what the tests cover.
 - **`dims.js`** — fixed body proportions (clearance, corner radius, arch gap, tyre, roof pod) shared
@@ -68,7 +70,8 @@ cards are host chrome, not part of either element.
   detail (front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors and
   window panes from `derive.js` `doors` / `windows` are drawn on the right side only, mirrored by
   `flip`: the panes from `sill` up to `lintel`, the doors from their own sill up to `lintel`,
-  both in the same frame (`framed`: one colour, width and corner radius).
+  both in the same frame (`framed`: one colour, width and corner radius). The left side takes
+  the panes of `windowsLeft` unflipped, in the same band and frame, and no doors.
   The front map has a windscreen in that frame, from `lintel` down to `dash` but never closer
   to the badge than `SCREEN_GAP` (an end map starts `CORNER` below the body top), left out
   when there is no room for it; the badge
@@ -148,7 +151,7 @@ cards are host chrome, not part of either element.
 Tracked in `README.md`; these are parsed/validated but not drawn:
 
 - The door-overlap rule (5) for the placed doors
-- The left side: derived from the entry side, not mirrored; it has neither doors nor windows yet
+- The left side: no doors of its own (a driver door), and `door_side` is not honoured
 - Default door set per `bus_class`, window band per `floor_type`
 - Front template (`front.template`): the front map is one generic front (windscreen, headlights, badge); rear template
 - Two decks for `low_floor_lower_level`; `door_side`

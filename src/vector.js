@@ -1,4 +1,4 @@
-import { bodyTop, dash, doors, grill, layout, lintel, sill, windows } from './derive.js';
+import { bodyTop, dash, doors, grill, layout, lintel, sill, windows, windowsLeft } from './derive.js';
 import { CLEARANCE, CORNER, END_EDGE } from './dims.js';
 import LAMP from './headlight.svg?raw';
 
@@ -86,7 +86,8 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light) => {
  * exactly what is projected: nothing that is separate geometry (wheels, bellows, roof pod), and
  * nothing the model cuts out of a box (wheel arches).
  * Side maps come one per section, front to rear; on the right side the front points right. The
- * hinted doors and the side windows are on the right side only. The front map has a windscreen
+ * hinted doors are on the right side only; the left side has a pane for each pane and each door
+ * of the right side, in one run. The front map has a windscreen
  * up to the same line as those and down to the line band_below_windshield_mm gives, and the
  * badge with a headlight on each side standing on the line band_below_grill_mm gives.
  * @param {object} inp validated bus input
@@ -98,13 +99,13 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light) => {
  */
 export const faces = (inp, { headlight: light } = {}) => {
   const top = bodyTop(inp), fill = inp.base_color.hex;
-  const boxes = layout(inp), placed = doors(inp), glass = windows(inp), band = [sill(inp), lintel(inp)];
+  const boxes = layout(inp), placed = doors(inp), glass = windows(inp), across = windowsLeft(inp), band = [sill(inp), lintel(inp)];
   const up = (mm) => top - CORNER - mm;  // mm above ground as y on an end map, which starts CORNER below the body top
   const w = inp.width_mm, h = up(END_EDGE);
   const lines = { lintel: Math.max(up(band[1]), 0), grill: up(grill(inp)), dash: up(dash(inp)) };
   return {
     right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band)),
-    left: boxes.map((b) => side(b.len, top, fill)),
+    left: boxes.map((b, i) => side(b.len, top, fill, [], across[i], band)),
     front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand, lines, light ?? headlight())],
     rear: [face(w, h, plain(w, h, fill))],
   };

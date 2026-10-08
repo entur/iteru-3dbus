@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validate } from '../src/validate.js';
-import { dash, doorWidth, doors, grill, layout, lintel, sill, spans, total, tyreDia, windows } from '../src/derive.js';
+import { dash, doorWidth, doors, grill, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
 
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
@@ -176,4 +176,24 @@ test('doors that fill a section, lie on each other or stick out leave no pane on
   assert.deepEqual(windows(full)[1], []);
   assert.deepEqual(windows(sec(volvo, 0, { doors_hint: [fo, fo, ba] })), windows(sec(volvo, 0, { doors_hint: [fo, ba] })));
   assert.deepEqual(windows(sec(citaro, 1, { doors_hint: [{ ...ro, width_mm: 1600 }, fo] }))[1], [pane(200, 1288), pane(2698, 3973), pane(4053, 5327)]);
+});
+
+test('the left side has a pane for each pane and each door of the right side, in one run', () => {
+  const count = (inp) => windowsLeft(inp).map((ws) => ws.length);
+  assert.deepEqual(count(volvo), [9]);
+  assert.deepEqual(count(citaro), [7, 5]);
+  assert.deepEqual(windowsLeft(citaro)[1], [pane(200, 1456), pane(1536, 2792), pane(2872, 4128), pane(4208, 5464), pane(5544, 6800)]);
+  assert.deepEqual(count(sec(volvo, 0, { windows_hint: { count: 3 } })), [5]);
+  assert.deepEqual(count(sec(volvo, 0, { doors_hint: [{ ...fo, leaves: 1 }] })), [windows(sec(volvo, 0, { doors_hint: [{ ...fo, leaves: 1 }] }))[0].length + 1]);
+});
+
+test('a left side without doors across from it has the panes of the right side', () => {
+  const bare = sec(volvo, 0, { doors_hint: undefined });
+  assert.deepEqual(windowsLeft(bare), windows(bare));
+});
+
+test('the left side takes no more panes than stay 300 mm wide', () => {
+  const short = sec(citaro, 1, { length_mm: 700, axles_mm: [350], doors_hint: [fo, ro] });
+  assert.deepEqual(windowsLeft(short)[1], [pane(200, 500)]);
+  assert.deepEqual(windowsLeft(sec(citaro, 1, { length_mm: 400, axles_mm: [200] }))[1], []);
 });

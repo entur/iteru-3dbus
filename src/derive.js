@@ -117,13 +117,16 @@ export const doors = (inp) => {
 const clear = (span, blocks) =>
   blocks.reduce((runs, [b0, b1]) => runs.flatMap(([x0, x1]) => [[x0, Math.min(x1, b0)], [Math.max(x0, b1), x1]].filter(([p, q]) => q > p)), [span]);
 
+/** How many panes stay WIN_MIN wide in a run. */
+const fit = ([x0, x1]) => Math.max(Math.floor((x1 - x0 + PILLAR) / (WIN_MIN + PILLAR)), 0);
+
 /**
  * Panes per run. A count is dealt out one pane at a time, each to the run it leaves the widest
  * panes in; without one every run gets the panes nearest WIN_W wide. No run takes more than stay
  * WIN_MIN wide in it, so a run shorter than that takes none.
  */
 const deal = (runs, count) => {
-  const len = runs.map(([x0, x1]) => x1 - x0 + PILLAR), room = len.map((l) => Math.floor(l / (WIN_MIN + PILLAR)));
+  const len = runs.map(([x0, x1]) => x1 - x0 + PILLAR), room = runs.map(fit);
   if (count === undefined) return len.map((l, k) => Math.min(room[k], Math.max(1, Math.round(l / (WIN_W + PILLAR)))));
   return Array.from({ length: count }).reduce((ns) => {
     const pitch = ns.map((n, j) => (n < room[j] ? len[j] / (n + 1) : 0)), k = pitch.indexOf(Math.max(...pitch));
@@ -151,6 +154,22 @@ export const windows = (inp) => {
   return inp.sections.map((s, i) => {
     const runs = clear([WIN_END, s.length_mm - WIN_END], placed[i].map((d) => [d.x0 - PILLAR, d.x1 + PILLAR]));
     return deal(runs, s.windows_hint?.count).flatMap((n, k) => panes(runs[k], n));
+  });
+};
+
+/**
+ * Places the side windows of the side across from the entry side, which has no doors: each
+ * section is one run of equal panes, as many as the entry side has panes and doors there, so a
+ * door is answered by a pane whatever its leaves. No more than stay WIN_MIN wide.
+ * @param {object} inp validated bus input
+ * @returns {{x0: number, x1: number}[][]} per section its panes front to rear, as spans in mm
+ *   from the section's own front
+ */
+export const windowsLeft = (inp) => {
+  const placed = doors(inp), glass = windows(inp);
+  return inp.sections.map((s, i) => {
+    const run = [WIN_END, s.length_mm - WIN_END];
+    return panes(run, Math.min(fit(run), glass[i].length + placed[i].length));
   });
 };
 
