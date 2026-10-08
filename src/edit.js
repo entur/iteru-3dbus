@@ -28,6 +28,7 @@ export const FIELDS = [
   { group: 'Dimensions', label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Height', path: ['height_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Roof equipment', path: ['roof_equipment_mm'], kind: 'int', edit: true },
+  { group: 'Dimensions', label: 'Band above doors', path: ['band_above_doors_and_windows_pct'], unit: '%', kind: 'int', edit: true, hint: () => spec(['band_above_doors_and_windows_pct']).default },
   { group: 'Tyre', label: 'Size', path: ['tyre', 'size'], kind: 'text', edit: true },
   { group: 'Tyre', label: 'Diameter', path: ['tyre', 'diameter_mm'], kind: 'int', edit: true },
   { group: 'Tyre', label: 'Effective diameter', of: (inp) => tyreDia(inp.tyre), unit: 'mm' },

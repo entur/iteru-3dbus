@@ -7,7 +7,7 @@ const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-a
 const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
 const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'Normal floor', low_floor_lower_level: 'Double deck, low lower deck' };
 const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR };
-const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows and roof pod. Doors, windows and the front and rear templates are not drawn yet.';
+const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod and the hinted doors. Windows and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 

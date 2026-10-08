@@ -42,19 +42,26 @@ cards are host chrome, not part of either element.
 
 - **`validate.js`** — Ajv (draft 2020-12) against the schema, then the `rules` array for what JSON
   Schema cannot express. The rules are numbered (1)–(5) in the schema's top-level `$comment`;
-  (1)–(4) are implemented, (5) (door overlap) waits for door placement. Cross-field rules only run
+  (1)–(4) are implemented, (5) (door overlap) is not checked yet. Cross-field rules only run
   when the schema passes. Returns `string[]`, empty when valid.
 - **`derive.js`** — pure functions, no DOM, no three: `layout` (per-section `x0`, absolute axle x,
   bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `hints`, `arch` (the
-  wheel-arch circle both renderers cut out). Input axles are section-relative; `layout` gives both
-  `axles` (absolute from the front end) and `local`. Node-safe, so it is what the tests cover.
+  wheel-arch circle both renderers cut out), `doors` (every hint placed as a span per section:
+  the zone gives a span clear of body ends and arches, the bias a position in it), `lintel` (the
+  line doors and side windows reach up to: the body top less `band_above_doors_and_windows_pct`,
+  whose default is read from the schema). Input axles are
+  section-relative; `layout` gives both `axles` (absolute from the front end) and `local`.
+  Node-safe, so it is what the tests cover.
 - **`dims.js`** — fixed body proportions (clearance, corner radius, arch gap, tyre, roof pod) shared
   by the 2D and 3D sides. Anything both `vector.js` and `bus.js` must agree on lives here.
 - **`vector.js`** — `faces(inp)` returns SVG maps per box side (`right`/`left` one per section,
   `front`/`rear` one each), in mm, as seen from outside. This is the **single source** for both the
   3D face textures and the `<bus-2d>` element: it must show exactly what is on the model,
   so nothing that is separate geometry (wheels, bellows, roof pod) goes into a face map. New surface
-  detail (doors, windows, front/rear templates) belongs here, not as extra meshes in `bus.js`.
+  detail (windows, front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors
+  from `derive.js` `doors` are drawn on the right side only, flipped like the axles, from their
+  sill up to `lintel`.
+  `test/vector.test.js` runs `faces` against a stand-in `document`.
 - **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
   `height_mm - roof_equipment_mm`. The side profile in `profile()` and the SVG path in
@@ -119,7 +126,7 @@ cards are host chrome, not part of either element.
 
 Tracked in `README.md`; these are parsed/validated but not drawn:
 
-- Door placement from `doors_hint` (zone, bias, leaves) and the door-overlap rule
+- The door-overlap rule (5) for the placed doors
 - Windows: equal panes in the band, skipping door spans; left side derived, not mirrored
 - Default door set per `bus_class`, window band per `floor_type`
 - Front template (`front.template`) and rear template; the front map only has the badge

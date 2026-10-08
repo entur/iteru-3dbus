@@ -7,7 +7,7 @@ const MAX_ARTIC_LEN = 18750, TWO_DOOR_LEN = 9500;
 const ajv = new Ajv({ allErrors: true, strict: false, formats: { 'uri-reference': true } });
 const chk = ajv.compile(schema);
 
-/** Cross-field rules (1)-(4) from the schema's top-level $comment. (5), door overlap, waits for placement. */
+/** Cross-field rules (1)-(4) from the schema's top-level $comment. (5), door overlap, is not checked yet. */
 const rules = [
   (inp) =>
     inp.sections.flatMap((s, i) => [
@@ -25,8 +25,8 @@ const rules = [
   (inp) =>
     inp.sections.flatMap((s, i) =>
       (s.doors_hint ?? [])
-        .filter((d) => (d.axle_gap ?? 0) >= Math.max(s.axles_mm.length - 1, 1))
-        .map((d) => `sections[${i}] has no axle gap ${d.axle_gap}`),
+        .filter((d) => (d.axle_gap ?? 0) >= Math.max(s.axles_mm.length - 1, d.zone === 'between_axles' ? 0 : 1))
+        .map((d) => `sections[${i}] has no axle gap ${d.axle_gap ?? 0}`),
     ),
 ];
 

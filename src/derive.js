@@ -1,7 +1,11 @@
+import schema from '../schema/bus-input.schema.json' with { type: 'json' };
 import { ARCH_GAP, CLEARANCE } from './dims.js';
 
 const INCH = 25.4;
 const SIZE = /^(\d{3})\/(\d{2}) ?R(\d{2}(?:\.\d)?)$/;
+const DOOR_W = { 1: 900, 2: 1250 }, DOOR_END = 150, DOOR_ARCH = 300;  // width by leaves; kept clear of a body end and of an arch
+const BIAS = { front: 0, middle: 0.5, rear: 1 };  // share of a zone's slack ahead of the door
+const BAND_PCT = schema.properties.band_above_doors_and_windows_pct.default;
 
 /**
  * Lays the sections out along the bus, front to rear.
@@ -26,11 +30,46 @@ export const layout = (inp) =>
 export const bodyTop = (inp) => inp.height_mm - (inp.roof_equipment_mm ?? 0);
 
 /**
+ * The line the doors and side windows reach up to: the body top less the band above them.
+ * @param {object} inp validated bus input
+ * @returns {number} mm above ground, rounded
+ */
+export const lintel = (inp) => Math.round(bodyTop(inp) * (1 - (inp.band_above_doors_and_windows_pct ?? BAND_PCT) / 100));
+
+/**
  * All door hints, front to rear.
  * @param {object} inp validated bus input
  * @returns {object[]} door hints across the sections
  */
 export const hints = (inp) => inp.sections.flatMap((s) => s.doors_hint ?? []);
+
+/** The span a door hint's zone leaves for a door: clear of the body ends and of the arches, dx wide each side. */
+const zone = (s, dx, { zone: z, axle_gap: g = 0 }) => {
+  const a = s.axles_mm, after = (x) => x + dx + DOOR_ARCH, before = (x) => x - dx - DOOR_ARCH;
+  return {
+    front_overhang: [DOOR_END, before(a[0])],
+    between_axles: [after(a[g]), before(a[g + 1])],
+    rear_overhang: [after(a.at(-1)), s.length_mm - DOOR_END],
+  }[z];
+};
+
+/**
+ * Places every hinted door: the zone gives a span, the bias a position in it. A door wider than
+ * its span is centred on it.
+ * @param {object} inp validated bus input
+ * @returns {{x0: number, x1: number, leaves: number, glazed: boolean}[][]} per section its doors
+ *   in hint order, as spans in mm from the section's own front
+ */
+export const doors = (inp) => {
+  const { dx } = arch(tyreDia(inp.tyre) / 2);
+  return inp.sections.map((s) =>
+    (s.doors_hint ?? []).map((d) => {
+      const [lo, hi] = zone(s, dx, d), w = d.width_mm ?? DOOR_W[d.leaves], slack = hi - lo - w;
+      const x0 = Math.round(lo + slack * BIAS[slack < 0 ? 'middle' : d.bias ?? 'middle']);
+      return { x0, x1: x0 + w, leaves: d.leaves, glazed: d.glazed ?? true };
+    }),
+  );
+};
 
 /**
  * Wheel arch: a circle around the axle centre, cut off by the skirt.

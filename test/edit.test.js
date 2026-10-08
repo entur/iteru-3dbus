@@ -5,7 +5,7 @@ import { FIELDS, GROUPS, SECTION, addAxle, axleLim, get, rmAxle, same, set, shif
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
-const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
+const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_doors_and_windows_pct', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
 const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));

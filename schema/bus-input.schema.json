@@ -79,6 +79,13 @@
       "default": 0,
       "description": "Height of roof pods (batteries, HVAC) included in height_mm. The body box is drawn to height_mm minus this, with a roof pod on top."
     },
+    "band_above_doors_and_windows_pct": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 30,
+      "default": 8,
+      "description": "Band of body between the top of the doors and side windows and the top of the body, as a percentage of the body height (height_mm minus roof_equipment_mm). Rendering: doors and side windows are drawn up to this line."
+    },
     "tyre": {
       "type": "object",
       "additionalProperties": false,
