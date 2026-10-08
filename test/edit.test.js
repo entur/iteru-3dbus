@@ -5,7 +5,7 @@ import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, 
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
-const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
+const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
 const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
@@ -87,7 +87,7 @@ test('spec reads limits and defaults from the schema', () => {
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'width_mm']).maximum, 1600);
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'glazed']).default, true);
   assert.equal(spec(['sections', 0, 'windows_hint', 'count']).maximum, 20);
-  assert.deepEqual([spec(['band_above_mm']).default, spec(['win_band_height_mm']).default], [250, 1400]);
+  assert.deepEqual([spec(['band_above_mm']).default, spec(['win_band_height_mm']).default, spec(['band_below_grill_mm']).default], [250, 1400, 35]);
 });
 
 test('a door is added with two leaves, in the zone that holds the fewest', () => {
@@ -119,8 +119,9 @@ test('the windows row hints at the panes drawn while no count is given', () => {
 });
 
 test('the bands are rows of Dimensions, their schema defaults as hints', () => {
-  const rows = FIELDS.filter((f) => ['band_above_mm', 'win_band_height_mm'].includes(f.path?.[0]));
-  assert.deepEqual(rows.map((f) => [f.group, f.hint(volvo)]), [['Dimensions', 250], ['Dimensions', 1400]]);
+  const rows = FIELDS.filter((f) => ['band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm'].includes(f.path?.[0]));
+  assert.deepEqual(rows.map((f) => [f.group, f.hint(volvo)]), [['Dimensions', 250], ['Dimensions', 1400], ['Dimensions', 35], ['Dimensions', 1040]]);
+  assert.equal(rows.at(-1).hint({ ...volvo, band_below_windshield_mm: 300, win_band_height_mm: 1000 }), 1440);
 });
 
 test('emptying the window count takes windows_hint with it', () => {

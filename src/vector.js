@@ -1,16 +1,20 @@
-import { bodyTop, doors, layout, lintel, sill, windows } from './derive.js';
-import { CLEARANCE, CORNER } from './dims.js';
+import { bodyTop, dash, doors, grill, layout, lintel, sill, windows } from './derive.js';
+import { CLEARANCE, CORNER, END_EDGE } from './dims.js';
+import LAMP from './headlight.svg?raw';
 
-const NS = 'http://www.w3.org/2000/svg';
-const BADGE_AT = 0.3, BADGE_W = 0.5, BADGE_H = 260, BADGE_FONT = 170, BADGE_R = 40;
+const NS = 'http://www.w3.org/2000/svg', SVG = 'image/svg+xml';
+const BADGE_W = 0.5, BADGE_H = 260, BADGE_FONT = 170, BADGE_R = 40;
+const BADGE_PAD = 60, BADGE_SPACING = 10, GLYPH = 0.72;  // text kept inside the badge: side padding, letter spacing at full size, glyph width per font size
 const BADGE = '#2b3136', BADGE_INK = '#eef2f5', FONT = 'Arial, Helvetica, sans-serif';
 const DOOR_SILL = 40;  // door sill above the skirt
 const FRAME = '#2b3136', FRAME_W = 45, FRAME_R = 30;  // around every pane of a door or window: colour, width, corner radius
 const GLASS = '#6f8797';
+const SCREEN_SIDE = 110, SCREEN_GAP = 180;  // windscreen: body left beside it, and at least this much between it and the badge
+const LAMP_SIDE = 110, LAMP_GAP = 70;  // headlight: body left outside it, gap to the badge
 
+const attr = (e, attrs) => (Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)), e);
 const svg = (tag, attrs = {}, ...kids) => {
-  const e = document.createElementNS(NS, tag);
-  Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+  const e = attr(document.createElementNS(NS, tag), attrs);
   e.append(...kids);
   return e;
 };
@@ -48,14 +52,31 @@ const side = (len, top, fill, ds = [], ws = [], [lo, hi] = [0, top]) => {
   return face(len, h, svg('path', { d, fill }), ...ws.map(pane(top - hi, top - lo)), ...ds.map(door(top - hi, h - DOOR_SILL, fill)));
 };
 
-/** Front face: body colour with the brand badge that stands in for the grille. */
-const front = (w, h, fill, text) => {
-  const cy = h * (1 - BADGE_AT);
+let parsed;
+/** The default headlight: the drawing in headlight.svg, the left one as the front map shows it. Parsed once, on first use. */
+const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).documentElement);
+
+/**
+ * Front face: body colour, the brand badge that stands in for the grille standing on the grill
+ * line, a headlight on each side of it (a copy of the drawing fitted in, and the same mirrored;
+ * the drawing itself stays untouched), and a windscreen from the lintel line down to the dash
+ * line, stopping above the badge and left out where that leaves it no room. The lines are y on
+ * the map. A long badge text is set smaller, its letter spacing with it, so it stays inside the
+ * badge and clear of the headlights however long it is.
+ */
+const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light) => {
+  const by = y1 - BADGE_H, cy = y1 - BADGE_H / 2, bx = (w * (1 - BADGE_W)) / 2, ys = Math.min(y2, by - SCREEN_GAP);
+  const label = text.toUpperCase(), track = BADGE_SPACING / BADGE_FONT;  // letter spacing per font size
+  const size = Math.min(BADGE_FONT, (w * BADGE_W - 2 * BADGE_PAD) / (label.length * (GLYPH + track)));
+  const left = attr(light.cloneNode(true), { class: 'headlight', x: LAMP_SIDE, y: by, width: bx - LAMP_GAP - LAMP_SIDE, height: BADGE_H });
   return face(
     w, h,
     plain(w, h, fill),
-    svg('rect', { x: (w * (1 - BADGE_W)) / 2, y: cy - BADGE_H / 2, width: w * BADGE_W, height: BADGE_H, rx: BADGE_R, fill: BADGE }),
-    svg('text', { x: w / 2, y: cy, fill: BADGE_INK, 'font-family': FONT, 'font-size': BADGE_FONT, 'font-weight': 600, 'letter-spacing': 10, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text.toUpperCase()),
+    ...(ys - y > 2 * FRAME_W ? [framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, y, ys, 1, GLASS)] : []),
+    left,
+    svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
+    svg('rect', { class: 'badge', x: bx, y: by, width: w * BADGE_W, height: BADGE_H, rx: BADGE_R, fill: BADGE }),
+    svg('text', { x: w / 2, y: cy, fill: BADGE_INK, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, label),
   );
 };
 
@@ -65,18 +86,26 @@ const front = (w, h, fill, text) => {
  * exactly what is projected: nothing that is separate geometry (wheels, bellows, roof pod), and
  * nothing the model cuts out of a box (wheel arches).
  * Side maps come one per section, front to rear; on the right side the front points right. The
- * hinted doors and the side windows are on the right side only.
+ * hinted doors and the side windows are on the right side only. The front map has a windscreen
+ * up to the same line as those and down to the line band_below_windshield_mm gives, and the
+ * badge with a headlight on each side standing on the line band_below_grill_mm gives.
  * @param {object} inp validated bus input
+ * @param {object} [opts]
+ * @param {SVGSVGElement} [opts.headlight] drawing of the left headlight as the front map shows
+ *   it, with a viewBox; it is fitted beside the badge and mirrored for the right one. Left
+ *   untouched: the map holds copies.
  * @returns {Record<'right'|'left'|'front'|'rear', {svg: SVGSVGElement, w: number, h: number}[]>}
  */
-export const faces = (inp) => {
+export const faces = (inp, { headlight: light } = {}) => {
   const top = bodyTop(inp), fill = inp.base_color.hex;
   const boxes = layout(inp), placed = doors(inp), glass = windows(inp), band = [sill(inp), lintel(inp)];
-  const w = inp.width_mm, h = top - CLEARANCE - 2 * CORNER;
+  const up = (mm) => top - CORNER - mm;  // mm above ground as y on an end map, which starts CORNER below the body top
+  const w = inp.width_mm, h = up(END_EDGE);
+  const lines = { lintel: Math.max(up(band[1]), 0), grill: up(grill(inp)), dash: up(dash(inp)) };
   return {
     right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band)),
     left: boxes.map((b) => side(b.len, top, fill)),
-    front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand)],
+    front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand, lines, light ?? headlight())],
     rear: [face(w, h, plain(w, h, fill))],
   };
 };

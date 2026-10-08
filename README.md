@@ -16,6 +16,7 @@ As components, in any host (`npm run build:lib` builds them to `dist-lib/`):
 import '3dbus/bus-2d';  // <bus-2d>: the 2D face maps, no three.js
 import '3dbus/bus-3d';  // <bus-3d>: the 3D model, takes the maps as input
 
+map.headlight = svg;       // optional, before inp: an <svg viewBox> of the left headlight, mirrored for the right one
 map.inp = inp;             // synchronous: map.faces is current on the next line
 bus.faces = map.faces;
 bus.inp = inp;

@@ -93,6 +93,19 @@
       "default": 1400,
       "description": "Height of the side window band, measured down from the line band_above_mm gives. Rendering: side windows are this high, stopping at the skirt on a body too low for it."
     },
+    "band_below_grill_mm": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1200,
+      "default": 35,
+      "description": "Band of body below the grille and the headlights, down to the lower edge of the flat front, where the rounding to the skirt starts. Rendering: the badge that stands in for the grille and the headlights stand on this line."
+    },
+    "band_below_windshield_mm": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2500,
+      "description": "Band of body below the windshield, down to the lower edge of the flat front, like band_below_grill_mm. When missing: the windshield ends 200 mm below the lower edge of the side windows, that is band_above_mm + win_band_height_mm + 200 below the top of the body. Rendering: the windshield is drawn down to this line, stopping above the grille."
+    },
     "tyre": {
       "type": "object",
       "additionalProperties": false,

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validate } from '../src/validate.js';
-import { doorWidth, doors, layout, lintel, sill, spans, total, tyreDia, windows } from '../src/derive.js';
+import { dash, doorWidth, doors, grill, layout, lintel, sill, spans, total, tyreDia, windows } from '../src/derive.js';
 
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
@@ -25,6 +25,7 @@ const bad = {
   'missing tyre size and diameter': { ...volvo, tyre: { rear_twin: true } },
   'a band of 1.2 m above the doors and windows': { ...volvo, band_above_mm: 1200 },
   'a window band 200 mm high': { ...volvo, win_band_height_mm: 200 },
+  'a band of 1.5 m below the grille': { ...volvo, band_below_grill_mm: 1500 },
   'the band above as a percentage': { ...volvo, band_above_doors_and_windows_pct: 10 },
   'one door on a 12.4 m bus': sec(volvo, 0, { doors_hint: [{ zone: 'front_overhang', leaves: 2 }] }),
   'an empty door list on a 12.4 m bus': sec(volvo, 0, { doors_hint: [] }),
@@ -52,6 +53,23 @@ test('doors and windows end 250 mm below the body top, or as far as given', () =
   assert.equal(lintel(volvo), 3050);
   assert.equal(lintel(citaro), 2600);
   assert.equal(lintel({ ...volvo, band_above_mm: 330 }), 2970);
+});
+
+test('the grille stands 35 mm above the lower edge of the flat front, or as far as given', () => {
+  assert.equal(grill(volvo), 445);
+  assert.equal(grill(citaro), 445);
+  assert.equal(grill({ ...volvo, band_below_grill_mm: 500 }), 910);
+  assert.deepEqual(validate({ ...volvo, band_below_grill_mm: 500 }), []);
+});
+
+test('the windshield ends 200 mm below the side windows, or as far above the front edge as given', () => {
+  assert.equal(dash(volvo), 1450);
+  assert.equal(dash(citaro), 1000);
+  assert.equal(dash({ ...volvo, win_band_height_mm: 1000 }), 1850);
+  assert.equal(dash({ ...citaro, win_band_height_mm: 2500 }), 410);
+  assert.equal(dash({ ...volvo, band_below_windshield_mm: 900 }), 1310);
+  assert.deepEqual(validate({ ...volvo, band_below_windshield_mm: 900 }), []);
+  assert.notDeepEqual(validate({ ...volvo, band_below_windshield_mm: 2600 }), []);
 });
 
 test('the window band hangs from that line, 1400 mm high or as given, and stops at the skirt', () => {

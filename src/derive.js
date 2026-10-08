@@ -1,11 +1,13 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { ARCH_GAP, CLEARANCE } from './dims.js';
+import { ARCH_GAP, CLEARANCE, END_EDGE } from './dims.js';
 
 const INCH = 25.4;
 const SIZE = /^(\d{3})\/(\d{2}) ?R(\d{2}(?:\.\d)?)$/;
 const DOOR_W = { 1: 900, 2: 1250 }, DOOR_END = 150, DOOR_ARCH = 300;  // width by leaves; kept clear of a body end and of an arch
 const BIAS = { front: 0, middle: 0.5, rear: 1 };  // share of a zone's slack ahead of the door
 const BAND_ABOVE = schema.properties.band_above_mm.default, WIN_BAND = schema.properties.win_band_height_mm.default;
+const BAND_BELOW = schema.properties.band_below_grill_mm.default;
+const SCREEN_DROP = 200;  // windshield ends this far below the side windows' lower edge
 const WIN_W = 1400, WIN_MIN = 300;  // pane width aimed at; narrowest pane drawn
 const PILLAR = 80, WIN_END = 200;  // body between two panes and beside a door; kept clear of a body end
 
@@ -45,6 +47,29 @@ export const lintel = (inp) => bodyTop(inp) - (inp.band_above_mm ?? BAND_ABOVE);
  * @returns {number} mm above ground
  */
 export const sill = (inp) => Math.max(lintel(inp) - (inp.win_band_height_mm ?? WIN_BAND), CLEARANCE);
+
+/**
+ * The line the grille and the headlights stand on: the band below them up from the lower edge of
+ * the flat front, which starts where the rounding to the skirt ends.
+ * @param {object} inp validated bus input
+ * @returns {number} mm above ground
+ */
+export const grill = (inp) => END_EDGE + (inp.band_below_grill_mm ?? BAND_BELOW);
+
+/**
+ * The band of body below the windshield while none is given, up from the lower edge of the flat
+ * front: what is left with the windshield ending SCREEN_DROP below the side windows.
+ * @param {object} inp validated bus input
+ * @returns {number} mm
+ */
+export const dashDefault = (inp) => Math.max(sill(inp) - SCREEN_DROP - END_EDGE, 0);
+
+/**
+ * The line the windshield reaches down to.
+ * @param {object} inp validated bus input
+ * @returns {number} mm above ground
+ */
+export const dash = (inp) => END_EDGE + (inp.band_below_windshield_mm ?? dashDefault(inp));
 
 /**
  * All door hints, front to rear.
