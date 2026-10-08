@@ -58,7 +58,7 @@ test('a side map has no wheel arches: it follows neither the axles nor the tyre'
   const moved = { ...bare, tyre: { diameter_mm: 1100 }, sections: [{ ...bare.sections[0], axles_mm: [1500, 6000, 9000] }, { ...bare.sections[1], axles_mm: [3000] }] };
   const sides = ({ right, left }) => [...right, ...left].map((f) => shape(f.svg));
   assert.deepEqual(sides(faces(moved)), sides(faces(bare)));
-  assert.deepEqual(faces(citaro).left.map((f) => f.svg.kids.map((k) => k.tag)), [['path'], ['path']]);
+  assert.deepEqual(faces(citaro).left.map((f) => f.svg.kids.filter((k) => k.attrs.class !== 'window').map((k) => k.tag)), [['path'], ['path']]);
 });
 
 /** The windows drawn on a side map: per window its frame and the pane in it. */
@@ -67,13 +67,15 @@ const glazing = (f, cls = 'window') => f.svg.kids.filter((k) => k.attrs.class ==
 const glass = (f) => glazing(f).map((w) => w.frame);
 const across = ({ x, width }) => [x, x + width], down = ({ y, height }) => [y, y + height];
 
-test('the right side shows its windows mirrored, the left side none', () => {
+test('the right side shows its windows mirrored, the left side a pane for each of them and each door', () => {
   const { right, left } = faces(citaro);
   assert.deepEqual(right.map((f) => glass(f).map(across)), [
     [[7318, 8902], [5655, 7238], [2950, 4245], [1575, 2870], [200, 1495]],
     [[4233, 5520], [2865, 4153], [1498, 2785]],
   ]);
-  assert.deepEqual(left.map((f) => glass(f).length), [0, 0]);
+  assert.deepEqual(left.map((f) => glass(f).length), [7, 5]);
+  assert.deepEqual(left.map((f) => across(glass(f)[0])), [[200, 1589], [200, 1456]]);
+  assert.deepEqual(left.map((f) => down(glass(f)[0])), right.map((f) => down(glass(f)[0])));
 });
 
 test('a pane hangs from the band above, as high as the window band, on every section alike', () => {

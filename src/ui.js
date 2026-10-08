@@ -9,7 +9,7 @@ const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'N
 const ZONE = { front_overhang: 'Front overhang', between_axles: 'Between axles', rear_overhang: 'Rear overhang' };
 const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES = { 1: '1 leaf', 2: '2 leaves' };
 const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
-const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and on the right side the hinted doors and the windows. The left side and the front and rear templates are not drawn yet.';
+const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and the hinted doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
