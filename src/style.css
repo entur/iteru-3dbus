@@ -71,9 +71,9 @@ input[type="checkbox"] { width: 16px; height: 16px; margin: 0; vertical-align: m
 input[type="color"] { width: 34px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: transparent; cursor: pointer; }
 .swatch { display: inline-flex; align-items: center; gap: 8px; }
 code { font: inherit; font-variant-numeric: tabular-nums; }
-.axles, .list, .door-top { display: flex; align-items: center; gap: 4px; }
-.axles > span:first-child, .door-top > span:first-child { margin-right: auto; }
-.axles input[type="number"], .door input[type="number"] { width: 5.5ch; min-width: 0; }
+.axles, .list, .door-top, .band { display: flex; align-items: center; gap: 4px; }
+.axles > span:first-child, .door-top > span:first-child, .band > span:first-child { margin-right: auto; }
+.axles input[type="number"], .door input[type="number"], .band input[type="number"] { width: 5.5ch; min-width: 0; }
 .axles button, .door-top button, .door button { padding: 0 7px; line-height: 20px; }
 .door { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; padding: 4px 0; text-align: left; }
 .door .n { width: 1ch; color: var(--steel); }

@@ -1,5 +1,5 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { doorWidth, hints, spans, total, tyreDia } from './derive.js';
+import { band, doorWidth, hints, spans, total, tyreDia, windows } from './derive.js';
 
 const DEFS = schema.$defs;
 
@@ -50,7 +50,8 @@ export const SUMS = [{ groups: ['Sections'], label: 'Tot.len', of: total, unit: 
 /**
  * Rows of one section, as FIELDS but with `path` and `of` relative to the section. `trailer`
  * rows exist from the second section on; kinds `axles` and `doors` are lists with their add and
- * remove.
+ * remove, kind `band` is the two ends of the window band. `hint` reads the last valid input and
+ * the section's index.
  */
 export const SECTION = [
   { label: 'Length', path: ['length_mm'], kind: 'int', edit: true },
@@ -60,7 +61,8 @@ export const SECTION = [
   { label: 'Wheelbase', of: (s) => spans(s).wheelbases, unit: 'mm' },
   { label: 'Rear overhang', of: (s) => spans(s).rear, unit: 'mm' },
   { label: 'Doors', path: ['doors_hint'], kind: 'doors', edit: true },
-  { label: 'Windows hint', path: ['windows_hint'] },
+  { label: 'Windows', path: ['windows_hint', 'count'], kind: 'int', edit: true, hint: (inp, i) => windows(inp)[i].length },
+  { label: 'Window band', path: ['windows_hint', 'band_mm'], kind: 'band', edit: true, hint: band },
 ];
 
 /**
@@ -129,18 +131,19 @@ export const same = (a, b) => {
  */
 export const shifted = (inp, f, v) => (v === undefined ? undefined : get(inp, f.to) + v - f.of(inp));
 
-/** The schema one step down: a property, or for an index the items of a list; a $ref is followed. */
-const down = (s, k) => ((n) => (n.$ref ? DEFS[n.$ref.split('/').at(-1)] : n))(typeof k === 'number' ? s.items : s.properties[k]);
+const deref = (n) => (n.$ref ? DEFS[n.$ref.split('/').at(-1)] : n);
+/** The schema one step down: a property, or for an index that item of a list; a $ref is followed. */
+const down = (s, k) => deref(typeof k === 'number' ? s.prefixItems?.[k] ?? s.items : s.properties[k]);
 
 /**
  * The schema of the value at a path: limits, default, enum.
  * @param {(string|number)[]} path keys from the root; under sections the index picks lead or trailer
  * @returns {object} schema node; for a value of a section, section_common merged with the lead
- *   or trailer rules, and from there on down into its lists
+ *   or trailer rules, and from there on down into its lists and its windows hint
  */
 export const spec = ([k, ...rest]) =>
   k === 'sections'
-    ? rest.slice(2).reduce(down, { ...DEFS.section_common.properties[rest[1]], ...(rest[0] ? DEFS.trailer_section : DEFS.lead_section).properties[rest[1]] })
+    ? rest.slice(2).reduce(down, deref({ ...DEFS.section_common.properties[rest[1]], ...(rest[0] ? DEFS.trailer_section : DEFS.lead_section).properties[rest[1]] }))
     : rest.reduce((s, x) => s.properties[x], schema.properties[k]);
 
 /**
@@ -198,3 +201,15 @@ export const rmDoor = (inp, i, j) => {
   const ds = inp.sections[i].doors_hint.filter((_, k) => k !== j);
   return set(inp, ['sections', i, 'doors_hint'], ds.length ? ds : undefined);
 };
+
+/**
+ * Writes one end of section i's window band. The other end keeps its value, the default one
+ * while no band is hinted. undefined drops the hinted band, and windows_hint with its last value.
+ * @param {object} inp bus input
+ * @param {number} i section index
+ * @param {number} j 0 for the bottom, 1 for the top
+ * @param {number|undefined} v mm above ground
+ * @returns {object} the edited copy
+ */
+export const setBand = (inp, i, j, v) =>
+  set(inp, ['sections', i, 'windows_hint', 'band_mm'], v === undefined ? undefined : band(inp, i).map((x, k) => (k === j ? v : x)));

@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec } from '../src/edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, setBand, shifted, spec } from '../src/edit.js';
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
 const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_doors_and_windows_pct', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
-const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint'];
+const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count', 'windows_hint.band_mm'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
@@ -18,7 +18,8 @@ const paths = (fs) => fs.filter((f) => f.path).map((f) => f.path.join('.'));
 test('every schema value has a row', () => {
   const { sections, ...top } = schema.properties;
   assert.deepEqual(paths(FIELDS).sort(), leaves(top).sort());
-  assert.deepEqual(paths(SECTION).sort(), [...Object.keys(schema.$defs.section_common.properties), 'bellows_ahead_mm'].sort());
+  const { windows_hint: _, ...common } = schema.$defs.section_common.properties;
+  assert.deepEqual(paths(SECTION).sort(), [...Object.keys(common), ...leaves({ windows_hint: schema.$defs.windows_hint }), 'bellows_ahead_mm'].sort());
   assert.deepEqual(paths(DOOR).sort(), Object.keys(schema.$defs.door_hint.properties).sort());
   assert.deepEqual([...new Set(FIELDS.map((f) => f.group))].filter((g) => !GROUPS.includes(g)), []);
 });
@@ -85,6 +86,9 @@ test('spec reads limits and defaults from the schema', () => {
   assert.deepEqual(spec(['sections', 0, 'doors_hint', 1, 'zone']).enum, ['front_overhang', 'between_axles', 'rear_overhang']);
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'width_mm']).maximum, 1600);
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'glazed']).default, true);
+  assert.equal(spec(['sections', 0, 'windows_hint', 'count']).maximum, 20);
+  assert.equal(spec(['sections', 1, 'windows_hint', 'band_mm', 0]).minimum, 300);
+  assert.equal(spec(['sections', 1, 'windows_hint', 'band_mm', 1]).maximum, 4400);
 });
 
 test('a door is added with two leaves, in the zone that holds the fewest', () => {
@@ -106,4 +110,28 @@ test('a door is removed by its index, and the list with its last door', () => {
   assert.deepEqual(rmDoor(addDoor(volvo, 0), 0, 2), volvo);
   assert.equal('doors_hint' in rmDoor(rmDoor(volvo, 0, 0), 0, 0).sections[0], false);
   assert.equal(volvo.sections[0].doors_hint.length, 2);
+});
+
+const WIN = ['sections', 0, 'windows_hint'];
+
+test('the windows rows hint at what is drawn while nothing is hinted', () => {
+  const [count, ends] = SECTION.filter((f) => f.path?.[0] === 'windows_hint');
+  assert.deepEqual([count.hint(volvo, 0), count.hint(citaro, 0), count.hint(citaro, 1)], [7, 5, 3]);
+  assert.deepEqual(ends.hint(citaro, 1), [1250, 2622]);
+});
+
+test('one end of the window band is written, the other keeps its value or takes the default', () => {
+  const lo = setBand(volvo, 0, 0, 1400);
+  assert.deepEqual(get(lo, WIN), { band_mm: [1400, 3036] });
+  assert.deepEqual(get(setBand(lo, 0, 1, 2900), WIN), { band_mm: [1400, 2900] });
+  assert.deepEqual(setBand(citaro, 1, 1, 2500).sections[1].windows_hint, { band_mm: [1250, 2500] });
+  assert.deepEqual(validate(setBand(lo, 0, 1, 2900)), []);
+  assert.equal('windows_hint' in volvo.sections[0], false);
+});
+
+test('emptying an end of the window band drops it, and windows_hint with its last value', () => {
+  const lo = setBand(volvo, 0, 0, 1400), counted = set(lo, [...WIN, 'count'], 5);
+  assert.ok(same(setBand(lo, 0, 1, undefined), volvo));
+  assert.deepEqual(get(setBand(counted, 0, 0, undefined), WIN), { count: 5 });
+  assert.ok(same(set(setBand(counted, 0, 0, undefined), [...WIN, 'count'], undefined), volvo));
 });

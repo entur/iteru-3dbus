@@ -217,13 +217,18 @@ const doorList = (st, on, f) => {
   return el('div', {}, el('div', { className: 'door-top' }, name(f), add), list);
 };
 
-const LISTS = { axles, doors: doorList };
-const pairs = (o) => Object.entries(o).map(([k, v]) => `${k.replace(/_mm$/, '')} ${[v].flat().join('–')}`).join(', ').replace(/_/g, ' ');
-/** Read-only value: the label for an enum, one line per item of a list of objects, the schema default when absent. */
+/** One full-width row: bottom and top of section i's window band. An empty end shows the default one; emptying either drops the hinted band. */
+const bandRow = (st, on, f) => {
+  const i = f.path[1];
+  const end = (j, at) => input(st, { set: (_, v) => on.band(i, j, v) }, { path: [...f.path, j], kind: 'int', hint: () => f.hint()[j] }, { ariaLabel: `Section ${i + 1} window band ${at}` });
+  return el('div', { className: 'band' }, name(f), el('span', { className: 'list' }, end(0, 'bottom'), '–', end(1, 'top')));
+};
+
+const LISTS = { axles, doors: doorList, band: bandRow };
+/** Read-only value: the label for an enum, the schema default when absent. */
 const fixed = (inp, path) => {
   const v = get(inp, path) ?? spec(path).default;
   if (v === undefined) return NONE;
-  if (typeof v === 'object') return el('span', {}, ...[v].flat().map((o) => el('div', {}, pairs(o))));
   return typeof v === 'boolean' ? (v ? 'yes' : 'no') : (NAMES[path[0]]?.[v] ?? String(v));
 };
 
@@ -242,7 +247,7 @@ const group = (st, on, g) =>
   g === 'Sections'
     ? st.ok.peek().sections.flatMap((_, i) => [
         el('h3', {}, `Section ${i + 1}`),
-        rows(null, SECTION.filter((f) => !f.trailer || i).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path] } : f, (inp) => inp.sections[i]))),
+        rows(null, SECTION.filter((f) => !f.trailer || i).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path], hint: f.hint && (() => f.hint(st.ok.value, i)) } : f, (inp) => inp.sections[i]))),
       ])
     : [rows(null, FIELDS.filter((f) => f.group === g).map((f) => row(st, on, f)))];
 
@@ -254,8 +259,9 @@ const group = (st, on, g) =>
  *   the draft differs from the source
  * @param {{set: (path: (string|number)[], v: unknown) => void, add: (i: number) => void,
  *   rm: (i: number) => void, addDoor: (i: number) => void, rmDoor: (i: number, j: number) => void,
- *   reset: () => void}} on edit callbacks: a value, an axle more or less on section i, a door
- *   more on it or its door j less, drop all edits
+ *   band: (i: number, j: number, v: number|undefined) => void, reset: () => void}} on edit
+ *   callbacks: a value, an axle more or less on section i, a door more on it or its door j less,
+ *   end j of its window band, drop all edits
  * @returns {[HTMLElement, () => void]} the card and the function that disposes its effects
  */
 export const form = (st, on) =>
