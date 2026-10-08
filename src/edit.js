@@ -1,5 +1,5 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { doorWidth, hints, spans, total, tyreDia, windows } from './derive.js';
+import { dashDefault, doorWidth, hints, spans, total, tyreDia, windows } from './derive.js';
 
 const DEFS = schema.$defs;
 
@@ -30,6 +30,8 @@ export const FIELDS = [
   { group: 'Dimensions', label: 'Roof equipment', path: ['roof_equipment_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Band above doors', path: ['band_above_mm'], kind: 'int', edit: true, hint: () => spec(['band_above_mm']).default },
   { group: 'Dimensions', label: 'Window band height', path: ['win_band_height_mm'], kind: 'int', edit: true, hint: () => spec(['win_band_height_mm']).default },
+  { group: 'Dimensions', label: 'Band below grille', path: ['band_below_grill_mm'], kind: 'int', edit: true, hint: () => spec(['band_below_grill_mm']).default },
+  { group: 'Dimensions', label: 'Band below windshield', path: ['band_below_windshield_mm'], kind: 'int', edit: true, hint: dashDefault },
   { group: 'Tyre', label: 'Size', path: ['tyre', 'size'], kind: 'text', edit: true },
   { group: 'Tyre', label: 'Diameter', path: ['tyre', 'diameter_mm'], kind: 'int', edit: true },
   { group: 'Tyre', label: 'Effective diameter', of: (inp) => tyreDia(inp.tyre), unit: 'mm' },

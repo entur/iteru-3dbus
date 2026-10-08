@@ -19,6 +19,8 @@ import '3dbus/bus-3d';  // <bus-3d>: the 3D model, takes the maps as input
 map.inp = inp;             // synchronous: map.faces is current on the next line
 bus.faces = map.faces;
 bus.inp = inp;
+
+map.headlight = svg;       // optional: an <svg viewBox> of the left headlight, mirrored for the right one
 ```
 
 Remaining work: [issues](https://github.com/entur/iteru-3dbus/issues).

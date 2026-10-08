@@ -50,7 +50,10 @@ cards are host chrome, not part of either element.
   the zone gives a span clear of body ends and arches, the bias a position in it), `lintel` (the
   line doors and side windows reach up to: the body top less `band_above_mm`), `sill` (the line
   side windows reach down to: `win_band_height_mm` below `lintel`, never below the skirt; both
-  are root values of the input for the whole bus, their defaults read from the schema), `windows`
+  are root values of the input for the whole bus, their defaults read from the schema), `grill`
+  (the line the badge and the headlights stand on: `band_below_grill_mm`, a root value too, up
+  from the lower edge of the flat front), `dash` (the line the windshield reaches down to:
+  `band_below_windshield_mm` from that same edge, or 200 mm below `sill` when missing), `windows`
   (per section equal panes, a pillar between each two, in the runs its doors leave, straight
   across the wheel arches; `windows_hint.count` fixes how many). Input axles are
   section-relative; `layout` gives both `axles` (absolute from the front end) and `local`.
@@ -66,6 +69,13 @@ cards are host chrome, not part of either element.
   window panes from `derive.js` `doors` / `windows` are drawn on the right side only, mirrored by
   `flip`: the panes from `sill` up to `lintel`, the doors from their own sill up to `lintel`,
   both in the same frame (`framed`: one colour, width and corner radius).
+  The front map has a windscreen in that frame, from `lintel` down to `dash` but never closer
+  to the badge than `SCREEN_GAP` (an end map starts `CORNER` below the body top), left out
+  when there is no room for it; the badge
+  stands on `grill`, with a headlight on each side of it: one
+  drawing of the left one (`src/headlight.svg`, imported as text and parsed, or
+  `faces(inp, { headlight })`), placed again mirrored. `test/raw.js` lets node load that
+  `?raw` import; a test file reaching `vector.js` imports it first.
   `test/vector.test.js` runs `faces` against a stand-in `document`.
 - **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
@@ -83,7 +93,7 @@ cards are host chrome, not part of either element.
 - **`elem.js`** — what both elements share: `define`, `shadow`, `emit`, `upgrade`, and a `Base`
   class that lets the modules load where there is no DOM.
 - **`bus-2d.js`** — `<bus-2d>`: `inp` in, `faces` out (synchronously), shows the side named by
-  `face`. It shows clones, so the maps it hands out stay detached and untouched.
+  `face`. `headlight` takes an `<svg>` of the left headlight in place of the built-in one. It shows clones, so the maps it hands out stay detached and untouched.
 - **`bus-3d.js`** — `<bus-3d>`: needs both `inp` and `faces`; setting either queues one rebuild in
   a microtask. The first rebuild aims at `view`, later ones keep the camera, so a host that wants
   a re-aim calls `go()` on `busrender`. An invalid `inp`, or maps that do not fit its sections,
@@ -140,7 +150,7 @@ Tracked in `README.md`; these are parsed/validated but not drawn:
 - The door-overlap rule (5) for the placed doors
 - The left side: derived from the entry side, not mirrored; it has neither doors nor windows yet
 - Default door set per `bus_class`, window band per `floor_type`
-- Front template (`front.template`) and rear template; the front map only has the badge
+- Front template (`front.template`): the front map is one generic front (windscreen, headlights, badge); rear template
 - Two decks for `low_floor_lower_level`; `door_side`
 
 ## Conventions in this code

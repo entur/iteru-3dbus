@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { arch, bodyTop, layout, tyreDia } from './derive.js';
-import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, HUB_R, MM, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
+import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, END_EDGE, HUB_R, MM, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
 
 const ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20, TYRE_SEG = 48;
 const NUT_R = 18, NUT_RING = 160, NUTS = 10;
@@ -120,7 +120,7 @@ export const mkBus = (inp, maps) => {
   const wh = wheel(r, mats), ln = liner(r, w, mats.liner);  // one of each, cloned per axle: clones share geometry
   const skin = (map) => std(0xffffff, { map, roughness: BODY_ROUGH, metalness: BODY_METAL });
   const end = (f, x, rot) => {
-    const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX))), x, CLEARANCE + CORNER + f.h / 2, 0);
+    const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX))), x, END_EDGE + f.h / 2, 0);
     m.rotation.y = rot;
     return m;
   };

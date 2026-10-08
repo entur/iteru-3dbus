@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 260">
+  <!-- The left headlight as the front map shows it: outer edge at x = 0, the badge to the right. Mirrored for the right one. -->
+  <path d="M30,260 H430 Q460,260 460,230 V110 Q460,78 430,70 L62,2 Q0,-8 0,60 V230 Q0,260 30,260 Z" fill="#14181b"/>
+  <circle cx="104" cy="132" r="64" fill="#dfe9ef" stroke="#59636b" stroke-width="10"/>
+  <circle cx="104" cy="132" r="29" fill="#f8fcfe"/>
+  <circle cx="252" cy="154" r="52" fill="#dfe9ef" stroke="#59636b" stroke-width="10"/>
+  <circle cx="252" cy="154" r="23" fill="#f8fcfe"/>
+  <rect x="336" y="130" width="92" height="62" rx="14" fill="#f2a23a"/>
+  <path d="M428,230 H60 Q30,230 30,200 V92" fill="none" stroke="#f4fbff" stroke-width="16" stroke-linecap="round"/>
+</svg>

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import './raw.js';  // the elements import an .svg as text
 
 const SRC = new URL('../src/', import.meta.url);
 const LIB = ['core.js', 'bus-2d.js', 'bus-3d.js', 'index.js'], APP = ['./main.js', './ui.js', './edit.js', /^@preact/];

@@ -1,11 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { faces } from '../src/vector.js';
+import './raw.js';
+
+const { faces } = await import('../src/vector.js');  // after raw.js: vector.js imports an .svg as text
+
+const VIEWBOX = /viewBox="([^"]+)"/;
 
 /** Stand-in for the DOM vector.js builds into: elements that keep their tag, attributes and children. */
-globalThis.document = {
-  createElementNS: (_, tag) => ({ tag, attrs: {}, kids: [], setAttribute(k, v) { this.attrs[k] = v; }, append(...ks) { this.kids.push(...ks); } }),
+const node = (tag, attrs = {}, kids = []) => ({
+  tag, attrs, kids,
+  setAttribute(k, v) { this.attrs[k] = v; },
+  append(...ks) { this.kids.push(...ks); },
+  cloneNode() { return node(tag, { ...this.attrs }, this.kids.map((k) => (typeof k === 'string' ? k : k.cloneNode()))); },
+});
+globalThis.document = { createElementNS: (_, tag) => node(tag) };
+/** Stand-in parser: the root element of the markup with its viewBox, which is what a map needs of a drawing. */
+globalThis.DOMParser = class {
+  parseFromString(s) { return { documentElement: node('svg', { viewBox: VIEWBOX.exec(s)[1] }) }; }
 };
 
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
@@ -50,7 +62,7 @@ test('a side map has no wheel arches: it follows neither the axles nor the tyre'
 });
 
 /** The windows drawn on a side map: per window its frame and the pane in it. */
-const glazing = (f) => f.svg.kids.filter((k) => k.attrs.class === 'window').map(({ kids: [frame, pane] }) => ({ frame: frame?.attrs, pane: pane?.attrs }));
+const glazing = (f, cls = 'window') => f.svg.kids.filter((k) => k.attrs.class === cls).map(({ kids: [frame, pane] }) => ({ frame: frame?.attrs, pane: pane?.attrs }));
 /** What each window of a side map takes up: its frame. */
 const glass = (f) => glazing(f).map((w) => w.frame);
 const across = ({ x, width }) => [x, x + width], down = ({ y, height }) => [y, y + height];
@@ -88,4 +100,59 @@ test('a window is framed like a door: the same colour, width and corners around 
   assert.deepEqual(f.svg.kids.find((k) => k.attrs.class === 'window').kids.map((k) => k.tag), ['rect', 'rect']);
   assert.deepEqual([wp.x - wf.x, wf.x + wf.width - wp.x - wp.width, wp.y - wf.y, wf.y + wf.height - wp.y - wp.height], [w, w, w, w]);
   assert.deepEqual([wf.fill, wf.rx, wp.fill, wp.rx], [df.fill, df.rx, dp.fill, dp.rx]);
+});
+
+/** The parts of a map drawn under one class name. */
+const part = (f, cls) => f.svg.kids.filter((k) => k.attrs.class === cls);
+
+test('the front has a windscreen from the band above down to above the badge, centred', () => {
+  const screen = (inp) => (([f]) => ({ f, ...glazing(f, 'windscreen')[0], badge: part(f, 'badge')[0].attrs }))(faces(inp).front);
+  const { f, frame, pane, badge } = screen(volvo), [side] = glazing(faces(volvo).right[0]);
+  assert.equal(frame.y, 160);
+  assert.equal(screen({ ...volvo, band_above_mm: 330 }).frame.y, 240);
+  assert.equal(screen(citaro).frame.y, 160);
+  assert.ok(down(frame)[1] < badge.y);
+  assert.equal(across(frame)[0] + across(frame)[1], f.w);
+  assert.deepEqual([frame.fill, pane.fill], [side.frame.fill, side.pane.fill]);
+  assert.deepEqual(faces(volvo).rear[0].svg.kids.map((k) => k.tag), ['rect']);
+});
+
+test('the badge stands on the band below the grille, the windscreen making way and then going', () => {
+  const at = (inp) => (([f]) => ({ h: f.h, badge: down(part(f, 'badge')[0].attrs), screen: part(f, 'windscreen').map((s) => down(s.kids[0].attrs)) }))(faces(inp).front);
+  assert.deepEqual(at(volvo), { h: 2800, badge: [2505, 2765], screen: [[160, 1760]] });
+  assert.deepEqual(at({ ...volvo, band_below_windshield_mm: 900 }).screen, [[160, 1900]]);
+  assert.deepEqual(at({ ...volvo, band_below_windshield_mm: 0 }).screen, [[160, 2325]]);
+  assert.deepEqual(at({ ...volvo, band_below_grill_mm: 500, band_below_windshield_mm: 0 }), { h: 2800, badge: [2040, 2300], screen: [[160, 1860]] });
+  assert.deepEqual(at(citaro).badge, [2055, 2315]);
+  assert.deepEqual(at({ ...citaro, band_above_mm: 1000, band_below_grill_mm: 1200 }).screen, []);
+});
+
+const LAMP_BOX = VIEWBOX.exec(readFileSync(new URL('../src/headlight.svg', import.meta.url), 'utf8'))[1];
+
+test('a headlight on each side of the badge, the right one the left one mirrored', () =>
+  [volvo, citaro].forEach((inp) => {
+    const [f] = faces(inp).front, [l, r] = part(f, 'headlight'), badge = part(f, 'badge')[0].attrs;
+    assert.equal(part(f, 'headlight').length, 2);
+    assert.equal(l.attrs.viewBox, LAMP_BOX);
+    assert.equal(l.tag, 'svg');
+    assert.ok(l.attrs.x > 0 && l.attrs.x + l.attrs.width < badge.x);
+    assert.deepEqual(down(l.attrs), down(badge));
+    assert.deepEqual([r.tag, r.attrs.transform], ['g', `translate(${f.w},0) scale(-1,1)`]);
+    assert.deepEqual(r.kids.map(shape), [shape(l)]);
+  }));
+
+test('a given headlight replaces the default one, and stays untouched', () => {
+  const own = node('svg', { viewBox: '0 0 10 5' }, [node('circle')]);
+  const was = shape(own), [l, r] = part(faces(volvo, { headlight: own }).front[0], 'headlight');
+  assert.deepEqual([l.attrs.viewBox, l.kids.map((k) => k.tag)], ['0 0 10 5', ['circle']]);
+  assert.deepEqual(r.kids.map(shape), [shape(l)]);
+  assert.deepEqual(shape(own), was);
+  assert.notDeepEqual(shape(l), shape(part(faces(volvo).front[0], 'headlight')[0]));
+});
+
+test('a long badge text is set smaller, a short one at full size', () => {
+  const size = (inp) => faces(inp).front[0].svg.kids.find((k) => k.tag === 'text').attrs['font-size'];
+  assert.equal(size(volvo), 170);
+  assert.ok(size(citaro) < size(volvo) && size(citaro) > 0);
+  assert.ok(size({ ...volvo, front: { badge_text: 'x'.repeat(40) } }) < size(citaro));
 });

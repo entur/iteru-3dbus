@@ -20,6 +20,8 @@ const shown = (f) => {
  * SVG only: tabs, labels and numbers are up to the host.
  * - `inp` (property): bus input; set synchronously, so `faces` is current when the setter returns
  * - `face` (attribute and property): which side to show, a key of FACES
+ * - `headlight` (property): an `<svg>` with a viewBox drawing the left headlight as the front map
+ *   shows it; mirrored for the right one. null for the built-in one. Setting it redraws the maps
  * - `faces` (property, read-only): face maps of the last valid `inp`, null before the first
  * - `busfaces` event, `detail: { faces }`; `buserror` event, `detail: { errors }`, on an invalid
  *   `inp`, which leaves the last maps in place
@@ -27,6 +29,8 @@ const shown = (f) => {
 export class Bus2d extends Base {
   static observedAttributes = ['face'];
   #inp = null;
+  #ok = null;  // the last valid inp: what the maps are of
+  #light = null;
   #faces = null;
   #view = null;
 
@@ -37,7 +41,7 @@ export class Bus2d extends Base {
   }
 
   connectedCallback() {
-    upgrade(this, ['inp', 'face']);
+    upgrade(this, ['inp', 'face', 'headlight']);
   }
 
   attributeChangedCallback() {
@@ -52,9 +56,17 @@ export class Bus2d extends Base {
     this.#inp = v;
     const errs = validate(v);
     if (errs.length) return emit(this, 'buserror', { errors: errs });
-    this.#faces = faces(v);
-    this.#draw();
-    emit(this, 'busfaces', { faces: this.#faces });
+    this.#ok = v;
+    this.#map();
+  }
+
+  get headlight() {
+    return this.#light;
+  }
+
+  set headlight(v) {
+    this.#light = v ?? null;
+    this.#ok && this.#map();
   }
 
   get faces() {
@@ -68,6 +80,13 @@ export class Bus2d extends Base {
 
   set face(v) {
     this.setAttribute('face', v);
+  }
+
+  /** New maps of the last valid inp, shown and announced. */
+  #map() {
+    this.#faces = faces(this.#ok, { headlight: this.#light });
+    this.#draw();
+    emit(this, 'busfaces', { faces: this.#faces });
   }
 
   /** The maps of the shown side, front to rear; on the right side the front points right. */
