@@ -1,5 +1,5 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { hints, spans, total, tyreDia } from './derive.js';
+import { doorWidth, hints, spans, total, tyreDia } from './derive.js';
 
 const DEFS = schema.$defs;
 
@@ -28,6 +28,7 @@ export const FIELDS = [
   { group: 'Dimensions', label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Height', path: ['height_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Roof equipment', path: ['roof_equipment_mm'], kind: 'int', edit: true },
+  { group: 'Dimensions', label: 'Band above doors', path: ['band_above_doors_and_windows_pct'], unit: '%', kind: 'int', edit: true, hint: () => spec(['band_above_doors_and_windows_pct']).default },
   { group: 'Tyre', label: 'Size', path: ['tyre', 'size'], kind: 'text', edit: true },
   { group: 'Tyre', label: 'Diameter', path: ['tyre', 'diameter_mm'], kind: 'int', edit: true },
   { group: 'Tyre', label: 'Effective diameter', of: (inp) => tyreDia(inp.tyre), unit: 'mm' },
@@ -48,7 +49,8 @@ export const SUMS = [{ groups: ['Sections'], label: 'Tot.len', of: total, unit: 
 
 /**
  * Rows of one section, as FIELDS but with `path` and `of` relative to the section. `trailer`
- * rows exist from the second section on; kind `axles` is the list with its add and remove.
+ * rows exist from the second section on; kinds `axles` and `doors` are lists with their add and
+ * remove.
  */
 export const SECTION = [
   { label: 'Length', path: ['length_mm'], kind: 'int', edit: true },
@@ -57,8 +59,21 @@ export const SECTION = [
   { label: 'Front overhang', of: (s) => spans(s).front, unit: 'mm' },
   { label: 'Wheelbase', of: (s) => spans(s).wheelbases, unit: 'mm' },
   { label: 'Rear overhang', of: (s) => spans(s).rear, unit: 'mm' },
-  { label: 'Doors hint', path: ['doors_hint'] },
+  { label: 'Doors', path: ['doors_hint'], kind: 'doors', edit: true },
   { label: 'Windows hint', path: ['windows_hint'] },
+];
+
+/**
+ * Rows of one door hint, as SECTION but relative to the hint: every value is drawn, so every one
+ * is editable. Kind `enum` picks one of the schema's values; `hint` reads the hint itself.
+ */
+export const DOOR = [
+  { label: 'Zone', path: ['zone'], kind: 'enum', edit: true },
+  { label: 'Bias', path: ['bias'], kind: 'enum', edit: true },
+  { label: 'Leaves', path: ['leaves'], kind: 'enum', edit: true },
+  { label: 'Width', path: ['width_mm'], kind: 'int', edit: true, hint: (d) => doorWidth({ leaves: d.leaves }) },
+  { label: 'Glazed', path: ['glazed'], kind: 'bool', edit: true },
+  { label: 'Axle gap', path: ['axle_gap'], kind: 'int', edit: true, hint: () => DEFS.door_hint.properties.axle_gap.default },
 ];
 
 const bare = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
@@ -114,14 +129,18 @@ export const same = (a, b) => {
  */
 export const shifted = (inp, f, v) => (v === undefined ? undefined : get(inp, f.to) + v - f.of(inp));
 
+/** The schema one step down: a property, or for an index the items of a list; a $ref is followed. */
+const down = (s, k) => ((n) => (n.$ref ? DEFS[n.$ref.split('/').at(-1)] : n))(typeof k === 'number' ? s.items : s.properties[k]);
+
 /**
  * The schema of the value at a path: limits, default, enum.
  * @param {(string|number)[]} path keys from the root; under sections the index picks lead or trailer
- * @returns {object} schema node, section_common merged with the lead or trailer rules
+ * @returns {object} schema node; for a value of a section, section_common merged with the lead
+ *   or trailer rules, and from there on down into its lists
  */
 export const spec = ([k, ...rest]) =>
   k === 'sections'
-    ? { ...DEFS.section_common.properties[rest[1]], ...(rest[0] ? DEFS.trailer_section : DEFS.lead_section).properties[rest[1]] }
+    ? rest.slice(2).reduce(down, { ...DEFS.section_common.properties[rest[1]], ...(rest[0] ? DEFS.trailer_section : DEFS.lead_section).properties[rest[1]] })
     : rest.reduce((s, x) => s.properties[x], schema.properties[k]);
 
 /**
@@ -152,3 +171,30 @@ export const addAxle = (inp, i) => {
  * @returns {object} the edited copy
  */
 export const rmAxle = (inp, i) => set(inp, ['sections', i, 'axles_mm'], inp.sections[i].axles_mm.slice(0, -1));
+
+/**
+ * Appends a door hint to section i: two leaves, in the zone that holds the fewest doors so far.
+ * A section with one axle has no zone between axles.
+ * @param {object} inp bus input
+ * @param {number} i section index
+ * @returns {object} the edited copy
+ */
+export const addDoor = (inp, i) => {
+  const s = inp.sections[i], ds = s.doors_hint ?? [], n = (z) => ds.filter((d) => d.zone === z).length;
+  const zone = DEFS.door_hint.properties.zone.enum
+    .filter((z) => z !== 'between_axles' || s.axles_mm.length > 1)
+    .reduce((a, z) => (n(z) < n(a) ? z : a));
+  return set(inp, ['sections', i, 'doors_hint'], [...ds, { zone, leaves: 2 }]);
+};
+
+/**
+ * Removes door hint j of section i, and the list with its last one.
+ * @param {object} inp bus input
+ * @param {number} i section index
+ * @param {number} j index of the hint
+ * @returns {object} the edited copy
+ */
+export const rmDoor = (inp, i, j) => {
+  const ds = inp.sections[i].doors_hint.filter((_, k) => k !== j);
+  return set(inp, ['sections', i, 'doors_hint'], ds.length ? ds : undefined);
+};

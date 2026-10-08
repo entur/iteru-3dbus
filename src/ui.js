@@ -1,13 +1,15 @@
 import { computed, effect } from '@preact/signals-core';
 import { FACES } from './bus-2d.js';
 import { VIEWS } from './bus-3d.js';
-import { FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec } from './edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec } from './edit.js';
 
 const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
 const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
 const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'Normal floor', low_floor_lower_level: 'Double deck, low lower deck' };
-const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR };
-const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows and roof pod. Doors, windows and the front and rear templates are not drawn yet.';
+const ZONE = { front_overhang: 'Front overhang', between_axles: 'Between axles', rear_overhang: 'Rear overhang' };
+const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES = { 1: '1 leaf', 2: '2 leaves' };
+const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
+const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod and the hinted doors. Windows and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
@@ -136,12 +138,19 @@ const fid = (f) => `f-${f.to ? 'of-' : ''}${key(f.to ?? f.path)}`;
 
 /**
  * Control for one editable value: shows the draft, commits through on.set, marked while an edit of it has the draft invalid.
- * A derived row shows its value of the draft and commits to `f.to`, without that value's limits.
+ * A derived row shows its value of the draft and commits to `f.to`, without that value's limits. Kind `enum` is a select
+ * over the schema's values, showing the default while the value is absent.
  */
 const input = (st, on, f, more = {}) => {
   const { kind } = f, path = f.to ?? f.path, k = key(path), sp = f.to ? {} : spec(path);
   const val = () => (f.to ? f.of(st.draft.value) : get(st.draft.value, path));
-  const base = { type: TYPE[kind], id: fid(f), ariaInvalid: () => String(st.marks.value.includes(k)), ...more };
+  const mark = { id: fid(f), ariaInvalid: () => String(st.marks.value.includes(k)), ...more }, base = { type: TYPE[kind], ...mark };
+  if (kind === 'enum') {
+    const opts = sp.enum.map((v) => el('option', { value: v }, NAMES[path.at(-1)]?.[v] ?? String(v)));
+    const s = el('select', { ...mark, onchange: (e) => on.set(path, sp.enum.find((v) => String(v) === e.target.value)) }, ...opts);
+    bind(() => (s.value = String(val() ?? sp.default ?? '')));  // after the options are in: a select only takes a value it holds
+    return s;
+  }
   if (kind === 'bool') return el('input', { ...base, checked: () => val() ?? sp.default ?? false, onchange: (e) => on.set(path, e.target.checked) });
   if (kind === 'color') {
     const pick = framed((v) => on.set(path, v));
@@ -178,6 +187,37 @@ const axles = (st, on, f) => {
   );
 };
 
+/** One door hint of section i: zone, bias and remove on a line, below it leaves, width, glazing and, between three axles, the gap. */
+const door = (st, on, i, j, rm) => {
+  const at = ['sections', i, 'doors_hint', j], tag = `Section ${i + 1} door ${j + 1}`;
+  const ctl = (f) => input(st, on, { ...f, path: [...at, ...f.path], hint: f.hint && ((inp) => f.hint(get(inp, at) ?? {})) }, { ariaLabel: `${tag} ${f.label.toLowerCase()}` });
+  const c = Object.fromEntries(DOOR.map((f) => [f.path[0], ctl(f)]));
+  const gapless = () => get(st.draft.value, at)?.zone !== 'between_axles' || get(st.draft.value, ['sections', i, 'axles_mm']).length < 3;
+  return el(
+    'div', { className: 'door' },
+    el('span', { className: 'n' }, String(j + 1)), c.zone, c.bias,
+    el('button', { type: 'button', ariaLabel: `Remove ${tag.toLowerCase()}`, onclick: rm }, '−'),
+    el('span', { className: 'more' }, c.leaves, el('span', {}, c.width_mm, el('small', {}, ' mm')), el('label', {}, c.glazed, ' glazed'), el('label', { hidden: gapless }, 'gap ', c.axle_gap)),
+  );
+};
+
+/** One full-width row: the door hints of section i, each with its remove, and add. Only the list is rebuilt, and only when the count changes. */
+const doorList = (st, on, f) => {
+  const i = f.path[1], path = ['sections', i, 'doors_hint'], max = spec(path).maxItems, sec = `section ${i + 1}`;
+  const n = computed(() => get(st.draft.value, path)?.length ?? 0);
+  const list = el('div', { className: 'doors' });
+  // a control that goes away or hits its limit hands focus on: add to the new door, remove to its neighbour or back to add
+  const add = el('button', { type: 'button', ariaLabel: `Add a door to ${sec}`, disabled: () => n.value >= max, onclick: (e) => (on.addDoor(i), e.target.disabled && list.lastChild.querySelector('select').focus()) }, '+');
+  const rm = (j) => () => (on.rmDoor(i, j), ((list.children[j] ?? list.lastChild)?.querySelector('button') ?? add).focus());
+  bind(() => {
+    const [kids, stop] = scoped(() => Array.from({ length: n.value }, (_, j) => door(st, on, i, j, rm(j))));
+    list.replaceChildren(...kids);
+    return stop;
+  });
+  return el('div', {}, el('div', { className: 'door-top' }, name(f), add), list);
+};
+
+const LISTS = { axles, doors: doorList };
 const pairs = (o) => Object.entries(o).map(([k, v]) => `${k.replace(/_mm$/, '')} ${[v].flat().join('–')}`).join(', ').replace(/_/g, ' ');
 /** Read-only value: the label for an enum, one line per item of a list of objects, the schema default when absent. */
 const fixed = (inp, path) => {
@@ -191,7 +231,7 @@ const fixed = (inp, path) => {
 const row = (st, on, f, at = (x) => x) => {
   if (f.of && !f.edit) return [name(f), () => show(f.of(at(st.ok.value)))];
   if (!f.edit) return [name(f), fixed(st.ok.peek(), f.path)];
-  return f.kind === 'axles' ? [axles(st, on, f)] : [name(f, fid(f)), input(st, on, f)];
+  return LISTS[f.kind] ? [LISTS[f.kind](st, on, f)] : [name(f, fid(f)), input(st, on, f)];
 };
 
 /** Title row of a group: its name, then greyed the derived values that sum it up. */
@@ -213,8 +253,9 @@ const group = (st, on, g) =>
  *   input, its last valid state, the keys of the edits made since it was last valid, and whether
  *   the draft differs from the source
  * @param {{set: (path: (string|number)[], v: unknown) => void, add: (i: number) => void,
- *   rm: (i: number) => void, reset: () => void}} on edit callbacks: a value, an axle more or
- *   less on section i, drop all edits
+ *   rm: (i: number) => void, addDoor: (i: number) => void, rmDoor: (i: number, j: number) => void,
+ *   reset: () => void}} on edit callbacks: a value, an axle more or less on section i, a door
+ *   more on it or its door j less, drop all edits
  * @returns {[HTMLElement, () => void]} the card and the function that disposes its effects
  */
 export const form = (st, on) =>

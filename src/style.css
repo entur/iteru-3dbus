@@ -16,7 +16,7 @@ button { font: inherit; font-size: 15px; color: var(--ink); background: transpar
 button:hover { background: rgba(110, 124, 134, 0.14); }
 button[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); }
 button:disabled { opacity: 0.35; cursor: default; background: transparent; }
-button:focus-visible, summary:focus-visible, input:focus-visible, #src:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, #src:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 header { position: fixed; left: 20px; top: 16px; max-width: 70vw; }
 header h1, header p { pointer-events: none; }
@@ -45,7 +45,7 @@ figure { margin: 0; }
 .tabs button { padding: 3px 10px; font-size: 14px; }
 figcaption { color: var(--steel); font-size: 13px; margin-top: 4px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.head button, .axles button, dialog button { border: 1px solid var(--line); }
+.head button, .axles button, .door-top button, .door button, dialog button { border: 1px solid var(--line); }
 .head button { padding: 1px 10px; font-size: 14px; }
 .input { padding-bottom: 10px; }
 .input h2 { margin: 0; }
@@ -58,20 +58,28 @@ h3 { margin: 4px 0 0; font-size: 13px; font-weight: 400; color: var(--steel); }
 td small { color: var(--steel); font-size: 13px; }
 details td:first-child { white-space: nowrap; }
 details td:last-child { overflow-wrap: anywhere; }
-input { font: inherit; color: inherit; }
+input, select { font: inherit; color: inherit; }
 input[type="text"], input[type="number"] { width: 100%; min-width: 7ch; padding: 0 0 0 2px; text-align: right; background: transparent; border: 0; border-bottom: 1px solid var(--steel); border-radius: 2px 2px 0 0; font-variant-numeric: tabular-nums; appearance: textfield; }
 input[type="number"] { width: 9ch; }
 input::-webkit-inner-spin-button { appearance: none; }
 input[type="text"]:hover, input[type="number"]:hover, input[type="text"]:focus, input[type="number"]:focus { background: rgba(110, 124, 134, 0.14); }
-input[aria-invalid="true"] { border-bottom: 2px solid var(--warn); }
+select { min-width: 0; padding: 0 2px; background: transparent; border: 0; border-bottom: 1px solid var(--steel); border-radius: 2px 2px 0 0; cursor: pointer; }
+select:hover, select:focus { background: rgba(110, 124, 134, 0.14); }
+option { color: var(--ink); background: var(--sky); }
+input[aria-invalid="true"], select[aria-invalid="true"] { border-bottom: 2px solid var(--warn); }
 input[type="checkbox"] { width: 16px; height: 16px; margin: 0; vertical-align: middle; accent-color: var(--amber); }
 input[type="color"] { width: 34px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: transparent; cursor: pointer; }
 .swatch { display: inline-flex; align-items: center; gap: 8px; }
 code { font: inherit; font-variant-numeric: tabular-nums; }
-.axles, .list { display: flex; align-items: center; gap: 4px; }
-.axles > span:first-child { margin-right: auto; }
-.axles input[type="number"] { width: 5.5ch; min-width: 0; }
-.axles button { padding: 0 7px; line-height: 20px; }
+.axles, .list, .door-top { display: flex; align-items: center; gap: 4px; }
+.axles > span:first-child, .door-top > span:first-child { margin-right: auto; }
+.axles input[type="number"], .door input[type="number"] { width: 5.5ch; min-width: 0; }
+.axles button, .door-top button, .door button { padding: 0 7px; line-height: 20px; }
+.door { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; padding: 4px 0; text-align: left; }
+.door .n { width: 1ch; color: var(--steel); }
+.door > select:first-of-type { flex: 1; }
+.door .more { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; padding-left: calc(1ch + 6px); }
+.door [hidden] { display: none; }
 dialog { max-width: 340px; padding: 18px 20px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font-size: 16px; backdrop-filter: blur(8px); }
 dialog::backdrop { background: rgba(20, 28, 34, 0.35); }
 dialog p { margin: 0 0 14px; line-height: 1.35; }

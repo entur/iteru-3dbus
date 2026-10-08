@@ -2,7 +2,7 @@ import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import './bus-2d.js';
 import './bus-3d.js';
-import { addAxle, rmAxle, same, set } from './edit.js';
+import { addAxle, addDoor, rmAxle, rmDoor, same, set } from './edit.js';
 import { form, header, mapCard, viewBar } from './ui.js';
 import { validate } from './validate.js';
 
@@ -56,6 +56,8 @@ const on = {
   set: (path, v) => commit(set(draft.value, path, v), path.join('.')),
   add: (i) => commit(addAxle(draft.value, i), `sections.${i}.axles_mm`),
   rm: (i) => commit(rmAxle(draft.value, i), `sections.${i}.axles_mm`),
+  addDoor: (i) => commit(addDoor(draft.value, i), `sections.${i}.doors_hint`),
+  rmDoor: (i, j) => commit(rmDoor(draft.value, i, j), `sections.${i}.doors_hint`),
   reset: () => select(id.value),
 };
 
