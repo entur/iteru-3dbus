@@ -1,10 +1,11 @@
-import { bodyTop, doors, layout, lintel } from './derive.js';
+import { band, bodyTop, doors, layout, windows } from './derive.js';
 import { CLEARANCE, CORNER } from './dims.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const BADGE_AT = 0.3, BADGE_W = 0.5, BADGE_H = 260, BADGE_FONT = 170, BADGE_R = 40;
 const BADGE = '#2b3136', BADGE_INK = '#eef2f5', FONT = 'Arial, Helvetica, sans-serif';
 const DOOR_SILL = 40, DOOR_RIM = 45, DOOR_R = 30;  // sill above the skirt, frame around a pane
+const WIN_R = 40;
 const FRAME = '#2b3136', GLASS = '#6f8797';
 
 const svg = (tag, attrs = {}, ...kids) => {
@@ -27,18 +28,21 @@ const door = (y, y1, fill) => ({ x0, x1, leaves, glazed }) => {
   );
 };
 
-/** A door span as it lies on the mirrored right side of a box. */
+/** A window pane on a side face, from y down to y1. */
+const pane = (y, y1) => ({ x0, x1 }) => svg('rect', { class: 'window', x: x0, y, width: x1 - x0, height: y1 - y, rx: WIN_R, fill: GLASS });
+
+/** A door or window span as it lies on the mirrored right side of a box. */
 const flip = (len) => (d) => ({ ...d, x0: len - d.x1, x1: len - d.x0 });
 
 /**
- * Side face of one box: skirt to roof with rounded corners, and the doors on top, reaching up to
- * a band below the roof. No wheel arch: the model cuts those out of the box, the map runs on
- * under them.
+ * Side face of one box: skirt to roof with rounded corners, the window panes across the band
+ * [lo, hi] above ground and the doors, which reach up to its top. No wheel arch: the model cuts
+ * those out of the box, the map runs on under them.
  */
-const side = (len, top, fill, ds = [], band = 0) => {
+const side = (len, top, fill, ds = [], ws = [], [lo, hi] = [0, top]) => {
   const h = top - CLEARANCE, c = CORNER;
   const d = `M${c},${h} L${len - c},${h} Q${len},${h} ${len},${h - c} L${len},${c} Q${len},0 ${len - c},0 L${c},0 Q0,0 0,${c} L0,${h - c} Q0,${h} ${c},${h} Z`;
-  return face(len, h, svg('path', { d, fill }), ...ds.map(door(band, h - DOOR_SILL, fill)));
+  return face(len, h, svg('path', { d, fill }), ...ws.map(pane(top - hi, top - lo)), ...ds.map(door(top - hi, h - DOOR_SILL, fill)));
 };
 
 /** Front face: body colour with the brand badge that stands in for the grille. */
@@ -58,16 +62,16 @@ const front = (w, h, fill, text) => {
  * exactly what is projected: nothing that is separate geometry (wheels, bellows, roof pod), and
  * nothing the model cuts out of a box (wheel arches).
  * Side maps come one per section, front to rear; on the right side the front points right. The
- * hinted doors are on the right side only.
+ * hinted doors and the side windows are on the right side only.
  * @param {object} inp validated bus input
  * @returns {Record<'right'|'left'|'front'|'rear', {svg: SVGSVGElement, w: number, h: number}[]>}
  */
 export const faces = (inp) => {
   const top = bodyTop(inp), fill = inp.base_color.hex;
-  const boxes = layout(inp), placed = doors(inp), band = top - lintel(inp);
+  const boxes = layout(inp), placed = doors(inp), glass = windows(inp);
   const w = inp.width_mm, h = top - CLEARANCE - 2 * CORNER;
   return {
-    right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), band)),
+    right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band(inp, i))),
     left: boxes.map((b) => side(b.len, top, fill)),
     front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand)],
     rear: [face(w, h, plain(w, h, fill))],

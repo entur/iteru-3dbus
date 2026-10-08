@@ -62,9 +62,9 @@ cards are host chrome, not part of either element.
   3D face textures and the `<bus-2d>` element: it shows exactly what is projected onto the model,
   so nothing that is separate geometry (wheels, bellows, roof pod) goes into a face map, and
   nothing the model cuts out of a box either: a side map has no wheel arches. New surface
-  detail (windows, front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors
-  from `derive.js` `doors` are drawn on the right side only, mirrored by `flip`, from their
-  sill up to `lintel`.
+  detail (front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors and
+  window panes from `derive.js` `doors` / `windows` are drawn on the right side only, mirrored by
+  `flip`: the panes across the section's `band`, the doors from their sill up to its top.
   `test/vector.test.js` runs `faces` against a stand-in `document`.
 - **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
@@ -135,7 +135,7 @@ cards are host chrome, not part of either element.
 Tracked in `README.md`; these are parsed/validated but not drawn:
 
 - The door-overlap rule (5) for the placed doors
-- Windows: equal panes in the band, skipping door spans; left side derived, not mirrored
+- The left side: derived from the entry side, not mirrored; it has neither doors nor windows yet
 - Default door set per `bus_class`, window band per `floor_type`
 - Front template (`front.template`) and rear template; the front map only has the badge
 - Two decks for `low_floor_lower_level`; `door_side`

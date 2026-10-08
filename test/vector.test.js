@@ -48,3 +48,33 @@ test('a side map has no wheel arches: it follows neither the axles nor the tyre'
   assert.deepEqual(sides(faces(moved)), sides(faces(bare)));
   assert.deepEqual(faces(citaro).left.map((f) => f.svg.kids.map((k) => k.tag)), [['path'], ['path']]);
 });
+
+/** The window panes drawn on a side map. */
+const glass = (f) => f.svg.kids.filter((k) => k.attrs.class === 'window').map((k) => k.attrs);
+const across = ({ x, width }) => [x, x + width], down = ({ y, height }) => [y, y + height];
+
+test('the right side shows its windows mirrored, the left side none', () => {
+  const { right, left } = faces(citaro);
+  assert.deepEqual(right.map((f) => glass(f).map(across)), [
+    [[7318, 8902], [5655, 7238], [2950, 4245], [1575, 2870], [200, 1495]],
+    [[4233, 5520], [2865, 4153], [1498, 2785]],
+  ]);
+  assert.deepEqual(left.map((f) => glass(f).length), [0, 0]);
+});
+
+test('a pane spans the window band, and a hinted band moves the door tops of its own section with it', () => {
+  const banded = { ...citaro, sections: [citaro.sections[0], { ...citaro.sections[1], windows_hint: { band_mm: [1400, 2500] } }] };
+  const [lead, trailer] = faces(banded).right;
+  assert.deepEqual(down(glass(faces(volvo).right[0])[0]), [264, 2050]);
+  assert.deepEqual([down(glass(lead)[0]), down(drawn(lead)[0].frame)], [[228, 1600], [228, 2490]]);
+  assert.deepEqual([down(glass(trailer)[0]), down(drawn(trailer)[0].frame)], [[350, 1450], [350, 2490]]);
+});
+
+test('every right side has panes, all glass, none on a door', () =>
+  [volvo, citaro].flatMap((inp) => faces(inp).right.map((f) => [inp, f])).forEach(([inp, f]) => {
+    assert.ok(glass(f).length > 0);
+    glass(f).forEach((p) => {
+      assert.notEqual(p.fill, inp.base_color.hex);
+      assert.ok(drawn(f).map(span).every(([d0, d1]) => across(p)[1] < d0 || across(p)[0] > d1));
+    });
+  }));
