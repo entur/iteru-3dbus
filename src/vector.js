@@ -4,7 +4,7 @@ import LAMP from './headlight.svg?raw';
 
 const NS = 'http://www.w3.org/2000/svg', SVG = 'image/svg+xml';
 const BADGE_W = 0.5, BADGE_H = 260, BADGE_FONT = 170, BADGE_R = 40;
-const BADGE_PAD = 60, BADGE_SPACING = 10, GLYPH = 0.72;  // text kept inside the badge: side padding, letter spacing, glyph width per font size
+const BADGE_PAD = 60, BADGE_SPACING = 10, GLYPH = 0.72;  // text kept inside the badge: side padding, letter spacing at full size, glyph width per font size
 const BADGE = '#2b3136', BADGE_INK = '#eef2f5', FONT = 'Arial, Helvetica, sans-serif';
 const DOOR_SILL = 40;  // door sill above the skirt
 const FRAME = '#2b3136', FRAME_W = 45, FRAME_R = 30;  // around every pane of a door or window: colour, width, corner radius
@@ -61,12 +61,13 @@ const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).d
  * line, a headlight on each side of it (a copy of the drawing fitted in, and the same mirrored;
  * the drawing itself stays untouched), and a windscreen from the lintel line down to the dash
  * line, stopping above the badge and left out where that leaves it no room. The lines are y on
- * the map. A long badge text is set smaller, so it stays inside the badge and clear of the
- * headlights.
+ * the map. A long badge text is set smaller, its letter spacing with it, so it stays inside the
+ * badge and clear of the headlights however long it is.
  */
 const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light) => {
   const by = y1 - BADGE_H, cy = y1 - BADGE_H / 2, bx = (w * (1 - BADGE_W)) / 2, ys = Math.min(y2, by - SCREEN_GAP);
-  const size = Math.min(BADGE_FONT, ((w * BADGE_W - 2 * BADGE_PAD) / text.length - BADGE_SPACING) / GLYPH);
+  const label = text.toUpperCase(), track = BADGE_SPACING / BADGE_FONT;  // letter spacing per font size
+  const size = Math.min(BADGE_FONT, (w * BADGE_W - 2 * BADGE_PAD) / (label.length * (GLYPH + track)));
   const left = attr(light.cloneNode(true), { class: 'headlight', x: LAMP_SIDE, y: by, width: bx - LAMP_GAP - LAMP_SIDE, height: BADGE_H });
   return face(
     w, h,
@@ -75,7 +76,7 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light) => {
     left,
     svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
     svg('rect', { class: 'badge', x: bx, y: by, width: w * BADGE_W, height: BADGE_H, rx: BADGE_R, fill: BADGE }),
-    svg('text', { x: w / 2, y: cy, fill: BADGE_INK, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': BADGE_SPACING, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text.toUpperCase()),
+    svg('text', { x: w / 2, y: cy, fill: BADGE_INK, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, label),
   );
 };
 

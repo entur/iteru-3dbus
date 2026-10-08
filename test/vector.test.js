@@ -151,8 +151,10 @@ test('a given headlight replaces the default one, and stays untouched', () => {
 });
 
 test('a long badge text is set smaller, a short one at full size', () => {
-  const size = (inp) => faces(inp).front[0].svg.kids.find((k) => k.tag === 'text').attrs['font-size'];
-  assert.equal(size(volvo), 170);
+  const text = (inp) => faces(inp).front[0].svg.kids.find((k) => k.tag === 'text').attrs;
+  const size = (inp) => text(inp)['font-size'], long = (n) => ({ ...volvo, front: { badge_text: 'x'.repeat(n) } });
+  assert.deepEqual([size(volvo), text(volvo)['letter-spacing']], [170, 10]);
   assert.ok(size(citaro) < size(volvo) && size(citaro) > 0);
-  assert.ok(size({ ...volvo, front: { badge_text: 'x'.repeat(40) } }) < size(citaro));
+  assert.ok(size(long(40)) < size(citaro));
+  assert.ok(size(long(500)) > 0 && text(long(500))['letter-spacing'] > 0);
 });
