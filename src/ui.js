@@ -217,14 +217,7 @@ const doorList = (st, on, f) => {
   return el('div', {}, el('div', { className: 'door-top' }, name(f), add), list);
 };
 
-/** One full-width row: bottom and top of section i's window band. An empty end shows the default one; emptying either drops the hinted band. */
-const bandRow = (st, on, f) => {
-  const i = f.path[1];
-  const end = (j, at) => input(st, { set: (_, v) => on.band(i, j, v) }, { path: [...f.path, j], kind: 'int', hint: () => f.hint()[j] }, { ariaLabel: `Section ${i + 1} window band ${at}` });
-  return el('div', { className: 'band' }, name(f), el('span', { className: 'list' }, end(0, 'bottom'), '–', end(1, 'top')));
-};
-
-const LISTS = { axles, doors: doorList, band: bandRow };
+const LISTS = { axles, doors: doorList };
 /** Read-only value: the label for an enum, the schema default when absent. */
 const fixed = (inp, path) => {
   const v = get(inp, path) ?? spec(path).default;
@@ -259,9 +252,8 @@ const group = (st, on, g) =>
  *   the draft differs from the source
  * @param {{set: (path: (string|number)[], v: unknown) => void, add: (i: number) => void,
  *   rm: (i: number) => void, addDoor: (i: number) => void, rmDoor: (i: number, j: number) => void,
- *   band: (i: number, j: number, v: number|undefined) => void, reset: () => void}} on edit
- *   callbacks: a value, an axle more or less on section i, a door more on it or its door j less,
- *   end j of its window band, drop all edits
+ *   reset: () => void}} on edit callbacks: a value, an axle more or less on section i, a door
+ *   more on it or its door j less, drop all edits
  * @returns {[HTMLElement, () => void]} the card and the function that disposes its effects
  */
 export const form = (st, on) =>

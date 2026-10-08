@@ -33,9 +33,9 @@ test('a door has one pane per leaf inside its frame, glass or body colour', () =
 
 test('a door runs from its sill up to the band above doors and windows', () => {
   const ends = (inp) => (({ y, height }) => [y, y + height])(drawn(faces(inp).right[0])[0].frame);
-  assert.deepEqual(ends(volvo), [264, 2940]);
-  assert.deepEqual(ends(citaro), [228, 2490]);
-  assert.deepEqual(ends({ ...volvo, band_above_doors_and_windows_pct: 10 }), [330, 2940]);
+  assert.deepEqual(ends(volvo), [250, 2940]);
+  assert.deepEqual(ends(citaro), [250, 2490]);
+  assert.deepEqual(ends({ ...volvo, band_above_mm: 330 }), [330, 2940]);
 });
 
 /** A map as plain data: tag, attributes and children of every element. */
@@ -64,12 +64,12 @@ test('the right side shows its windows mirrored, the left side none', () => {
   assert.deepEqual(left.map((f) => glass(f).length), [0, 0]);
 });
 
-test('a pane spans the window band, and a hinted band moves the door tops of its own section with it', () => {
-  const banded = { ...citaro, sections: [citaro.sections[0], { ...citaro.sections[1], windows_hint: { band_mm: [1400, 2500] } }] };
-  const [lead, trailer] = faces(banded).right;
-  assert.deepEqual(down(glass(faces(volvo).right[0])[0]), [264, 2050]);
-  assert.deepEqual([down(glass(lead)[0]), down(drawn(lead)[0].frame)], [[228, 1600], [228, 2490]]);
-  assert.deepEqual([down(glass(trailer)[0]), down(drawn(trailer)[0].frame)], [[350, 1450], [350, 2490]]);
+test('a pane hangs from the band above, as high as the window band, on every section alike', () => {
+  const both = (inp) => faces(inp).right.map((f) => [down(glass(f)[0]), down(drawn(f)[0].frame)]);
+  assert.deepEqual(down(glass(faces(volvo).right[0])[0]), [250, 1650]);
+  assert.deepEqual(both(citaro), [[[250, 1650], [250, 2490]], [[250, 1650], [250, 2490]]]);
+  assert.deepEqual(both({ ...citaro, band_above_mm: 400, win_band_height_mm: 1000 }), [[[400, 1400], [400, 2490]], [[400, 1400], [400, 2490]]]);
+  assert.deepEqual(down(glass(faces({ ...citaro, win_band_height_mm: 2500 }).right[0])[0]), [250, 2530]);
 });
 
 test('every right side has windows, their panes glass, none on a door', () =>

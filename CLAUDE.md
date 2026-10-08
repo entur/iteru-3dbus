@@ -41,18 +41,18 @@ the imports and fails when a layer reaches the wrong way. Tabs, caption, view ba
 cards are host chrome, not part of either element.
 
 - **`validate.js`** — Ajv (draft 2020-12) against the schema, then the `rules` array for what JSON
-  Schema cannot express. The rules are numbered (1)–(6) in the schema's top-level `$comment`;
-  (5) (door overlap) is not checked yet, the others are. Cross-field rules only run
+  Schema cannot express. The rules are numbered (1)–(5) in the schema's top-level `$comment`;
+  (1)–(4) are implemented, (5) (door overlap) is not checked yet. Cross-field rules only run
   when the schema passes. Returns `string[]`, empty when valid.
 - **`derive.js`** — pure functions, no DOM, no three: `layout` (per-section `x0`, absolute axle x,
   bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `hints`, `arch` (the
   wheel-arch circle the model cuts out), `doors` (every hint placed as a span per section:
   the zone gives a span clear of body ends and arches, the bias a position in it), `lintel` (the
-  line doors and side windows reach up to: the body top less `band_above_doors_and_windows_pct`,
-  whose default is read from the schema), `band` (a section's window band: its
-  `windows_hint.band_mm`, else a default sill up to `lintel`; its doors reach up to the band's top
-  too), `windows` (per section equal panes, a pillar between each two, in the runs its doors
-  leave, straight across the wheel arches; `windows_hint.count` fixes how many). Input axles are
+  line doors and side windows reach up to: the body top less `band_above_mm`), `sill` (the line
+  side windows reach down to: `win_band_height_mm` below `lintel`, never below the skirt; both
+  are root values of the input for the whole bus, their defaults read from the schema), `windows`
+  (per section equal panes, a pillar between each two, in the runs its doors leave, straight
+  across the wheel arches; `windows_hint.count` fixes how many). Input axles are
   section-relative; `layout` gives both `axles` (absolute from the front end) and `local`.
   Node-safe, so it is what the tests cover.
 - **`dims.js`** — fixed body proportions (clearance, corner radius, arch gap, tyre, roof pod) shared
@@ -64,8 +64,8 @@ cards are host chrome, not part of either element.
   nothing the model cuts out of a box either: a side map has no wheel arches. New surface
   detail (front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors and
   window panes from `derive.js` `doors` / `windows` are drawn on the right side only, mirrored by
-  `flip`: the panes across the section's `band`, the doors from their sill up to its top, both
-  in the same frame (`framed`: one colour, width and corner radius).
+  `flip`: the panes from `sill` up to `lintel`, the doors from their own sill up to `lintel`,
+  both in the same frame (`framed`: one colour, width and corner radius).
   `test/vector.test.js` runs `faces` against a stand-in `document`.
 - **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
@@ -93,22 +93,19 @@ cards are host chrome, not part of either element.
   path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
   The total length is the one derived row that is editable: `to` names the input value its edits
   land on (the first section's length) and `shifted` gives the value to write there.
-  `DOOR` lists the values of one door hint the same way, all editable. The two values of
-  `windows_hint` are rows of `SECTION`, with the panes and band drawn by default as their hints.
+  `DOOR` lists the values of one door hint the same way, all editable. `windows_hint.count` is
+  a row of `SECTION`, with the panes drawn by default as its hint.
   `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `addDoor` (two
   leaves, in the zone holding the fewest doors) / `rmDoor` (by index; the last one takes the
-  `doors_hint` key with it); `setBand` (one end of a section's window band: the other end takes
-  the one drawn for the last valid input, an emptied end drops the hinted band); `spec` and
-  `axleLim` read limits and defaults from the schema, `spec` also down into a section's lists and
-  its windows hint.
+  `doors_hint` key with it); `spec` and `axleLim` read limits and defaults from the schema, `spec`
+  also down into a section's lists and its windows hint.
   `test/edit.test.js` fails when a schema value has no row, or
   when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card and the input card (`form`): one accordion group per
   part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
-  door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`);
-  the window band is one row with both ends (`kind: 'band'`).
+  door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
 - **`main.js`** — loads every `examples/*.json` through `import.meta.glob`, so any file dropped in
   `examples/` becomes a selectable bus. Selecting validates first and shows errors in `#err`. Owns
   what is app layout: the view offset that keeps the bus clear of the details panel.

@@ -1,4 +1,4 @@
-import { band, bodyTop, doors, layout, windows } from './derive.js';
+import { bodyTop, doors, layout, lintel, sill, windows } from './derive.js';
 import { CLEARANCE, CORNER } from './dims.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -71,10 +71,10 @@ const front = (w, h, fill, text) => {
  */
 export const faces = (inp) => {
   const top = bodyTop(inp), fill = inp.base_color.hex;
-  const boxes = layout(inp), placed = doors(inp), glass = windows(inp);
+  const boxes = layout(inp), placed = doors(inp), glass = windows(inp), band = [sill(inp), lintel(inp)];
   const w = inp.width_mm, h = top - CLEARANCE - 2 * CORNER;
   return {
-    right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band(inp, i))),
+    right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band)),
     left: boxes.map((b) => side(b.len, top, fill)),
     front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand)],
     rear: [face(w, h, plain(w, h, fill))],

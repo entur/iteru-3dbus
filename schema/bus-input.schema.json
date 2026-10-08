@@ -3,7 +3,7 @@
   "$id": "urn:bus-model:input:2.0",
   "title": "Bus model input",
   "description": "The single input to the bus pipeline: identity, Bus Nordic classification, dimensions per body section, colour, and optional door/window hints for the template fallback. Dimension names follow NeTEx VehicleType (Length, Width, Height, LowFloor) in snake_case with explicit mm units.",
-  "$comment": "Rules JSON Schema cannot express, checked in code: (1) each section's axles_mm ascending and inside 0..length_mm; (2) total length = sum(length_mm) + sum(bellows_ahead_mm) <= 18750 for class I/II articulated, per Bus Nordic tables; (3) Bus Nordic 7.2: total length > 9500 mm needs >= 2 doors when doors_hint is given; (4) axle_gap < number of axles - 1; (5) door hints in the same zone and gap must not overlap once placed; (6) each section's windows_hint.band_mm ascending and ending at or below the body top, height_mm minus roof_equipment_mm.",
+  "$comment": "Rules JSON Schema cannot express, checked in code: (1) each section's axles_mm ascending and inside 0..length_mm; (2) total length = sum(length_mm) + sum(bellows_ahead_mm) <= 18750 for class I/II articulated, per Bus Nordic tables; (3) Bus Nordic 7.2: total length > 9500 mm needs >= 2 doors when doors_hint is given; (4) axle_gap < number of axles - 1; (5) door hints in the same zone and gap must not overlap once placed.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -79,12 +79,19 @@
       "default": 0,
       "description": "Height of roof pods (batteries, HVAC) included in height_mm. The body box is drawn to height_mm minus this, with a roof pod on top."
     },
-    "band_above_doors_and_windows_pct": {
+    "band_above_mm": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 30,
-      "default": 8,
-      "description": "Band of body between the top of the doors and side windows and the top of the body, as a percentage of the body height (height_mm minus roof_equipment_mm). Rendering: doors and side windows are drawn up to this line."
+      "maximum": 1000,
+      "default": 250,
+      "description": "Band of body between the top of the doors and side windows and the top of the body (height_mm minus roof_equipment_mm). Rendering: doors and side windows are drawn up to this line."
+    },
+    "win_band_height_mm": {
+      "type": "integer",
+      "minimum": 300,
+      "maximum": 2500,
+      "default": 1400,
+      "description": "Height of the side window band, measured down from the line band_above_mm gives. Rendering: side windows are this high, stopping at the skirt on a body too low for it."
     },
     "tyre": {
       "type": "object",
@@ -350,22 +357,6 @@
           "minimum": 1,
           "maximum": 20,
           "description": "Side windows in this section on the entry side, door glass excluded. Omitted: the band is filled with panes of about the same width."
-        },
-        "band_mm": {
-          "type": "array",
-          "prefixItems": [
-            {
-              "type": "integer",
-              "minimum": 300
-            },
-            {
-              "type": "integer",
-              "maximum": 4400
-            }
-          ],
-          "minItems": 2,
-          "maxItems": 2,
-          "description": "Window band [bottom, top], height above ground. Omitted: a default sill up to the line band_above_doors_and_windows_pct gives. Rendering: the section's side windows fill it, and its doors reach up to its top."
         }
       }
     }

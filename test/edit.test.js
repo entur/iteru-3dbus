@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, setBand, shifted, spec } from '../src/edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec } from '../src/edit.js';
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
-const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_doors_and_windows_pct', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
-const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count', 'windows_hint.band_mm'];
+const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
+const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
@@ -87,8 +87,7 @@ test('spec reads limits and defaults from the schema', () => {
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'width_mm']).maximum, 1600);
   assert.equal(spec(['sections', 1, 'doors_hint', 0, 'glazed']).default, true);
   assert.equal(spec(['sections', 0, 'windows_hint', 'count']).maximum, 20);
-  assert.equal(spec(['sections', 1, 'windows_hint', 'band_mm', 0]).minimum, 300);
-  assert.equal(spec(['sections', 1, 'windows_hint', 'band_mm', 1]).maximum, 4400);
+  assert.deepEqual([spec(['band_above_mm']).default, spec(['win_band_height_mm']).default], [250, 1400]);
 });
 
 test('a door is added with two leaves, in the zone that holds the fewest', () => {
@@ -114,32 +113,18 @@ test('a door is removed by its index, and the list with its last door', () => {
 
 const WIN = ['sections', 0, 'windows_hint'];
 
-test('the windows rows hint at what is drawn while nothing is hinted', () => {
-  const [count, ends] = SECTION.filter((f) => f.path?.[0] === 'windows_hint');
+test('the windows row hints at the panes drawn while no count is given', () => {
+  const [count] = SECTION.filter((f) => f.path?.[0] === 'windows_hint');
   assert.deepEqual([count.hint(volvo, 0), count.hint(citaro, 0), count.hint(citaro, 1)], [7, 5, 3]);
-  assert.deepEqual(ends.hint(citaro, 1), [1250, 2622]);
 });
 
-test('one end of the window band is written, the other keeps its value or takes the default', () => {
-  const lo = setBand(volvo, 0, 0, 1400);
-  assert.deepEqual(get(lo, WIN), { band_mm: [1400, 3036] });
-  assert.deepEqual(get(setBand(lo, 0, 1, 2900), WIN), { band_mm: [1400, 2900] });
-  assert.deepEqual(setBand(citaro, 1, 1, 2500).sections[1].windows_hint, { band_mm: [1250, 2500] });
-  assert.deepEqual(validate(setBand(lo, 0, 1, 2900)), []);
-  assert.equal('windows_hint' in volvo.sections[0], false);
+test('the bands are rows of Dimensions, their schema defaults as hints', () => {
+  const rows = FIELDS.filter((f) => ['band_above_mm', 'win_band_height_mm'].includes(f.path?.[0]));
+  assert.deepEqual(rows.map((f) => [f.group, f.hint(volvo)]), [['Dimensions', 250], ['Dimensions', 1400]]);
 });
 
-test('emptying an end of the window band drops it, and windows_hint with its last value', () => {
-  const lo = setBand(volvo, 0, 0, 1400), counted = set(lo, [...WIN, 'count'], 5);
-  assert.ok(same(setBand(lo, 0, 1, undefined), volvo));
-  assert.deepEqual(get(setBand(counted, 0, 0, undefined), WIN), { count: 5 });
-  assert.ok(same(set(setBand(counted, 0, 0, undefined), [...WIN, 'count'], undefined), volvo));
-});
-
-test('an end of the band left alone takes the default of the last valid input, not of an invalid draft', () => {
-  const tall = set(volvo, ['height_mm'], 5000), bare = set(volvo, ['height_mm'], undefined);
-  assert.deepEqual(get(setBand(tall, 0, 0, 1400, volvo), WIN), { band_mm: [1400, 3036] });
-  assert.deepEqual(get(setBand(bare, 0, 0, 1400, volvo), WIN), { band_mm: [1400, 3036] });
-  const upside = setBand(setBand(volvo, 0, 0, 1400), 0, 1, 1300);
-  assert.deepEqual(get(setBand(upside, 0, 0, 1200, volvo), WIN), { band_mm: [1200, 1300] });
+test('emptying the window count takes windows_hint with it', () => {
+  const counted = set(volvo, [...WIN, 'count'], 5);
+  assert.deepEqual(get(counted, WIN), { count: 5 });
+  assert.ok(same(set(counted, [...WIN, 'count'], undefined), volvo));
 });

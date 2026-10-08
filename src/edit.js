@@ -1,5 +1,5 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { band, doorWidth, hints, spans, total, tyreDia, windows } from './derive.js';
+import { doorWidth, hints, spans, total, tyreDia, windows } from './derive.js';
 
 const DEFS = schema.$defs;
 
@@ -28,7 +28,8 @@ export const FIELDS = [
   { group: 'Dimensions', label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Height', path: ['height_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Roof equipment', path: ['roof_equipment_mm'], kind: 'int', edit: true },
-  { group: 'Dimensions', label: 'Band above doors', path: ['band_above_doors_and_windows_pct'], unit: '%', kind: 'int', edit: true, hint: () => spec(['band_above_doors_and_windows_pct']).default },
+  { group: 'Dimensions', label: 'Band above doors', path: ['band_above_mm'], kind: 'int', edit: true, hint: () => spec(['band_above_mm']).default },
+  { group: 'Dimensions', label: 'Window band height', path: ['win_band_height_mm'], kind: 'int', edit: true, hint: () => spec(['win_band_height_mm']).default },
   { group: 'Tyre', label: 'Size', path: ['tyre', 'size'], kind: 'text', edit: true },
   { group: 'Tyre', label: 'Diameter', path: ['tyre', 'diameter_mm'], kind: 'int', edit: true },
   { group: 'Tyre', label: 'Effective diameter', of: (inp) => tyreDia(inp.tyre), unit: 'mm' },
@@ -50,8 +51,7 @@ export const SUMS = [{ groups: ['Sections'], label: 'Tot.len', of: total, unit: 
 /**
  * Rows of one section, as FIELDS but with `path` and `of` relative to the section. `trailer`
  * rows exist from the second section on; kinds `axles` and `doors` are lists with their add and
- * remove, kind `band` is the two ends of the window band. `hint` reads the last valid input and
- * the section's index.
+ * remove. `hint` reads the last valid input and the section's index.
  */
 export const SECTION = [
   { label: 'Length', path: ['length_mm'], kind: 'int', edit: true },
@@ -62,7 +62,6 @@ export const SECTION = [
   { label: 'Rear overhang', of: (s) => spans(s).rear, unit: 'mm' },
   { label: 'Doors', path: ['doors_hint'], kind: 'doors', edit: true },
   { label: 'Windows', path: ['windows_hint', 'count'], kind: 'int', edit: true, hint: (inp, i) => windows(inp)[i].length },
-  { label: 'Window band', path: ['windows_hint', 'band_mm'], kind: 'band', edit: true, hint: band },
 ];
 
 /**
@@ -132,8 +131,8 @@ export const same = (a, b) => {
 export const shifted = (inp, f, v) => (v === undefined ? undefined : get(inp, f.to) + v - f.of(inp));
 
 const deref = (n) => (n.$ref ? DEFS[n.$ref.split('/').at(-1)] : n);
-/** The schema one step down: a property, or for an index that item of a list; a $ref is followed. */
-const down = (s, k) => deref(typeof k === 'number' ? s.prefixItems?.[k] ?? s.items : s.properties[k]);
+/** The schema one step down: a property, or for an index the items of a list; a $ref is followed. */
+const down = (s, k) => deref(typeof k === 'number' ? s.items : s.properties[k]);
 
 /**
  * The schema of the value at a path: limits, default, enum.
@@ -200,20 +199,4 @@ export const addDoor = (inp, i) => {
 export const rmDoor = (inp, i, j) => {
   const ds = inp.sections[i].doors_hint.filter((_, k) => k !== j);
   return set(inp, ['sections', i, 'doors_hint'], ds.length ? ds : undefined);
-};
-
-/**
- * Writes one end of section i's window band. The other end keeps its value; while no band is
- * hinted it takes the one drawn for `ok`, which is what an empty control shows. undefined drops
- * the hinted band, and windows_hint with its last value.
- * @param {object} inp bus input, valid or not
- * @param {number} i section index
- * @param {number} j 0 for the bottom, 1 for the top
- * @param {number|undefined} v mm above ground
- * @param {object} [ok] the last valid input, when inp may not be valid
- * @returns {object} the edited copy
- */
-export const setBand = (inp, i, j, v, ok = inp) => {
-  const ends = inp.sections[i].windows_hint?.band_mm ?? band(ok, i);
-  return set(inp, ['sections', i, 'windows_hint', 'band_mm'], v === undefined ? undefined : ends.map((x, k) => (k === j ? v : x)));
 };
