@@ -49,7 +49,10 @@ cards are host chrome, not part of either element.
   wheel-arch circle both renderers cut out), `doors` (every hint placed as a span per section:
   the zone gives a span clear of body ends and arches, the bias a position in it), `lintel` (the
   line doors and side windows reach up to: the body top less `band_above_doors_and_windows_pct`,
-  whose default is read from the schema). Input axles are
+  whose default is read from the schema), `band` (a section's window band: its
+  `windows_hint.band_mm`, else a default sill up to `lintel`; its doors reach up to the band's top
+  too), `windows` (per section equal panes, a pillar between each two, in the runs its doors
+  leave, straight across the wheel arches; `windows_hint.count` fixes how many). Input axles are
   section-relative; `layout` gives both `axles` (absolute from the front end) and `local`.
   Node-safe, so it is what the tests cover.
 - **`dims.js`** — fixed body proportions (clearance, corner radius, arch gap, tyre, roof pod) shared
