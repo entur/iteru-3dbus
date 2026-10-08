@@ -1,4 +1,4 @@
-import { arch, bodyTop, doors, layout, lintel, tyreDia } from './derive.js';
+import { bodyTop, doors, layout, lintel } from './derive.js';
 import { CLEARANCE, CORNER } from './dims.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -31,17 +31,13 @@ const door = (y, y1, fill) => ({ x0, x1, leaves, glazed }) => {
 const flip = (len) => (d) => ({ ...d, x0: len - d.x1, x1: len - d.x0 });
 
 /**
- * Side face of one box: skirt to roof, with an arch cut out over each axle (x from the left edge)
- * and the doors on top, reaching up to a band below the roof.
+ * Side face of one box: skirt to roof with rounded corners, and the doors on top, reaching up to
+ * a band below the roof. No wheel arch: the model cuts those out of the box, the map runs on
+ * under them.
  */
-const side = (len, top, axles, r, fill, ds = [], band = 0) => {
-  const h = top - CLEARANCE, { R, dx } = arch(r), c = CORNER;
-  const d = [
-    `M${c},${h}`,
-    ...axles.map((a) => `L${a - dx},${h} A${R},${R} 0 1 1 ${a + dx},${h}`),
-    `L${len - c},${h} Q${len},${h} ${len},${h - c} L${len},${c} Q${len},0 ${len - c},0`,
-    `L${c},0 Q0,0 0,${c} L0,${h - c} Q0,${h} ${c},${h} Z`,
-  ].join(' ');
+const side = (len, top, fill, ds = [], band = 0) => {
+  const h = top - CLEARANCE, c = CORNER;
+  const d = `M${c},${h} L${len - c},${h} Q${len},${h} ${len},${h - c} L${len},${c} Q${len},0 ${len - c},0 L${c},0 Q0,0 0,${c} L0,${h - c} Q0,${h} ${c},${h} Z`;
   return face(len, h, svg('path', { d, fill }), ...ds.map(door(band, h - DOOR_SILL, fill)));
 };
 
@@ -59,19 +55,20 @@ const front = (w, h, fill, text) => {
 /**
  * The 2D maps projected onto the faces of the bus boxes, in mm and as seen from outside. These
  * are the single source for both the 3D face textures and the vector-map card, so the card shows
- * exactly what is on the model: nothing that is separate geometry (wheels, bellows, roof pod).
+ * exactly what is projected: nothing that is separate geometry (wheels, bellows, roof pod), and
+ * nothing the model cuts out of a box (wheel arches).
  * Side maps come one per section, front to rear; on the right side the front points right. The
  * hinted doors are on the right side only.
  * @param {object} inp validated bus input
  * @returns {Record<'right'|'left'|'front'|'rear', {svg: SVGSVGElement, w: number, h: number}[]>}
  */
 export const faces = (inp) => {
-  const top = bodyTop(inp), r = tyreDia(inp.tyre) / 2, fill = inp.base_color.hex;
+  const top = bodyTop(inp), fill = inp.base_color.hex;
   const boxes = layout(inp), placed = doors(inp), band = top - lintel(inp);
   const w = inp.width_mm, h = top - CLEARANCE - 2 * CORNER;
   return {
-    right: boxes.map((b, i) => side(b.len, top, b.local.map((a) => b.len - a).reverse(), r, fill, placed[i].map(flip(b.len)), band)),
-    left: boxes.map((b) => side(b.len, top, b.local, r, fill)),
+    right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), band)),
+    left: boxes.map((b) => side(b.len, top, fill)),
     front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand)],
     rear: [face(w, h, plain(w, h, fill))],
   };

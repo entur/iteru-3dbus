@@ -37,3 +37,14 @@ test('a door runs from its sill up to the band above doors and windows', () => {
   assert.deepEqual(ends(citaro), [228, 2490]);
   assert.deepEqual(ends({ ...volvo, band_above_doors_and_windows_pct: 10 }), [330, 2940]);
 });
+
+/** A map as plain data: tag, attributes and children of every element. */
+const shape = (e) => (typeof e === 'string' ? e : [e.tag, e.attrs, e.kids.map(shape)]);
+
+test('a side map has no wheel arches: it follows neither the axles nor the tyre', () => {
+  const bare = { ...citaro, sections: citaro.sections.map(({ doors_hint, ...s }) => s) };
+  const moved = { ...bare, tyre: { diameter_mm: 1100 }, sections: [{ ...bare.sections[0], axles_mm: [1500, 6000, 9000] }, { ...bare.sections[1], axles_mm: [3000] }] };
+  const sides = ({ right, left }) => [...right, ...left].map((f) => shape(f.svg));
+  assert.deepEqual(sides(faces(moved)), sides(faces(bare)));
+  assert.deepEqual(faces(citaro).left.map((f) => f.svg.kids.map((k) => k.tag)), [['path'], ['path']]);
+});
