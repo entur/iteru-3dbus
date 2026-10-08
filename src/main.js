@@ -58,7 +58,7 @@ const on = {
   rm: (i) => commit(rmAxle(draft.value, i), `sections.${i}.axles_mm`),
   addDoor: (i) => commit(addDoor(draft.value, i), `sections.${i}.doors_hint`),
   rmDoor: (i, j) => commit(rmDoor(draft.value, i, j), `sections.${i}.doors_hint`),
-  band: (i, j, v) => commit(setBand(draft.value, i, j, v), `sections.${i}.windows_hint.band_mm.${j}`),
+  band: (i, j, v) => commit(setBand(draft.value, i, j, v, ok.value), `sections.${i}.windows_hint.band_mm.${j}`),
   reset: () => select(id.value),
 };
 

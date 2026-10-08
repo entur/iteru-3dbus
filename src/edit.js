@@ -203,13 +203,17 @@ export const rmDoor = (inp, i, j) => {
 };
 
 /**
- * Writes one end of section i's window band. The other end keeps its value, the default one
- * while no band is hinted. undefined drops the hinted band, and windows_hint with its last value.
- * @param {object} inp bus input
+ * Writes one end of section i's window band. The other end keeps its value; while no band is
+ * hinted it takes the one drawn for `ok`, which is what an empty control shows. undefined drops
+ * the hinted band, and windows_hint with its last value.
+ * @param {object} inp bus input, valid or not
  * @param {number} i section index
  * @param {number} j 0 for the bottom, 1 for the top
  * @param {number|undefined} v mm above ground
+ * @param {object} [ok] the last valid input, when inp may not be valid
  * @returns {object} the edited copy
  */
-export const setBand = (inp, i, j, v) =>
-  set(inp, ['sections', i, 'windows_hint', 'band_mm'], v === undefined ? undefined : band(inp, i).map((x, k) => (k === j ? v : x)));
+export const setBand = (inp, i, j, v, ok = inp) => {
+  const ends = inp.sections[i].windows_hint?.band_mm ?? band(ok, i);
+  return set(inp, ['sections', i, 'windows_hint', 'band_mm'], v === undefined ? undefined : ends.map((x, k) => (k === j ? v : x)));
+};

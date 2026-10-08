@@ -135,3 +135,11 @@ test('emptying an end of the window band drops it, and windows_hint with its las
   assert.deepEqual(get(setBand(counted, 0, 0, undefined), WIN), { count: 5 });
   assert.ok(same(set(setBand(counted, 0, 0, undefined), [...WIN, 'count'], undefined), volvo));
 });
+
+test('an end of the band left alone takes the default of the last valid input, not of an invalid draft', () => {
+  const tall = set(volvo, ['height_mm'], 5000), bare = set(volvo, ['height_mm'], undefined);
+  assert.deepEqual(get(setBand(tall, 0, 0, 1400, volvo), WIN), { band_mm: [1400, 3036] });
+  assert.deepEqual(get(setBand(bare, 0, 0, 1400, volvo), WIN), { band_mm: [1400, 3036] });
+  const upside = setBand(setBand(volvo, 0, 0, 1400), 0, 1, 1300);
+  assert.deepEqual(get(setBand(upside, 0, 0, 1200, volvo), WIN), { band_mm: [1200, 1300] });
+});

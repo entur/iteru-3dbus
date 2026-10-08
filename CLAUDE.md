@@ -98,8 +98,9 @@ cards are host chrome, not part of either element.
   `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `addDoor` (two
   leaves, in the zone holding the fewest doors) / `rmDoor` (by index; the last one takes the
   `doors_hint` key with it); `setBand` (one end of a section's window band: the other end takes
-  the default, an emptied end drops the hinted band); `spec` and `axleLim` read limits and
-  defaults from the schema, `spec` also down into a section's lists and its windows hint.
+  the one drawn for the last valid input, an emptied end drops the hinted band); `spec` and
+  `axleLim` read limits and defaults from the schema, `spec` also down into a section's lists and
+  its windows hint.
   `test/edit.test.js` fails when a schema value has no row, or
   when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card and the input card (`form`): one accordion group per
