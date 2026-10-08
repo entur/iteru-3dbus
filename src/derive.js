@@ -43,6 +43,13 @@ export const lintel = (inp) => Math.round(bodyTop(inp) * (1 - (inp.band_above_do
  */
 export const hints = (inp) => inp.sections.flatMap((s) => s.doors_hint ?? []);
 
+/**
+ * Width of a hinted door: the one given, else what its leaves imply.
+ * @param {{leaves: number, width_mm?: number}} d door hint
+ * @returns {number} mm
+ */
+export const doorWidth = (d) => d.width_mm ?? DOOR_W[d.leaves];
+
 /** The span a door hint's zone leaves for a door: clear of the body ends and of the arches, dx wide each side. */
 const zone = (s, dx, { zone: z, axle_gap: g = 0 }) => {
   const a = s.axles_mm, after = (x) => x + dx + DOOR_ARCH, before = (x) => x - dx - DOOR_ARCH;
@@ -64,7 +71,7 @@ export const doors = (inp) => {
   const { dx } = arch(tyreDia(inp.tyre) / 2);
   return inp.sections.map((s) =>
     (s.doors_hint ?? []).map((d) => {
-      const [lo, hi] = zone(s, dx, d), w = d.width_mm ?? DOOR_W[d.leaves], slack = hi - lo - w;
+      const [lo, hi] = zone(s, dx, d), w = doorWidth(d), slack = hi - lo - w;
       const x0 = Math.round(lo + slack * BIAS[slack < 0 ? 'middle' : d.bias ?? 'middle']);
       return { x0, x1: x0 + w, leaves: d.leaves, glazed: d.glazed ?? true };
     }),

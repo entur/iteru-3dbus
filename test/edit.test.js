@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { FIELDS, GROUPS, SECTION, addAxle, axleLim, get, rmAxle, same, set, shifted, spec } from '../src/edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec } from '../src/edit.js';
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
 const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_doors_and_windows_pct', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
-const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm'];
+const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
@@ -19,12 +19,14 @@ test('every schema value has a row', () => {
   const { sections, ...top } = schema.properties;
   assert.deepEqual(paths(FIELDS).sort(), leaves(top).sort());
   assert.deepEqual(paths(SECTION).sort(), [...Object.keys(schema.$defs.section_common.properties), 'bellows_ahead_mm'].sort());
+  assert.deepEqual(paths(DOOR).sort(), Object.keys(schema.$defs.door_hint.properties).sort());
   assert.deepEqual([...new Set(FIELDS.map((f) => f.group))].filter((g) => !GROUPS.includes(g)), []);
 });
 
 test('the editable set is the drawn fields plus brand', () => {
   assert.deepEqual(paths(FIELDS.filter((f) => f.edit)), EDITABLE);
   assert.deepEqual(paths(SECTION.filter((f) => f.edit)), SEC_EDITABLE);
+  assert.deepEqual(DOOR.filter((f) => !f.edit), []);
   assert.deepEqual(FIELDS.filter((f) => f.of && f.edit).map((f) => [f.label, f.to.join('.')]), [['Length', 'sections.0.length_mm']]);
 });
 
@@ -78,4 +80,30 @@ test('spec reads limits and defaults from the schema', () => {
   assert.equal(spec(['tyre', 'rear_twin']).default, true);
   assert.equal(spec(['sections', 0, 'length_mm']).minimum, 2000);
   assert.equal(spec(['sections', 1, 'bellows_ahead_mm']).maximum, 1200);
+  assert.equal(spec(['sections', 0, 'axles_mm', 1]).minimum, 0);
+  assert.equal(spec(['sections', 0, 'doors_hint']).maxItems, 4);
+  assert.deepEqual(spec(['sections', 0, 'doors_hint', 1, 'zone']).enum, ['front_overhang', 'between_axles', 'rear_overhang']);
+  assert.equal(spec(['sections', 1, 'doors_hint', 0, 'width_mm']).maximum, 1600);
+  assert.equal(spec(['sections', 1, 'doors_hint', 0, 'glazed']).default, true);
+});
+
+test('a door is added with two leaves, in the zone that holds the fewest', () => {
+  const last = (inp, i) => inp.sections[i].doors_hint.at(-1), bare = set(volvo, ['sections', 0, 'doors_hint'], undefined);
+  assert.deepEqual(last(addDoor(volvo, 0), 0), { zone: 'rear_overhang', leaves: 2 });
+  assert.deepEqual(addDoor(bare, 0).sections[0].doors_hint, [{ zone: 'front_overhang', leaves: 2 }]);
+  assert.deepEqual(last(addDoor(addDoor(volvo, 0), 0), 0), { zone: 'front_overhang', leaves: 2 });
+  assert.deepEqual(validate(addDoor(volvo, 0)), []);
+});
+
+test('a door is never added between the axles of a one-axle section', () => {
+  const full = [0, 1, 2].reduce((inp) => addDoor(inp, 1), set(citaro, ['sections', 1, 'doors_hint'], undefined));
+  assert.deepEqual(full.sections[1].doors_hint.map((d) => d.zone), ['front_overhang', 'rear_overhang', 'front_overhang']);
+  assert.deepEqual(validate(full), []);
+});
+
+test('a door is removed by its index, and the list with its last door', () => {
+  assert.deepEqual(rmDoor(volvo, 0, 0).sections[0].doors_hint, [volvo.sections[0].doors_hint[1]]);
+  assert.deepEqual(rmDoor(addDoor(volvo, 0), 0, 2), volvo);
+  assert.equal('doors_hint' in rmDoor(rmDoor(volvo, 0, 0), 0, 0).sections[0], false);
+  assert.equal(volvo.sections[0].doors_hint.length, 2);
 });

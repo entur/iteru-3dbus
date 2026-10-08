@@ -242,7 +242,8 @@
           "items": {
             "$ref": "#/$defs/door_hint"
           },
-          "maxItems": 4
+          "maxItems": 4,
+          "description": "Door hints for this section. Omitted on every section: the doors default from bus_class. Given on any section: only the hinted doors exist, and rule (3) counts them across all sections. An empty list counts as given."
         },
         "windows_hint": {
           "$ref": "#/$defs/windows_hint"

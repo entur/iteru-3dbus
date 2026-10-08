@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validate } from '../src/validate.js';
-import { doors, layout, lintel, spans, total, tyreDia } from '../src/derive.js';
+import { doorWidth, doors, layout, lintel, spans, total, tyreDia } from '../src/derive.js';
 
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
@@ -25,6 +25,7 @@ const bad = {
   'missing tyre size and diameter': { ...volvo, tyre: { rear_twin: true } },
   'a 40 % band above the doors and windows': { ...volvo, band_above_doors_and_windows_pct: 40 },
   'one door on a 12.4 m bus': sec(volvo, 0, { doors_hint: [{ zone: 'front_overhang', leaves: 2 }] }),
+  'an empty door list on a 12.4 m bus': sec(volvo, 0, { doors_hint: [] }),
 };
 
 test('examples pass', () => {
@@ -80,3 +81,6 @@ test('axle_gap picks the gap between three axles', () => {
 
 test('a door wider than its zone is centred on it, whatever the bias', () =>
   assert.deepEqual(hinted(citaro, 1, { zone: 'rear_overhang', bias: 'rear', leaves: 2, width_mm: 1400 }), [door(5507, 6907)]));
+
+test('a door is as wide as given, else as its leaves imply', () =>
+  assert.deepEqual([{ leaves: 1 }, { leaves: 2 }, { leaves: 2, width_mm: 1400 }].map(doorWidth), [900, 1250, 1400]));

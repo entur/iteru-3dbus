@@ -87,14 +87,17 @@ cards are host chrome, not part of either element.
   path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
   The total length is the one derived row that is editable: `to` names the input value its edits
   land on (the first section's length) and `shifted` gives the value to write there.
-  `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `spec` and
-  `axleLim` read limits and defaults from the schema. `test/edit.test.js` fails when a schema
-  value has no row, or when the editable set changes: making a field editable is deliberate.
+  `DOOR` lists the values of one door hint the same way, all editable.
+  `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `addDoor` (two
+  leaves, in the zone holding the fewest doors) / `rmDoor` (by index; the last one takes the
+  `doors_hint` key with it); `spec` and `axleLim` read limits and defaults from the schema, `spec`
+  also down into a section's lists. `test/edit.test.js` fails when a schema value has no row, or
+  when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card and the input card (`form`): one accordion group per
   part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
   those effects so a form is disposed as one. The form is built once per selected bus and its
-  controls follow the signals, so focus survives an edit; only a section's axle inputs are rebuilt,
-  when their count changes.
+  controls follow the signals, so focus survives an edit; only a section's axle inputs and its
+  door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
 - **`main.js`** — loads every `examples/*.json` through `import.meta.glob`, so any file dropped in
   `examples/` becomes a selectable bus. Selecting validates first and shows errors in `#err`. Owns
   what is app layout: the view offset that keeps the bus clear of the details panel.
