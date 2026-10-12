@@ -1,5 +1,5 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { ARCH_GAP, CLEARANCE, END_EDGE } from './dims.js';
+import { ARCH_GAP, CLEARANCE, CORNER, END_EDGE } from './dims.js';
 
 const INCH = 25.4;
 const SIZE = /^(\d{3})\/(\d{2}) ?R(\d{2}(?:\.\d)?)$/;
@@ -32,6 +32,13 @@ export const layout = (inp) =>
  * @returns {number} mm above ground
  */
 export const bodyTop = (inp) => inp.height_mm - (inp.roof_equipment_mm ?? 0);
+
+/**
+ * Height of a flat end face, front or rear: between the rounding to the skirt and the one to the roof.
+ * @param {object} inp validated bus input
+ * @returns {number} mm
+ */
+export const endH = (inp) => bodyTop(inp) - CORNER - END_EDGE;
 
 /**
  * The line the doors and side windows reach up to: the body top less the band above them.

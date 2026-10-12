@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { mapErrs } from '../src/bus.js';
-import { bodyTop, layout } from '../src/derive.js';
+import { bodyTop, endH, layout } from '../src/derive.js';
 import { CLEARANCE } from '../src/dims.js';
 
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
@@ -11,7 +11,7 @@ const face = (w, h) => ({ w, h, svg: { cloneNode: () => ({}) } });
 /** Stub face maps in the sizes faces() gives them, without a DOM. */
 const maps = (inp) => {
   const h = bodyTop(inp) - CLEARANCE, sides = () => layout(inp).map((b) => face(b.len, h));
-  return { right: sides(), left: sides(), front: [face(inp.width_mm, h)], rear: [face(inp.width_mm, h)] };
+  return { right: sides(), left: sides(), front: [face(inp.width_mm, endH(inp))], rear: [face(inp.width_mm, endH(inp))] };
 };
 const patch = (m, side, f) => ({ ...m, [side]: m[side].map((x, i) => (i === 0 ? f(x) : x)) });
 
@@ -25,6 +25,8 @@ const bad = {
   'a side map of another length': (m) => patch(m, 'right', (f) => ({ ...f, w: f.w + 1 })),
   'a side map of another height': (m) => patch(m, 'left', (f) => ({ ...f, h: f.h + 1 })),
   'an end map of another width': (m) => patch(m, 'front', (f) => ({ ...f, w: f.w + 1 })),
+  'a front map of another height': (m) => patch(m, 'front', (f) => ({ ...f, h: f.h + 1 })),
+  'a rear map of another height': (m) => patch(m, 'rear', (f) => ({ ...f, h: f.h - 1 })),
 };
 
 test('maps sized for the bus fit', () => [volvo, citaro].forEach((inp) => assert.deepEqual(mapErrs(inp, maps(inp)), [])));

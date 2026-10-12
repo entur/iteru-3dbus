@@ -10,8 +10,7 @@
   "exports": {
     ".": "./dist-lib/index.js",
     "./core": "./dist-lib/core.js",
-    "./bus-2d": "./dist-lib/bus-2d.js",
-    "./bus-3d": "./dist-lib/bus-3d.js"
+    "./faces": "./dist-lib/faces.js"
   },
   "scripts": {
     "dev": "vite",

@@ -43,6 +43,10 @@ th { color: var(--steel); font-size: 13px; }
 figure { margin: 0; }
 .tabs { display: flex; gap: 2px; margin-bottom: 8px; }
 .tabs button { padding: 3px 10px; font-size: 14px; }
+/* end maps are narrow: drawn at part of the width */
+.faces { display: flex; align-items: flex-end; gap: 3px; }
+.faces.front, .faces.rear { width: 46%; }
+.face { display: block; min-width: 0; height: auto; }
 figcaption { color: var(--steel); font-size: 13px; margin-top: 4px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
 .head button, .axles button, .door-top button, .door button, dialog button { border: 1px solid var(--line); }

@@ -1,13 +1,23 @@
-import { mapErrs, mkBus } from './bus.js';
-import { total } from './derive.js';
-import { MM } from './dims.js';
-import { Base, define, emit, shadow, upgrade } from './elem.js';
-import { mkStage } from './scene.js';
-import { validate } from './validate.js';
-import { VIEWS, mkViews } from './views.js';
+// The user guide's example host: the library wrapped as one custom element. Not part of the
+// package. A host of the published package imports the same names from '3dbus'.
+import { MM, VIEWS, mapErrs, mkBus, mkStage, mkViews, total, validate } from '../src/index.js';
 
 const TAG = 'bus-3d', FIRST = 'quarter';
 const CSS = ':host{display:block}:host([hidden]){display:none}div{width:100%;height:100%;overflow:hidden}canvas{display:block;touch-action:none}';
+
+/** Element base class; a stand-in where there is no DOM, so the module still loads on a server. */
+const Base = globalThis.HTMLElement ?? class {};
+
+/** Fires a bubbling event that crosses shadow roots. */
+const emit = (e, type, detail) => e.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
+
+/** Moves properties a host set before the element was defined onto the element's accessors. */
+const upgrade = (e, props) =>
+  props.filter((p) => Object.hasOwn(e, p)).forEach((p) => {
+    const v = e[p];
+    delete e[p];
+    e[p] = v;
+  });
 
 /** Errors that stop a rebuild: an invalid input, or face maps that do not fit its sections. */
 const check = (inp, maps) => {
@@ -19,7 +29,7 @@ const check = (inp, maps) => {
  * `<bus-3d>`: renders a bus in three.js, filling its own box. It takes the face maps as input and
  * does not care what produced them.
  * - `inp` (property, required): bus input
- * - `faces` (property, required): face maps for that `inp`, as from faces() or a `<bus-2d>`
+ * - `faces` (property, required): face maps for that `inp`, as faces() returns them
  * - `view` (attribute and property): camera view, a key of VIEWS
  * - `offset-x` / `offsetX` (attribute and property): horizontal view offset in px
  * - `go(view, instant)`: fly to a view
@@ -46,7 +56,7 @@ export class Bus3d extends Base {
   constructor() {
     super();
     this.#box = document.createElement('div');
-    shadow(this, CSS, this.#box);
+    this.attachShadow({ mode: 'open' }).append(Object.assign(document.createElement('style'), { textContent: CSS }), this.#box);
   }
 
   connectedCallback() {
@@ -154,6 +164,4 @@ export class Bus3d extends Base {
   }
 }
 
-define(TAG, Bus3d);
-
-export { VIEWS };
+globalThis.customElements && !customElements.get(TAG) && customElements.define(TAG, Bus3d);
