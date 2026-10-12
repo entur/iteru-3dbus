@@ -1,10 +1,10 @@
 import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
-import './bus-2d.js';
-import './bus-3d.js';
+import '../guide/bus-3d.js';
 import { addAxle, addDoor, rmAxle, rmDoor, same, set } from './edit.js';
 import { form, header, mapCard, viewBar } from './ui.js';
 import { validate } from './validate.js';
+import { faces } from './vector.js';
 
 const FIRST = 'volvo-8900';
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
@@ -15,16 +15,17 @@ const buses = Object.entries(import.meta.glob('../examples/*.json', { eager: tru
   inp,
   src: srcs[p],
 }));
-const bus = document.querySelector('bus-3d'), map = document.createElement('bus-2d');
+const bus = document.querySelector('bus-3d');
 const info = document.getElementById('info'), err = document.getElementById('err');
 const link = document.getElementById('src'), drift = document.getElementById('drift');
-const maps = mapCard(map);
 
 // src: the example as loaded; draft: src with every edit, valid or not; ok: the last valid draft, which is what is drawn
 const id = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
 const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
 const errs = computed(() => (draft.value ? validate(draft.value) : []));
 const dirty = computed(() => !same(draft.value, src.value));
+const maps = computed(() => (ok.value ? faces(ok.value) : null));  // the face maps of what is drawn
+const mapped = mapCard(maps);
 let aim = false, stop = null;
 
 /** Takes an edited draft: it is always kept, and drawn when valid. While it is invalid, every control edited stays marked. */
@@ -49,7 +50,7 @@ const select = (to) => {
   });
   const [card, end] = form({ draft, ok, marks, dirty }, on);
   stop = end;
-  info.replaceChildren(maps, card);
+  info.replaceChildren(mapped, card);
 };
 
 const on = {
@@ -64,8 +65,7 @@ const on = {
 effect(() => {
   const inp = ok.value;
   if (!inp) return;
-  map.inp = inp;
-  bus.faces = map.faces;
+  bus.faces = maps.value;
   bus.inp = inp;
 });
 effect(() => ok.value && header(buses, id.value, ok.value, select));

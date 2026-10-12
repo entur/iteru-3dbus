@@ -9,7 +9,9 @@ This is v1: no ML branch (no VLM, no OpenCV). The schema's `photo` field is acce
 `docs/flowchart.html` shows the full intended pipeline including the ML branch, for reference only.
 
 Plain ES modules, no TypeScript, no framework, no linter. Vite for the browser app, `node --test` for tests.
-The renderer is two custom elements, `<bus-2d>` and `<bus-3d>`; the app in `main.js` / `ui.js` is one host of them.
+The renderer is a library of plain functions: `faces(inp)` gives the 2D face maps, `mkBus(inp, maps)` the
+three.js model. `guide/bus-3d.js` wraps them as a `<bus-3d>` element, the user guide's example host; the
+app in `main.js` / `ui.js` uses that element.
 
 ## Commands
 
@@ -17,7 +19,7 @@ The renderer is two custom elements, `<bus-2d>` and `<bus-3d>`; the app in `main
 npm i
 npm run dev                                   # vite; ?bus=<id> picks an example (id = file name without .json)
 npm run build
-npm run build:lib                             # the elements as ES modules in dist-lib/, three and ajv external
+npm run build:lib                             # the library as ES modules in dist-lib/, three and ajv external
 npm test                                      # node --test, picks up test/*.test.js
 node --test --test-name-pattern='derives'     # single test by name
 npm run validate -- examples/*.json           # schema + cross-field rules, exit 1 on any failure
@@ -30,15 +32,16 @@ three.js, where `MM = 0.001` (`dims.js`) converts to metres at the last moment.
 
 ```
 core   validate.js  derive.js  dims.js                  pure, no DOM, no three
-2D     vector.js  bus-2d.js   <bus-2d>                  core only: no three
-3D     bus.js  scene.js  views.js  bus-3d.js  <bus-3d>  core + three: no vector.js, no bus-2d.js
-app    main.js  ui.js  edit.js  index.html  style.css   imports the library, never the reverse
+2D     vector.js                                        core only: no three
+3D     bus.js  scene.js  views.js                       core + three: no vector.js
+guide  guide/bus-3d.js  <bus-3d>                        the package entry (index.js) only
+app    main.js  ui.js  edit.js  index.html  style.css   imports the library and the guide, never the reverse
 ```
 
-The host connects the two elements: `map.inp = inp; bus.faces = map.faces; bus.inp = inp`. The 3D
-side takes the face maps as input and never imports what produced them; `test/lib.test.js` scans
-the imports and fails when a layer reaches the wrong way. Tabs, caption, view bar, header and
-cards are host chrome, not part of either element.
+The host connects the two sides: `const maps = faces(inp); mkBus(inp, maps)`. The 3D side takes
+the face maps as input and never imports what produced them; `test/lib.test.js` scans the imports
+and fails when a layer reaches the wrong way, or when the guide element needs more than the
+package entry. Tabs, caption, view bar, header and cards are host chrome, not part of the library.
 
 - **`validate.js`** — Ajv (draft 2020-12) against the schema, then the `rules` array for what JSON
   Schema cannot express. The rules are numbered (1)–(5) in the schema's top-level `$comment`;
@@ -64,7 +67,7 @@ cards are host chrome, not part of either element.
   by the 2D and 3D sides. Anything both `vector.js` and `bus.js` must agree on lives here.
 - **`vector.js`** — `faces(inp)` returns SVG maps per box side (`right`/`left` one per section,
   `front`/`rear` one each), in mm, as seen from outside. This is the **single source** for both the
-  3D face textures and the `<bus-2d>` element: it shows exactly what is projected onto the model,
+  3D face textures and the app's map card: it shows exactly what is projected onto the model,
   so nothing that is separate geometry (wheels, bellows, roof pod) goes into a face map, and
   nothing the model cuts out of a box either: a side map has no wheel arches. New surface
   detail (front/rear templates) belongs here, not as extra meshes in `bus.js`. The doors and
@@ -93,15 +96,13 @@ cards are host chrome, not part of either element.
   `ticks` are per-frame callbacks, `fits` per-resize ones; `drop` disposes geometry, materials and
   maps of a model, `dispose` the stage itself.
 - **`views.js`** — `VIEWS` and animated flights between them (registered as a stage tick). No buttons.
-- **`elem.js`** — what both elements share: `define`, `shadow`, `emit`, `upgrade`, and a `Base`
-  class that lets the modules load where there is no DOM.
-- **`bus-2d.js`** — `<bus-2d>`: `inp` in, `faces` out (synchronously), shows the side named by
-  `face`. `headlight` takes an `<svg>` of the left headlight in place of the built-in one. It shows clones, so the maps it hands out stay detached and untouched.
-- **`bus-3d.js`** — `<bus-3d>`: needs both `inp` and `faces`; setting either queues one rebuild in
-  a microtask. The first rebuild aims at `view`, later ones keep the camera, so a host that wants
-  a re-aim calls `go()` on `busrender`. An invalid `inp`, or maps that do not fit its sections,
-  fire `buserror` and leave the last render. Disconnecting disposes the stage; reconnecting rebuilds.
-- **`core.js`**, **`index.js`** — package entries (`./core`, `.`), next to `./bus-2d` and `./bus-3d`.
+- **`guide/bus-3d.js`** — `<bus-3d>`, not in the package: needs both `inp` and `faces`; setting
+  either queues one rebuild in a microtask. The first rebuild aims at `view`, later ones keep the
+  camera, so a host that wants a re-aim calls `go()` on `busrender`. An invalid `inp`, or maps that
+  do not fit its sections, fire `buserror` and leave the last render. Disconnecting disposes the
+  stage; reconnecting rebuilds. It imports `src/index.js` alone, as a host imports the package.
+- **`core.js`**, **`index.js`** — package entries (`./core`, `.`); `./faces` is `vector.js` itself.
+  `index.js` adds `faces`, `mkBus`, `mapErrs`, `mkStage`, `mkViews` and `VIEWS` to core.
 - **`edit.js`** — pure, node-safe: `FIELDS` / `SECTION` list every schema value as a row (group,
   path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
   The total length is the one derived row that is editable: `to` names the input value its edits
@@ -114,7 +115,8 @@ cards are host chrome, not part of either element.
   also down into a section's lists and its windows hint.
   `test/edit.test.js` fails when a schema value has no row, or
   when the editable set changes: making a field editable is deliberate.
-- **`ui.js`** — header, view bar, map card and the input card (`form`): one accordion group per
+- **`ui.js`** — header, view bar, map card (tabs per side, clones of the face maps of the open side,
+  sections reversed on the right side) and the input card (`form`): one accordion group per
   part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
@@ -123,7 +125,8 @@ cards are host chrome, not part of either element.
   `examples/` becomes a selectable bus. Selecting validates first and shows errors in `#err`. Owns
   what is app layout: the view offset that keeps the bus clear of the details panel.
   State is `@preact/signals-core` (app only, banned from the library by `test/lib.test.js`):
-  `src` the example as loaded, `draft` with every edit, `ok` the last valid draft. Everything
+  `src` the example as loaded, `draft` with every edit, `ok` the last valid draft, `maps` the
+  face maps of `ok`. Everything
   drawn (model, maps, header, derived rows) reads `ok`; the controls read `draft`, so an invalid
   edit stays in its field, marked, while the last valid bus stays on screen. Only another bus
   re-aims the camera. The source link warns through `<dialog id="drift">` once `draft` differs
@@ -135,7 +138,7 @@ cards are host chrome, not part of either element.
   `bus-3d.js` then shifts it by `-len/2` so the bus is centred with the front towards −x.
 - Extrude caps: z = 0 is the right side, z = w the left side.
 - Right-side face maps are mirrored (front points right): `faces()` flips the spans it draws, the
-  texture uses a negative `repeat.x`, and `<bus-2d>` reverses section order for that side.
+  texture uses a negative `repeat.x`, and the app's map card reverses section order for that side.
 
 ### Schema and examples
 

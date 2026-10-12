@@ -1,8 +1,8 @@
-import { computed, effect } from '@preact/signals-core';
-import { FACES } from './bus-2d.js';
-import { VIEWS } from './bus-3d.js';
+import { computed, effect, signal } from '@preact/signals-core';
 import { DOOR, FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec } from './edit.js';
+import { VIEWS } from './views.js';
 
+const FACES = { right: 'Right', left: 'Left', front: 'Front', rear: 'Rear' };  // sides of the bus boxes a face map exists for
 const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
 const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
 const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'Normal floor', low_floor_lower_level: 'Double deck, low lower deck' };
@@ -96,28 +96,27 @@ export const viewBar = (bus) => {
   mark();
 };
 
+/** Copy of a face map sized to its share of the row; the map itself stays untouched. */
+const shown = (f) => {
+  const s = f.svg.cloneNode(true);
+  s.style.flex = `${f.w} 1 0`;
+  return s;
+};
+
 /**
- * The 2D vector map card: tab bar and caption around the bus-2d element, one tab per side of the
- * box. The element's face is the open tab; the caption follows the maps it recomputes.
- * @param {HTMLElement} map the bus-2d element
+ * The 2D vector map card: tab bar, the face maps of the open side and a caption, one tab per side
+ * of the box. Sections run front to rear; on the right side the front points right.
+ * @param {{value: ?object}} maps signal of the face maps to show, as vector.js faces() returns them
  * @returns {HTMLElement} the card, built once and kept across buses and edits
  */
-export const mapCard = (map) => {
-  const cap = el('figcaption'), bar = el('div', { className: 'tabs' });
-  const show = (k = map.face) => {
-    map.face = k;
-    const fs = map.faces?.[k] ?? [];
-    cap.textContent = fs.length ? `${fs.map((f) => fmt(f.w)).join(' + ')} × ${fmt(fs[0].h)} mm` + (fs.length > 1 ? `, ${fs.length} boxes` : '') : '';
-    [...bar.children].forEach((b) => (b.ariaPressed = String(b.dataset.face === k)));
-  };
-  bar.append(...Object.entries(FACES).map(([k, label]) => {
-    const b = el('button', { onclick: () => show(k) }, label);
-    b.dataset.face = k;
-    return b;
-  }));
-  map.addEventListener('busfaces', () => show());
-  show();
-  return card('2D vector map', bar, el('figure', {}, map, cap));
+export const mapCard = (maps) => {
+  const face = signal('right'), fs = computed(() => maps.value?.[face.value] ?? []);
+  const row = el('div', { className: () => `faces ${face.value}` });
+  bind(() => row.replaceChildren(...(face.value === 'right' ? [...fs.value].reverse() : fs.value).map(shown)));
+  const cap = el('figcaption', {}, () =>
+    fs.value.length ? `${fs.value.map((f) => fmt(f.w)).join(' + ')} × ${fmt(fs.value[0].h)} mm` + (fs.value.length > 1 ? `, ${fs.value.length} boxes` : '') : '');
+  const tab = ([k, label]) => el('button', { onclick: () => (face.value = k), ariaPressed: () => String(face.value === k) }, label);
+  return card('2D vector map', el('div', { className: 'tabs' }, ...Object.entries(FACES).map(tab)), el('figure', {}, row, cap));
 };
 
 const key = (path) => path.join('.');
