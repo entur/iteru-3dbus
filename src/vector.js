@@ -1,5 +1,5 @@
-import { bodyTop, dash, doors, grill, layout, lintel, sill, windows, windowsLeft } from './derive.js';
-import { CLEARANCE, CORNER, END_EDGE } from './dims.js';
+import { bodyTop, dash, doors, endH, grill, layout, lintel, sill, windows, windowsLeft } from './derive.js';
+import { CLEARANCE, CORNER } from './dims.js';
 import LAMP from './headlight.svg?raw';
 
 const NS = 'http://www.w3.org/2000/svg', SVG = 'image/svg+xml';
@@ -101,7 +101,7 @@ export const faces = (inp, { headlight: light } = {}) => {
   const top = bodyTop(inp), fill = inp.base_color.hex;
   const boxes = layout(inp), placed = doors(inp), glass = windows(inp), across = windowsLeft(inp), band = [sill(inp), lintel(inp)];
   const up = (mm) => top - CORNER - mm;  // mm above ground as y on an end map, which starts CORNER below the body top
-  const w = inp.width_mm, h = up(END_EDGE);
+  const w = inp.width_mm, h = endH(inp);
   const lines = { lintel: Math.max(up(band[1]), 0), grill: up(grill(inp)), dash: up(dash(inp)) };
   return {
     right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band)),

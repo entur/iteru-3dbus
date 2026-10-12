@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { arch, bodyTop, layout, tyreDia } from './derive.js';
+import { arch, bodyTop, endH, layout, tyreDia } from './derive.js';
 import { ARCH_GAP, BELLOWS_INSET, CLEARANCE, CORNER, END_EDGE, HUB_R, MM, POD_AT, POD_LEN, POD_MAX, POD_W, RIM_R, TWIN_GAP, TYRE_INSET, TYRE_W } from './dims.js';
 
 const ARCH_SEG = 48, LINER_GAP = 5, LINER_INSET = 20, TYRE_SEG = 48;
@@ -77,7 +77,7 @@ const wheel = (r, mats) => {
 };
 
 /** A face map of width w, and of height h where one is asked for. */
-const isFace = (f, w, h) => typeof f?.svg?.cloneNode === 'function' && f.w === w && (h === undefined ? f.h > 0 : f.h === h);
+const isFace = (f, w, h) => typeof f?.svg?.cloneNode === 'function' && f.w === w && f.h === h;
 
 /**
  * Checks that face maps are the ones mkBus can draw for an input: one side map per section, a
@@ -89,7 +89,7 @@ const isFace = (f, w, h) => typeof f?.svg?.cloneNode === 'function' && f.w === w
 export const mapErrs = (inp, maps) => {
   const boxes = layout(inp), h = bodyTop(inp) - CLEARANCE;
   const sides = (fs) => fs?.length === boxes.length && boxes.every((b, i) => isFace(fs[i], b.len, h));
-  const end = (fs) => isFace(fs?.[0], inp.width_mm);
+  const end = (fs) => isFace(fs?.[0], inp.width_mm, endH(inp));
   return sides(maps?.right) && sides(maps?.left) && end(maps?.front) && end(maps?.rear) ? [] : [NO_MAPS];
 };
 

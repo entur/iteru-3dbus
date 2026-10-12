@@ -48,7 +48,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   (1)–(4) are implemented, (5) (door overlap) is not checked yet. Cross-field rules only run
   when the schema passes. Returns `string[]`, empty when valid.
 - **`derive.js`** — pure functions, no DOM, no three: `layout` (per-section `x0`, absolute axle x,
-  bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `hints`, `arch` (the
+  bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `endH` (the height of a flat end face, which `faces` draws and `mapErrs` checks), `hints`, `arch` (the
   wheel-arch circle the model cuts out), `doors` (every hint placed as a span per section:
   the zone gives a span clear of body ends and arches, the bias a position in it), `lintel` (the
   line doors and side windows reach up to: the body top less `band_above_mm`), `sill` (the line
