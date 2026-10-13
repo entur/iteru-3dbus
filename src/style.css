@@ -29,7 +29,7 @@ button { font: inherit; font-size: 15px; color: var(--ink); background: transpar
 button:hover { background: rgba(110, 124, 134, 0.14); }
 button[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); }
 button:disabled { opacity: 0.35; cursor: default; background: transparent; }
-button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, #src:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, #json a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 header { position: fixed; left: 20px; top: 16px; max-width: 70vw; }
 header h1, header p { pointer-events: none; }
@@ -37,11 +37,16 @@ h1 { font-weight: 600; font-size: clamp(22px, 3.2vw, 34px); line-height: 1.05; m
 header p { margin: 4px 0 0; color: var(--steel); font-size: 15px; }
 .plate { display: inline-block; border: 1.5px solid var(--ink); border-radius: 3px; padding: 0 6px; font-weight: 600; color: var(--ink); margin-right: 6px; }
 .plate[hidden] { display: none; }
-#src, #models, #views, .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(8px); }
+#json, .pick, #views, .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(8px); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-#src { display: inline-flex; align-items: center; padding: 4px 10px; font-size: 15px; font-weight: 500; color: var(--ink); text-decoration: none; white-space: nowrap; }
-#src:hover { border-color: var(--amber); }
-#models { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; padding: 4px; }
+#json { display: inline-flex; align-items: center; gap: 2px; padding: 3px; font-size: 15px; white-space: nowrap; }
+#json span { padding: 0 4px 0 7px; color: var(--steel); }
+#json a { padding: 1px 8px; border-radius: 7px; font-weight: 500; color: var(--ink); text-decoration: none; cursor: pointer; }
+#json a:hover { background: rgba(110, 124, 134, 0.14); }
+#json a[aria-disabled="true"] { opacity: 0.35; pointer-events: none; }
+#models { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.pick { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; }
+.pick span { padding: 0 2px 0 8px; color: var(--steel); font-size: 14px; }
 #models button { font-weight: 500; }
 #views { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 4px; padding: 4px; }
 aside { position: fixed; right: 16px; top: 16px; width: 290px; max-height: calc(100% - 110px); overflow: auto; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }

@@ -210,3 +210,10 @@ export const rmDoor = (inp, i, j) => {
  * @returns {object} inp itself when it has a front_display, else a copy with model as that text
  */
 export const signed = (inp) => ('front_display' in inp ? inp : { ...inp, front_display: inp.model });
+
+/**
+ * A bus input as the text of a JSON file: its keys in the order they have, two spaces of indent.
+ * @param {object} inp bus input
+ * @returns {string} the file's text, ending in a newline
+ */
+export const toJson = (inp) => `${JSON.stringify(inp, null, 2)}\n`;

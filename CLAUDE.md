@@ -131,7 +131,11 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - **`main.js`** — loads every `examples/**/*.json` through `import.meta.glob`, so any file dropped in
   `examples/` becomes a selectable bus. A bus in a directory under `examples/` belongs to that set:
   no header button of its own, but a card on the set's page, which is the route `#<set>` and one
-  header button (`SETS`; `busnordic` is the only one). On a cards page `body[data-page]` hides the
+  header button (`SETS`; `busnordic` is the only one). Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
+  header button. A selected bus of a set gets the last button among the
+  concrete vehicles, pressed while the viewer shows it; the set's own button is pressed on its
+  cards page only. The header has two captioned groups:
+  "Concrete vehicles:" for the buses directly in `examples/`, "Type set:" for the sets. On a cards page `body[data-page]` hides the
   viewer and all edit chrome. Selecting validates first and shows errors in `#err`. Owns
   what is app layout: the view offset that keeps the bus clear of the details panel.
   State is `@preact/signals-core` (app only, banned from the library by `test/lib.test.js`):
@@ -139,8 +143,9 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   face maps of `ok`. Everything
   drawn (model, maps, header, derived rows) reads `ok`; the controls read `draft`, so an invalid
   edit stays in its field, marked, while the last valid bus stays on screen. Only another bus
-  re-aims the camera. The source link warns through `<dialog id="drift">` once `draft` differs
-  from `src`.
+  re-aims the camera. Beside the title, `#json` holds two links: Original, the file as loaded, which warns
+  through `<dialog id="drift">` once `draft` differs from `src`, and Modified, a download of
+  `toJson(ok)` (`edit.js`), there once `ok` differs from `src`.
 
 ### Coordinate conventions
 

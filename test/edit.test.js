@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, signed, spec } from '../src/edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, signed, spec, toJson } from '../src/edit.js';
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
@@ -136,4 +136,11 @@ test('the app shows the model on the front display of a bus that names no text f
   const off = { ...volvo, front_display: '' }, own = { ...volvo, front_display: '21 Tjuvholmen' };
   assert.equal(signed(off), off);
   assert.equal(signed(own), own);
+});
+
+test('a bus input as a JSON file: the same input back, keys in their order, a newline at the end', () => {
+  const edited = set(volvo, ['front_display'], '21');
+  assert.deepEqual(JSON.parse(toJson(edited)), edited);
+  assert.equal(toJson(volvo), readFileSync(new URL('../examples/volvo-8900.json', import.meta.url), 'utf8'));
+  assert.ok(toJson(edited).trimEnd().endsWith('"front_display": "21"\n}'));
 });

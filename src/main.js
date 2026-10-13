@@ -1,13 +1,12 @@
 import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import '../guide/bus-3d.js';
-import { addAxle, addDoor, rmAxle, rmDoor, same, set, signed } from './edit.js';
+import { addAxle, addDoor, rmAxle, rmDoor, same, set, signed, toJson } from './edit.js';
 import { gallery } from './gallery.js';
 import { form, header, mapCard, viewBar } from './ui.js';
 import { validate } from './validate.js';
 import { faces } from './vector.js';
 
-const FIRST = 'volvo-8900';
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
 
 // a page of cards per set: the route is the directory under examples/ that holds the set's buses
@@ -23,7 +22,7 @@ const buses = Object.entries(import.meta.glob('../examples/**/*.json', { eager: 
 const cards = document.getElementById('cards'), pages = {};
 const bus = document.querySelector('bus-3d');
 const info = document.getElementById('info'), err = document.getElementById('err');
-const link = document.getElementById('src'), drift = document.getElementById('drift');
+const link = document.getElementById('src'), mod = document.getElementById('mod'), drift = document.getElementById('drift');
 
 // src: the example as loaded; draft: src with every edit, valid or not; ok: the last valid draft, which is what is drawn
 const id = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
@@ -33,6 +32,7 @@ const errs = computed(() => (draft.value ? validate(draft.value) : []));
 const dirty = computed(() => !same(draft.value, src.value));
 const maps = computed(() => (ok.value ? faces(signed(ok.value)) : null));  // the face maps of what is drawn
 const mapped = mapCard(maps);
+const edited = computed(() => !!ok.value && !same(ok.value, src.value));  // what is drawn differs from the file
 let aim = false, stop = null;
 
 /** Takes an edited draft: it is always kept, and drawn when valid. While it is invalid, every control edited stays marked. */
@@ -87,9 +87,10 @@ const inSet = (s) => buses.filter((b) => b.set === s);
 
 effect(() => {
   if (!ok.value) return;
-  const r = route.value, tabs = Object.entries(SETS).map(([s, { label }]) => ({ label, on: r === s || (!r && buses.find((b) => b.id === id.value).set === s), go: () => (location.hash = s) }));
+  const r = route.value, tabs = Object.entries(SETS).map(([s, { label }]) => ({ label, on: r === s, go: () => (location.hash = s) }));
   const cur = { id: id.value, inp: ok.value, src: buses.find((b) => b.id === id.value).src };
-  header(buses.filter((b) => !b.set), cur, view, tabs, r ? { title: SETS[r].title, sub: SETS[r].sub(inSet(r).length) } : null);
+  // a selected bus of a set takes the last place among the buttons, which is there for it alone
+  header([...buses.filter((b) => !b.set), ...buses.filter((b) => b.set && b.id === id.value)], cur, view, tabs, r ? { title: SETS[r].title, sub: SETS[r].sub(inSet(r).length) } : null);
 });
 // a cards page is built, and its buses drawn, the first time it is opened
 effect(() => {
@@ -99,6 +100,14 @@ effect(() => {
   r && cards.replaceChildren((pages[r] ??= gallery(inSet(r), view)));
 });
 effect(() => (err.textContent = [...fail.value, ...errs.value].join('\n')));
+
+// Modified: the bus as drawn, with its valid edits, as a file to download; there is none until an edit
+effect(() => {
+  const was = mod.href;
+  edited.value ? (mod.href = URL.createObjectURL(new Blob([toJson(ok.value)], { type: 'application/json' }))) : mod.removeAttribute('href');
+  was && URL.revokeObjectURL(was);
+  Object.assign(mod, { download: `${id.value}.json`, ariaDisabled: String(!edited.value), title: edited.value ? 'Download the input JSON with your edits' : 'No edits yet' });
+});
 
 bus.addEventListener('busrender', () => aim && ((aim = false), bus.go()));
 bus.addEventListener('buserror', (e) => (fail.value = e.detail.errors));
@@ -122,5 +131,6 @@ const toggle = document.getElementById('toggle');
 toggle.onclick = () => (toggle.ariaExpanded = String(info.classList.toggle('open')));
 
 ['hashchange', 'popstate'].forEach((t) => addEventListener(t, () => (route.value = routed())));
-select(new URLSearchParams(location.search).get('bus') ?? FIRST);
+// without ?bus=, the first bus in the header: the first one directly in examples/
+select(new URLSearchParams(location.search).get('bus') ?? buses.find((b) => !b.set).id);
 route.value = routed();

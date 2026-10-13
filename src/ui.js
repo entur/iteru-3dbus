@@ -12,6 +12,7 @@ const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES =
 export const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
 const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and the hinted doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
+const VEHICLES = 'Concrete vehicles:', TYPE_SET = 'Type set:';  // captions of the two groups of buttons in the header
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
 const open = new Set(['Dimensions', 'Sections']);  // accordion groups that are open; survives edits and bus switches
@@ -58,10 +59,11 @@ export const el = (tag, props = {}, ...kids) => {
 };
 
 /**
- * Fills the header: one button per bus and per tab, then the title with a link to the selected
- * bus's raw input JSON beside it, fleet-number plate and operator line. A page takes the bus's
+ * Fills the header: a captioned group of buttons for the buses and one for the tabs, then the title with the link to the selected
+ * bus's input JSON as loaded beside it, fleet-number plate and operator line. A page takes the bus's
  * place in the title and the line below it, and has no source link.
- * @param {{id: string, inp: object, src: string}[]} buses the buses that get a button, src is the JSON url
+ * @param {{id: string, inp: object, src: string, set?: string}[]} buses the buses that get a button, src is the JSON
+ *   url; a bus of a set is named by its whole model
  * @param {{id: string, inp: object, src: string}} cur the selected bus, inp its input with the valid edits applied
  * @param {(id: string) => void} pick called when another bus is chosen
  * @param {{label: string, on: boolean, go: () => void}[]} [tabs] buttons after the buses, on: shown as pressed
@@ -70,12 +72,13 @@ export const el = (tag, props = {}, ...kids) => {
 export const header = (buses, cur, pick, tabs = [], page = null) => {
   const { inp, src } = cur;
   const title = page?.title ?? `${inp.brand} ${inp.model}`;
-  Object.assign(document.getElementById('src'), { href: src, title: `Raw input JSON for ${title}`, hidden: !!page });
+  Object.assign(document.getElementById('src'), { href: src, title: `Input JSON of ${title} as loaded` });
+  document.getElementById('json').hidden = !!page;
+  const group = (caption, btns) => el('div', { className: 'pick', role: 'group', ariaLabel: caption }, el('span', {}, caption), ...btns);
   document.getElementById('models').replaceChildren(
-    ...buses.map((b) =>
-      el('button', { onclick: () => pick(b.id), ariaPressed: String(!page && b.id === cur.id) }, `${b.inp.brand} ${b.inp.model.split(' ')[0]}`),
-    ),
-    ...tabs.map((t) => el('button', { onclick: t.go, ariaPressed: String(t.on) }, t.label)),
+    group(VEHICLES, buses.map((b) =>
+      el('button', { onclick: () => pick(b.id), ariaPressed: String(!page && b.id === cur.id) }, `${b.inp.brand} ${b.set ? b.inp.model : b.inp.model.split(' ')[0]}`))),
+    ...(tabs.length ? [group(TYPE_SET, tabs.map((t) => el('button', { onclick: t.go, ariaPressed: String(t.on) }, t.label)))] : []),
   );
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;
