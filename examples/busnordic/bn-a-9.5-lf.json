@@ -1,0 +1,33 @@
+{
+  "schema_version": "2.0",
+  "brand": "BusNordic",
+  "model": "A:9.5 LF",
+  "body": "rigid",
+  "bus_class": "A",
+  "floor_type": "low_floor",
+  "width_mm": 2550,
+  "height_mm": 2900,
+  "tyre": {
+    "diameter_mm": 800
+  },
+  "base_color": {
+    "hex": "#F2B705",
+    "name": "yellow"
+  },
+  "sections": [
+    {
+      "length_mm": 8000,
+      "axles_mm": [
+        1700,
+        6000
+      ],
+      "doors_hint": [
+        {
+          "zone": "between_axles",
+          "bias": "front",
+          "leaves": 2
+        }
+      ]
+    }
+  ]
+}

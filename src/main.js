@@ -2,6 +2,7 @@ import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import '../guide/bus-3d.js';
 import { addAxle, addDoor, rmAxle, rmDoor, same, set } from './edit.js';
+import { gallery } from './gallery.js';
 import { form, header, mapCard, viewBar } from './ui.js';
 import { validate } from './validate.js';
 import { faces } from './vector.js';
@@ -9,18 +10,24 @@ import { faces } from './vector.js';
 const FIRST = 'volvo-8900';
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
 
-const srcs = import.meta.glob('../examples/*.json', { eager: true, query: '?url', import: 'default' });
-const buses = Object.entries(import.meta.glob('../examples/*.json', { eager: true, import: 'default' })).map(([p, inp]) => ({
+// a page of cards per set: the route is the directory under examples/ that holds the set's buses
+const SETS = { busnordic: { label: 'BusNordic', title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions` } };
+
+const srcs = import.meta.glob('../examples/**/*.json', { eager: true, query: '?url', import: 'default' });
+const buses = Object.entries(import.meta.glob('../examples/**/*.json', { eager: true, import: 'default' })).map(([p, inp]) => ({
   id: p.match(/([^/]+)\.json$/)[1],
+  set: p.match(/examples\/(?:([^/]+)\/)?[^/]+$/)[1],  // undefined for a bus with a button of its own
   inp,
   src: srcs[p],
 }));
+const cards = document.getElementById('cards'), pages = {};
 const bus = document.querySelector('bus-3d');
 const info = document.getElementById('info'), err = document.getElementById('err');
 const link = document.getElementById('src'), drift = document.getElementById('drift');
 
 // src: the example as loaded; draft: src with every edit, valid or not; ok: the last valid draft, which is what is drawn
 const id = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
+const route = signal('');  // the set whose cards page is open, '' for the viewer
 const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
 const errs = computed(() => (draft.value ? validate(draft.value) : []));
 const dirty = computed(() => !same(draft.value, src.value));
@@ -68,7 +75,29 @@ effect(() => {
   bus.faces = maps.value;
   bus.inp = inp;
 });
-effect(() => ok.value && header(buses, id.value, ok.value, select));
+/** The route in the address bar: a set's name as the hash, anything else is the viewer. */
+const routed = () => (Object.hasOwn(SETS, location.hash.slice(1)) ? location.hash.slice(1) : '');
+/** Opens the viewer on a bus, leaving a cards page if one is open. */
+const view = (to) => {
+  route.value && history.pushState(null, '', location.pathname + location.search);
+  route.value = '';
+  select(to);
+};
+const inSet = (s) => buses.filter((b) => b.set === s);
+
+effect(() => {
+  if (!ok.value) return;
+  const r = route.value, tabs = Object.entries(SETS).map(([s, { label }]) => ({ label, on: r === s || (!r && buses.find((b) => b.id === id.value).set === s), go: () => (location.hash = s) }));
+  const cur = { id: id.value, inp: ok.value, src: buses.find((b) => b.id === id.value).src };
+  header(buses.filter((b) => !b.set), cur, view, tabs, r ? { title: SETS[r].title, sub: SETS[r].sub(inSet(r).length) } : null);
+});
+// a cards page is built, and its buses drawn, the first time it is opened
+effect(() => {
+  const r = route.value;
+  document.body.toggleAttribute('data-page', !!r);
+  cards.hidden = !r;
+  r && cards.replaceChildren((pages[r] ??= gallery(inSet(r), view)));
+});
 effect(() => (err.textContent = [...fail.value, ...errs.value].join('\n')));
 
 bus.addEventListener('busrender', () => aim && ((aim = false), bus.go()));
@@ -92,4 +121,6 @@ viewBar(bus);
 const toggle = document.getElementById('toggle');
 toggle.onclick = () => (toggle.ariaExpanded = String(info.classList.toggle('open')));
 
+['hashchange', 'popstate'].forEach((t) => addEventListener(t, () => (route.value = routed())));
 select(new URLSearchParams(location.search).get('bus') ?? FIRST);
+route.value = routed();

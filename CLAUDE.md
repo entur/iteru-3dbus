@@ -35,7 +35,7 @@ core   validate.js  derive.js  dims.js                  pure, no DOM, no three
 2D     vector.js                                        core only: no three
 3D     bus.js  scene.js  views.js                       core + three: no vector.js
 guide  guide/bus-3d.js  <bus-3d>                        the package entry (index.js) only
-app    main.js  ui.js  edit.js  index.html  style.css   imports the library and the guide, never the reverse
+app    main.js  ui.js  edit.js  gallery.js  index.html  style.css   imports the library and the guide, never the reverse
 ```
 
 The host connects the two sides: `const maps = faces(inp); mkBus(inp, maps)`. The 3D side takes
@@ -94,7 +94,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - **`scene.js`** — `mkStage(el)`: renderer, sky/fog, lights, shadows, ground, orbit controls;
   day/night palette from the OS colour scheme. The canvas follows `el` through a `ResizeObserver`.
   `ticks` are per-frame callbacks, `fits` per-resize ones; `drop` disposes geometry, materials and
-  maps of a model, `dispose` the stage itself.
+  maps of a model, `dispose` the stage itself; `shot` draws a frame and returns it as a JPEG data URL.
 - **`views.js`** — `VIEWS` and animated flights between them (registered as a stage tick). No buttons.
 - **`guide/bus-3d.js`** — `<bus-3d>`, not in the package: needs both `inp` and `faces`; setting
   either queues one rebuild in a microtask. The first rebuild aims at `view`, later ones keep the
@@ -121,8 +121,15 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
   door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
-- **`main.js`** — loads every `examples/*.json` through `import.meta.glob`, so any file dropped in
-  `examples/` becomes a selectable bus. Selecting validates first and shows errors in `#err`. Owns
+- **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per bus, no edit chrome. Every
+  picture is taken on one off-screen stage (`mkStage` + `shot()`), one bus after the other: a
+  `<bus-3d>` per card would run past the browser's WebGL context limit. A card opens its bus in
+  the viewer.
+- **`main.js`** — loads every `examples/**/*.json` through `import.meta.glob`, so any file dropped in
+  `examples/` becomes a selectable bus. A bus in a directory under `examples/` belongs to that set:
+  no header button of its own, but a card on the set's page, which is the route `#<set>` and one
+  header button (`SETS`; `busnordic` is the only one). On a cards page `body[data-page]` hides the
+  viewer and all edit chrome. Selecting validates first and shows errors in `#err`. Owns
   what is app layout: the view offset that keeps the bus clear of the details panel.
   State is `@preact/signals-core` (app only, banned from the library by `test/lib.test.js`):
   `src` the example as loaded, `draft` with every edit, `ok` the last valid draft, `maps` the
@@ -145,6 +152,9 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - `examples/` are the schema's own `examples` (Citaro G has `roof_equipment_mm` added). Tests load
   `volvo-8900` and `citaro-g` by name and assert exact derived numbers, and the reject cases are
   built by patching those two — changing them means updating `test/validate.test.js`.
+- `examples/busnordic/` is one generic bus per row of the Bus Nordic 2.0 "Examples of bus types"
+  tables (17), brand `BusNordic`, model `<class>:<max length> <floor or HC>`. Only class, length
+  band, floor type and door count come from the standard. `test/validate.test.js` checks the set.
 - The schema is strict (`additionalProperties: false`, `unevaluatedProperties: false` on sections).
 - `vite.config.js` sets `assetsInlineLimit: 0` on purpose: the header's source link must point at a
   real `.json` file, not a `data:` URL.

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const FOV = 32, FOV_TALL = 48, NEAR = 0.1, FAR = 300, MAX_DPR = 2;
+const FOV = 32, FOV_TALL = 48, NEAR = 0.1, FAR = 300, MAX_DPR = 2, SHOT_Q = 0.9;
 const FOG_NEAR = 40, FOG_FAR = 110, GROUND_R = 80;
 const HEMI = 2.4, SUN = 2.7, FILL = 0.8;
 const SUN_AT = [-14, 22, -18], FILL_AT = [15, 8, 10];
@@ -21,9 +21,10 @@ const dispose = (g) =>
  * @param {HTMLElement} el container the canvas fills
  * @returns {{cam: THREE.PerspectiveCamera, ctl: OrbitControls, add: (g: THREE.Object3D) => void,
  *   drop: (g: THREE.Object3D) => void, ticks: (() => void)[], fits: (() => void)[],
- *   offset: (px: number) => void, dispose: () => void}} add/drop swap a model in and out, ticks
- *   run before each frame, fits after each resize, offset shifts the view sideways, dispose
- *   stops the loop and frees everything but a model still added
+ *   offset: (px: number) => void, shot: () => string, dispose: () => void}} add/drop swap a model
+ *   in and out, ticks run before each frame, fits after each resize, offset shifts the view
+ *   sideways, shot draws a frame and returns it as a JPEG data URL, dispose stops the loop and
+ *   frees everything but a model still added
  */
 export const mkStage = (el) => {
   const pal = matchMedia('(prefers-color-scheme: dark)').matches ? NIGHT : DAY;
@@ -75,6 +76,7 @@ export const mkStage = (el) => {
   return {
     cam, ctl, ticks, fits,
     offset: (px) => ((shift = px), fit()),
+    shot: () => (ctl.update(), gl.render(scene, cam), gl.domElement.toDataURL('image/jpeg', SHOT_Q)),  // read back in the task that drew it
     dispose: () => {
       gl.setAnimationLoop(null);
       ro.disconnect();

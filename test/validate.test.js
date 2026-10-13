@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { validate } from '../src/validate.js';
-import { dash, doorWidth, doors, grill, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
+import { dash, doorWidth, doors, grill, hints, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
+
+const BUSNORDIC = new URL('../examples/busnordic/', import.meta.url), BUSNORDIC_ROWS = 17;
 
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
@@ -35,6 +37,14 @@ const bad = {
 test('examples pass', () => {
   assert.deepEqual(validate(volvo), []);
   assert.deepEqual(validate(citaro), []);
+});
+
+test('the BusNordic set passes, one bus per row of the Bus Nordic tables', () => {
+  const set = readdirSync(BUSNORDIC).map((f) => JSON.parse(readFileSync(new URL(f, BUSNORDIC), 'utf8')));
+  assert.equal(set.length, BUSNORDIC_ROWS);
+  set.forEach((inp) => assert.deepEqual(validate(inp), [], inp.model));
+  assert.equal(new Set(set.map((inp) => inp.model)).size, set.length);
+  assert.deepEqual([...new Set(set.map((inp) => hints(inp).length))].sort(), [1, 2, 3, 4, 5]);
 });
 
 Object.entries(bad).forEach(([name, inp]) =>

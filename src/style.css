@@ -10,6 +10,19 @@
 html, body { height: 100%; margin: 0; }
 body { background: var(--sky); color: var(--ink); font-family: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif; overflow: hidden; }
 bus-3d { position: fixed; inset: 0; }
+[hidden] { display: none !important; }
+/* a cards page: no viewer, no edit chrome */
+body[data-page] :is(bus-3d, aside, #views, #toggle, #err) { display: none; }
+body[data-page] { overflow: auto; }
+body[data-page] header { position: static; max-width: none; margin: 16px 20px 0; }
+#cards { padding: 14px 20px 28px; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.card.bus { display: block; padding: 0 0 12px; overflow: hidden; color: inherit; text-decoration: none; }
+.bus:hover, .bus:focus-visible { border-color: var(--amber); outline: 0; }
+.bus img { display: block; width: 100%; height: auto; background: var(--sky); }
+.bus h2, .bus p { margin: 0; padding: 0 14px; }
+.bus h2 { margin-top: 10px; }
+.bus p { color: var(--steel); font-size: 15px; }
 #err { position: fixed; left: 20px; bottom: 80px; margin: 0; color: var(--warn); white-space: pre; }
 
 button { font: inherit; font-size: 15px; color: var(--ink); background: transparent; border: 0; border-radius: 7px; padding: 7px 12px; cursor: pointer; }

@@ -8,7 +8,8 @@ const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · cit
 const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'Normal floor', low_floor_lower_level: 'Double deck, low lower deck' };
 const ZONE = { front_overhang: 'Front overhang', between_axles: 'Between axles', rear_overhang: 'Rear overhang' };
 const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES = { 1: '1 leaf', 2: '2 leaves' };
-const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
+/** Display names of the schema's enum values, by the key that holds them. */
+export const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
 const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and the hinted doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
@@ -57,28 +58,31 @@ export const el = (tag, props = {}, ...kids) => {
 };
 
 /**
- * Fills the header: one button per bus, then the title with a link to the selected bus's raw
- * input JSON beside it, fleet-number plate and operator line.
- * @param {{id: string, inp: object, src: string}[]} buses all selectable buses, src is the JSON url
- * @param {string} id the selected bus
- * @param {object} inp what is shown of it: its input with the valid edits applied
+ * Fills the header: one button per bus and per tab, then the title with a link to the selected
+ * bus's raw input JSON beside it, fleet-number plate and operator line. A page takes the bus's
+ * place in the title and the line below it, and has no source link.
+ * @param {{id: string, inp: object, src: string}[]} buses the buses that get a button, src is the JSON url
+ * @param {{id: string, inp: object, src: string}} cur the selected bus, inp its input with the valid edits applied
  * @param {(id: string) => void} pick called when another bus is chosen
+ * @param {{label: string, on: boolean, go: () => void}[]} [tabs] buttons after the buses, on: shown as pressed
+ * @param {?{title: string, sub: string}} [page] the page shown in place of the bus
  */
-export const header = (buses, id, inp, pick) => {
-  const { src } = buses.find((b) => b.id === id);
-  const title = `${inp.brand} ${inp.model}`;
-  Object.assign(document.getElementById('src'), { href: src, title: `Raw input JSON for ${title}` });
+export const header = (buses, cur, pick, tabs = [], page = null) => {
+  const { inp, src } = cur;
+  const title = page?.title ?? `${inp.brand} ${inp.model}`;
+  Object.assign(document.getElementById('src'), { href: src, title: `Raw input JSON for ${title}`, hidden: !!page });
   document.getElementById('models').replaceChildren(
     ...buses.map((b) =>
-      el('button', { onclick: () => pick(b.id), ariaPressed: String(b.id === id) }, `${b.inp.brand} ${b.inp.model.split(' ')[0]}`),
+      el('button', { onclick: () => pick(b.id), ariaPressed: String(!page && b.id === cur.id) }, `${b.inp.brand} ${b.inp.model.split(' ')[0]}`),
     ),
+    ...tabs.map((t) => el('button', { onclick: t.go, ariaPressed: String(t.on) }, t.label)),
   );
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;
   const plate = document.getElementById('plate');
   plate.textContent = inp.meta?.fleet_number ?? '';
-  plate.hidden = !inp.meta?.fleet_number;
-  document.getElementById('sub').textContent = [inp.meta?.operator, `${BODY[inp.body]}, class ${inp.bus_class}`].filter(Boolean).join(' · ');
+  plate.hidden = !!page || !inp.meta?.fleet_number;
+  document.getElementById('sub').textContent = page?.sub ?? [inp.meta?.operator, `${BODY[inp.body]}, class ${inp.bus_class}`].filter(Boolean).join(' · ');
 };
 
 /**
