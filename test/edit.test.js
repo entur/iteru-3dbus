@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec } from '../src/edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, signed, spec } from '../src/edit.js';
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
-const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
+const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
 const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
@@ -128,4 +128,12 @@ test('emptying the window count takes windows_hint with it', () => {
   const counted = set(volvo, [...WIN, 'count'], 5);
   assert.deepEqual(get(counted, WIN), { count: 5 });
   assert.ok(same(set(counted, [...WIN, 'count'], undefined), volvo));
+});
+
+test('the app shows the model on the front display of a bus that names no text for it', () => {
+  assert.equal(signed(volvo).front_display, volvo.model);
+  assert.equal('front_display' in volvo, false);
+  const off = { ...volvo, front_display: '' }, own = { ...volvo, front_display: '21 Tjuvholmen' };
+  assert.equal(signed(off), off);
+  assert.equal(signed(own), own);
 });

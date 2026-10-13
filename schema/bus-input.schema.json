@@ -106,6 +106,10 @@
       "maximum": 2500,
       "description": "Band of body below the windshield, down to the lower edge of the flat front, like band_below_grill_mm. When missing: the windshield ends 200 mm below the lower edge of the side windows, that is band_above_mm + win_band_height_mm + 200 below the top of the body. Rendering: the windshield is drawn down to this line, stopping above the grille."
     },
+    "front_display": {
+      "type": "string",
+      "description": "Text on the destination display, e.g. a line number and destination. Rendering: a dark display at the top of the windshield showing this text, set smaller when it is long. Empty: no display. Missing: faces() draws no display either; a host is free to show a text of its own choice there, and the app here shows model."
+    },
     "tyre": {
       "type": "object",
       "additionalProperties": false,

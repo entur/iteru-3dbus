@@ -160,3 +160,18 @@ test('a long badge text is set smaller, a short one at full size', () => {
   assert.ok(size(long(40)) < size(citaro));
   assert.ok(size(long(500)) > 0 && text(long(500))['letter-spacing'] > 0);
 });
+
+test('a front_display text is shown on a display at the top of the windscreen, set smaller when it is long', () => {
+  const at = (inp) => (([f]) => ({ pane: glazing(f, 'windscreen')[0]?.pane, sign: part(f, 'display').map(({ kids: [quad, text] }) => ({ quad: quad.attrs, text: text.attrs, label: text.kids[0] })) }))(faces(inp).front);
+  const shown = (t, more = {}) => at({ ...volvo, front_display: t, ...more });
+  assert.deepEqual(at(volvo).sign, []);
+  assert.deepEqual(shown('').sign, []);
+  const { pane, sign: [{ quad, text, label }] } = shown('21 Tjuvholmen');
+  assert.equal(label, '21 Tjuvholmen');
+  assert.deepEqual([quad.stroke, quad.y - pane.y, quad.x - pane.x, pane.x + pane.width - quad.x - quad.width, quad.height], ['darkgray', 40, 40, 40, 300]);
+  assert.deepEqual([text.x, text.y, text['font-size']], [volvo.width_mm / 2, quad.y + 150, 200]);
+  assert.ok(shown('x'.repeat(60)).sign[0].text['font-size'] < 200);
+  assert.deepEqual(shown('21', { band_above_mm: 1000, band_below_grill_mm: 1200 }).sign, []);
+  const low = shown('21', { band_below_windshield_mm: 2360 });  // a windscreen too low for a display
+  assert.deepEqual([low.pane.height, low.sign], [190, []]);
+});

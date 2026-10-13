@@ -40,6 +40,7 @@ export const FIELDS = [
   { group: 'Colour', label: 'Name', path: ['base_color', 'name'] },
   { group: 'Front', label: 'Template', path: ['front', 'template'] },
   { group: 'Front', label: 'Badge text', path: ['front', 'badge_text'], kind: 'text', edit: true, hint: (inp) => inp.brand },
+  { group: 'Front', label: 'Display', path: ['front_display'], kind: 'text', edit: true, hint: (inp) => inp.model },
   { group: 'Photo', label: 'URI', path: ['photo', 'uri'] },
   { group: 'Photo', label: 'Straight', path: ['photo', 'straight'] },
   { group: 'Meta', label: 'Operator', path: ['meta', 'operator'] },
@@ -202,3 +203,10 @@ export const rmDoor = (inp, i, j) => {
   const ds = inp.sections[i].doors_hint.filter((_, k) => k !== j);
   return set(inp, ['sections', i, 'doors_hint'], ds.length ? ds : undefined);
 };
+
+/**
+ * The input as the app draws it: a bus without a front_display shows its model there.
+ * @param {object} inp bus input
+ * @returns {object} inp itself when it has a front_display, else a copy with model as that text
+ */
+export const signed = (inp) => ('front_display' in inp ? inp : { ...inp, front_display: inp.model });

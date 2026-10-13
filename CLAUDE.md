@@ -77,7 +77,10 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   the panes of `windowsLeft` unflipped, in the same band and frame, and no doors.
   The front map has a windscreen in that frame, from `lintel` down to `dash` but never closer
   to the badge than `SCREEN_GAP` (an end map starts `CORNER` below the body top), left out
-  when there is no room for it; the badge
+  when there is no room for it; a root `front_display` text is shown on a destination display
+  (`display`: dark quad, dark-gray outline) at the top of the windscreen's pane, when the pane is
+  high enough (the app passes `signed(inp)` from `edit.js`, which puts `model` there when the
+  input has none); the badge
   stands on `grill`, with a headlight on each side of it: one
   drawing of the left one (`src/headlight.svg`, imported as text and parsed, or
   `faces(inp, { headlight })`), placed again mirrored. `test/raw.js` lets node load that

@@ -1,7 +1,7 @@
 import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import '../guide/bus-3d.js';
-import { addAxle, addDoor, rmAxle, rmDoor, same, set } from './edit.js';
+import { addAxle, addDoor, rmAxle, rmDoor, same, set, signed } from './edit.js';
 import { gallery } from './gallery.js';
 import { form, header, mapCard, viewBar } from './ui.js';
 import { validate } from './validate.js';
@@ -31,7 +31,7 @@ const route = signal('');  // the set whose cards page is open, '' for the viewe
 const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
 const errs = computed(() => (draft.value ? validate(draft.value) : []));
 const dirty = computed(() => !same(draft.value, src.value));
-const maps = computed(() => (ok.value ? faces(ok.value) : null));  // the face maps of what is drawn
+const maps = computed(() => (ok.value ? faces(signed(ok.value)) : null));  // the face maps of what is drawn
 const mapped = mapCard(maps);
 let aim = false, stop = null;
 

@@ -1,6 +1,7 @@
 import { mkBus } from './bus.js';
 import { hints, total } from './derive.js';
 import { MM } from './dims.js';
+import { signed } from './edit.js';
 import { mkStage } from './scene.js';
 import { NAMES, el } from './ui.js';
 import { faces } from './vector.js';
@@ -37,7 +38,7 @@ const shoot = (buses, put) => {
   const stage = mkStage(box), cur = { group: null, len: 0 };
   const go = mkViews(stage, () => cur);
   const one = async (b) => {
-    const group = mkBus(b.inp, faces(b.inp)), len = total(b.inp) * MM;
+    const group = mkBus(b.inp, faces(signed(b.inp))), len = total(b.inp) * MM;
     group.position.x = -len / 2;
     Object.assign(cur, { group, len });
     stage.add(group);
