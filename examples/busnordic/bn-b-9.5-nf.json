@@ -1,0 +1,32 @@
+{
+  "schema_version": "2.0",
+  "brand": "BusNordic",
+  "model": "B:9.5 NF",
+  "body": "rigid",
+  "bus_class": "B",
+  "floor_type": "normal_floor",
+  "width_mm": 2550,
+  "height_mm": 3100,
+  "tyre": {
+    "diameter_mm": 800
+  },
+  "base_color": {
+    "hex": "#E9ECEC",
+    "name": "white"
+  },
+  "sections": [
+    {
+      "length_mm": 8500,
+      "axles_mm": [
+        1900,
+        6300
+      ],
+      "doors_hint": [
+        {
+          "zone": "front_overhang",
+          "leaves": 1
+        }
+      ]
+    }
+  ]
+}

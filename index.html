@@ -14,10 +14,15 @@
       <nav id="models" aria-label="Choose bus"></nav>
       <div class="row">
         <h1 id="title"></h1>
-        <a id="src" target="_blank" rel="noopener">{ } JSON</a>
+        <span id="json" role="group" aria-label="Input JSON">
+          <span>{ }</span>
+          <a id="src" target="_blank" rel="noopener">Original</a>
+          <a id="mod">Modified</a>
+        </span>
       </div>
       <p><span class="plate" id="plate"></span><span id="sub"></span></p>
     </header>
+    <main id="cards" hidden></main>
     <button id="toggle" aria-expanded="false" aria-controls="info">Details</button>
     <aside id="info"></aside>
     <nav id="views" aria-label="Camera views"></nav>

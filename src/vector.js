@@ -6,6 +6,9 @@ const NS = 'http://www.w3.org/2000/svg', SVG = 'image/svg+xml';
 const BADGE_W = 0.5, BADGE_H = 260, BADGE_FONT = 170, BADGE_R = 40;
 const BADGE_PAD = 60, BADGE_SPACING = 10, GLYPH = 0.72;  // text kept inside the badge: side padding, letter spacing at full size, glyph width per font size
 const BADGE = '#2b3136', BADGE_INK = '#eef2f5', FONT = 'Arial, Helvetica, sans-serif';
+const DISPLAY_H = 300, DISPLAY_MIN = 120, DISPLAY_GAP = 40, DISPLAY_PAD = 50;  // destination display in the windscreen: height aimed at, lowest one drawn, glass left around it, side padding of its text
+const DISPLAY_FONT = 200, DISPLAY_FILL = 0.7, DISPLAY_SPACING = 10, DISPLAY_EDGE_W = 20;  // text size aimed at and its largest share of the display's height
+const DISPLAY = '#14181b', DISPLAY_EDGE = 'darkgray', DISPLAY_INK = '#ffb000';
 const DOOR_SILL = 40;  // door sill above the skirt
 const FRAME = '#2b3136', FRAME_W = 45, FRAME_R = 30;  // around every pane of a door or window: colour, width, corner radius
 const GLASS = '#6f8797';
@@ -52,6 +55,28 @@ const side = (len, top, fill, ds = [], ws = [], [lo, hi] = [0, top]) => {
   return face(len, h, svg('path', { d, fill }), ...ws.map(pane(top - hi, top - lo)), ...ds.map(door(top - hi, h - DOOR_SILL, fill)));
 };
 
+/** Font size at which a text stays inside a width: the full size, or smaller for a long text. track is the letter spacing per font size. */
+const fit = (text, width, full, track) => Math.min(full, width / (text.length * (GLYPH + track)));
+
+/** A text on a front map, centred on x, y. track is its letter spacing per font size. */
+const label = (text, x, y, size, track, fill) =>
+  svg('text', { x, y, fill, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text);
+
+/**
+ * The destination display at the top of the windscreen's pane, which lies at x, y and is w by h:
+ * a dark quad with an outline, the text centred in it and set smaller when it is long. Nothing
+ * where the pane is too low for it.
+ */
+const display = (text, x, y, w, h) => {
+  const dw = w - 2 * DISPLAY_GAP, dh = Math.min(DISPLAY_H, h - 2 * DISPLAY_GAP), track = DISPLAY_SPACING / DISPLAY_FONT;
+  const size = Math.min(fit(text, dw - 2 * DISPLAY_PAD, DISPLAY_FONT, track), dh * DISPLAY_FILL);
+  return dh < DISPLAY_MIN ? [] : [svg(
+    'g', { class: 'display' },
+    svg('rect', { x: x + DISPLAY_GAP, y: y + DISPLAY_GAP, width: dw, height: dh, fill: DISPLAY, stroke: DISPLAY_EDGE, 'stroke-width': DISPLAY_EDGE_W }),
+    label(text, x + w / 2, y + DISPLAY_GAP + dh / 2, size, track, DISPLAY_INK),
+  )];
+};
+
 let parsed;
 /** The default headlight: the drawing in headlight.svg, the left one as the front map shows it. Parsed once, on first use. */
 const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).documentElement);
@@ -62,21 +87,23 @@ const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).d
  * the drawing itself stays untouched), and a windscreen from the lintel line down to the dash
  * line, stopping above the badge and left out where that leaves it no room. The lines are y on
  * the map. A long badge text is set smaller, its letter spacing with it, so it stays inside the
- * badge and clear of the headlights however long it is.
+ * badge and clear of the headlights however long it is. A sign text is shown on a destination
+ * display at the top of the windscreen, when there is one.
  */
-const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light) => {
+const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light, sign) => {
   const by = y1 - BADGE_H, cy = y1 - BADGE_H / 2, bx = (w * (1 - BADGE_W)) / 2, ys = Math.min(y2, by - SCREEN_GAP);
-  const label = text.toUpperCase(), track = BADGE_SPACING / BADGE_FONT;  // letter spacing per font size
-  const size = Math.min(BADGE_FONT, (w * BADGE_W - 2 * BADGE_PAD) / (label.length * (GLYPH + track)));
+  const name = text.toUpperCase(), track = BADGE_SPACING / BADGE_FONT;  // letter spacing per font size
+  const size = fit(name, w * BADGE_W - 2 * BADGE_PAD, BADGE_FONT, track), screen = ys - y > 2 * FRAME_W, edge = SCREEN_SIDE + FRAME_W;
   const left = attr(light.cloneNode(true), { class: 'headlight', x: LAMP_SIDE, y: by, width: bx - LAMP_GAP - LAMP_SIDE, height: BADGE_H });
   return face(
     w, h,
     plain(w, h, fill),
-    ...(ys - y > 2 * FRAME_W ? [framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, y, ys, 1, GLASS)] : []),
+    ...(screen ? [framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, y, ys, 1, GLASS)] : []),
+    ...(screen && sign ? display(sign, edge, y + FRAME_W, w - 2 * edge, ys - y - 2 * FRAME_W) : []),
     left,
     svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
     svg('rect', { class: 'badge', x: bx, y: by, width: w * BADGE_W, height: BADGE_H, rx: BADGE_R, fill: BADGE }),
-    svg('text', { x: w / 2, y: cy, fill: BADGE_INK, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, label),
+    label(name, w / 2, cy, size, track, BADGE_INK),
   );
 };
 
@@ -89,7 +116,8 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light) => {
  * hinted doors are on the right side only; the left side has a pane for each pane and each door
  * of the right side, in one run. The front map has a windscreen
  * up to the same line as those and down to the line band_below_windshield_mm gives, and the
- * badge with a headlight on each side standing on the line band_below_grill_mm gives.
+ * badge with a headlight on each side standing on the line band_below_grill_mm gives. A
+ * front_display text is shown on a destination display at the top of the windscreen.
  * @param {object} inp validated bus input
  * @param {object} [opts]
  * @param {SVGSVGElement} [opts.headlight] drawing of the left headlight as the front map shows
@@ -106,7 +134,7 @@ export const faces = (inp, { headlight: light } = {}) => {
   return {
     right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band)),
     left: boxes.map((b, i) => side(b.len, top, fill, [], across[i], band)),
-    front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand, lines, light ?? headlight())],
+    front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand, lines, light ?? headlight(), inp.front_display)],
     rear: [face(w, h, plain(w, h, fill))],
   };
 };

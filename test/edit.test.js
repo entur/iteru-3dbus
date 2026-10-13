@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec } from '../src/edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, signed, spec, toJson, typed } from '../src/edit.js';
 import { total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
-const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text'];
+const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
 const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
@@ -128,4 +128,30 @@ test('emptying the window count takes windows_hint with it', () => {
   const counted = set(volvo, [...WIN, 'count'], 5);
   assert.deepEqual(get(counted, WIN), { count: 5 });
   assert.ok(same(set(counted, [...WIN, 'count'], undefined), volvo));
+});
+
+test('the app shows the model on the front display of a bus that names no text for it', () => {
+  assert.equal(signed(volvo).front_display, volvo.model);
+  assert.equal('front_display' in volvo, false);
+  const off = { ...volvo, front_display: '' }, own = { ...volvo, front_display: '21 Tjuvholmen' };
+  assert.equal(signed(off), off);
+  assert.equal(signed(own), own);
+});
+
+test('a bus input as a JSON file: the same input back, keys in their order, a newline at the end', () => {
+  const edited = set(volvo, ['front_display'], '21');
+  assert.deepEqual(JSON.parse(toJson(edited)), edited);
+  assert.equal(toJson(volvo), readFileSync(new URL('../examples/volvo-8900.json', import.meta.url), 'utf8'));
+  assert.ok(toJson(edited).trimEnd().endsWith('"front_display": "21"\n}'));
+});
+
+test('an emptied control takes its value out, but the display keeps an empty text, which turns it off', () => {
+  const row = (p) => FIELDS.find((f) => f.path?.join('.') === p);
+  assert.equal(typed(row('front.badge_text'), ''), undefined);
+  assert.equal(typed(row('front_display'), ''), '');
+  assert.equal(typed(row('front_display'), '21'), '21');
+  assert.equal(typed(row('height_mm'), '3300'), 3300);
+  assert.equal(typed(row('height_mm'), ''), undefined);
+  const off = set(volvo, ['front_display'], typed(row('front_display'), ''));
+  assert.deepEqual([validate(off), signed(off).front_display], [[], '']);
 });

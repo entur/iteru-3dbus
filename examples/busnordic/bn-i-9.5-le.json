@@ -1,0 +1,37 @@
+{
+  "schema_version": "2.0",
+  "brand": "BusNordic",
+  "model": "I:9.5 LE",
+  "body": "rigid",
+  "bus_class": "I",
+  "floor_type": "low_entry",
+  "width_mm": 2550,
+  "height_mm": 3100,
+  "tyre": {
+    "size": "275/70 R22.5"
+  },
+  "base_color": {
+    "hex": "#1F6FB2",
+    "name": "blue"
+  },
+  "sections": [
+    {
+      "length_mm": 9500,
+      "axles_mm": [
+        2300,
+        7000
+      ],
+      "doors_hint": [
+        {
+          "zone": "front_overhang",
+          "leaves": 2
+        },
+        {
+          "zone": "between_axles",
+          "bias": "rear",
+          "leaves": 2
+        }
+      ]
+    }
+  ]
+}
