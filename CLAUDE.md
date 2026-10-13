@@ -97,7 +97,8 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - **`scene.js`** — `mkStage(el)`: renderer, sky/fog, lights, shadows, ground, orbit controls;
   day/night palette from the OS colour scheme. The canvas follows `el` through a `ResizeObserver`.
   `ticks` are per-frame callbacks, `fits` per-resize ones; `drop` disposes geometry, materials and
-  maps of a model, `dispose` the stage itself; `shot` draws a frame and returns it as a JPEG data URL.
+  maps of a model, `dispose` the stage itself; `shot` draws a frame and returns it as a JPEG data URL. The frame loop runs only while `el` has a size:
+  a hidden stage draws nothing.
 - **`views.js`** — `VIEWS` and animated flights between them (registered as a stage tick). No buttons.
 - **`guide/bus-3d.js`** — `<bus-3d>`, not in the package: needs both `inp` and `faces`; setting
   either queues one rebuild in a microtask. The first rebuild aims at `view`, later ones keep the
@@ -124,7 +125,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
   door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
-- **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per bus, no edit chrome. Every
+- **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per bus in the order given, no edit chrome. Every
   picture is taken on one off-screen stage (`mkStage` + `shot()`), one bus after the other: a
   `<bus-3d>` per card would run past the browser's WebGL context limit. A card opens its bus in
   the viewer.
@@ -132,7 +133,8 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   `examples/` becomes a selectable bus. A bus in a directory under `examples/` belongs to that set:
   no header button of its own, but a card on the set's page, which is the route `#<set>` and one
   header button (`SETS`; `busnordic` is the only one). Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
-  header button. A selected bus of a set gets the last button among the
+  header button. Opening a bus from a button or a card pushes a history entry naming it in `?bus=`;
+  `follow` selects the address bar's bus and route after a step in the history. A selected bus of a set gets the last button among the
   concrete vehicles, pressed while the viewer shows it; the set's own button is pressed on its
   cards page only. The header has two captioned groups:
   "Concrete vehicles:" for the buses directly in `examples/`, "Type set:" for the sets. On a cards page `body[data-page]` hides the

@@ -40,7 +40,7 @@ export const FIELDS = [
   { group: 'Colour', label: 'Name', path: ['base_color', 'name'] },
   { group: 'Front', label: 'Template', path: ['front', 'template'] },
   { group: 'Front', label: 'Badge text', path: ['front', 'badge_text'], kind: 'text', edit: true, hint: (inp) => inp.brand },
-  { group: 'Front', label: 'Display', path: ['front_display'], kind: 'text', edit: true, hint: (inp) => inp.model },
+  { group: 'Front', label: 'Display', path: ['front_display'], kind: 'text', edit: true, blank: true, hint: (inp) => inp.model },
   { group: 'Photo', label: 'URI', path: ['photo', 'uri'] },
   { group: 'Photo', label: 'Straight', path: ['photo', 'straight'] },
   { group: 'Meta', label: 'Operator', path: ['meta', 'operator'] },
@@ -217,3 +217,13 @@ export const signed = (inp) => ('front_display' in inp ? inp : { ...inp, front_d
  * @returns {string} the file's text, ending in a newline
  */
 export const toJson = (inp) => `${JSON.stringify(inp, null, 2)}\n`;
+
+/**
+ * The value the text of a row's control stands for: a number on an int row, and nothing for an
+ * emptied control, which takes the value out of the input. A row marked `blank` keeps the empty
+ * string instead: there, empty is a value of its own.
+ * @param {{kind?: string, blank?: boolean}} f row of FIELDS, SECTION or DOOR
+ * @param {string} text the control's text, trimmed
+ * @returns {string|number|undefined}
+ */
+export const typed = (f, text) => (text === '' ? (f.blank ? '' : undefined) : f.kind === 'int' ? Number(text) : text);

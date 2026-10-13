@@ -57,8 +57,10 @@ export const mkStage = (el) => {
 
   const ticks = [], fits = [];
   let shift = 0;
+  const frame = () => (ticks.forEach((f) => f()), ctl.update(), gl.render(scene, cam));
   const fit = () => {
     const w = el.clientWidth, h = el.clientHeight;
+    gl.setAnimationLoop(w && h ? frame : null);  // a box without a size is not on screen: nothing is drawn for it
     if (!w || !h) return;
     gl.setSize(w, h);
     cam.aspect = w / h;
@@ -71,7 +73,6 @@ export const mkStage = (el) => {
   const ro = new ResizeObserver(fit);
   ro.observe(el);
   fit();
-  gl.setAnimationLoop(() => (ticks.forEach((f) => f()), ctl.update(), gl.render(scene, cam)));
 
   return {
     cam, ctl, ticks, fits,

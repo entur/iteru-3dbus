@@ -1,5 +1,5 @@
 import { computed, effect, signal } from '@preact/signals-core';
-import { DOOR, FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec } from './edit.js';
+import { DOOR, FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec, typed } from './edit.js';
 import { VIEWS } from './views.js';
 
 const FACES = { right: 'Right', left: 'Left', front: 'Front', rear: 'Rear' };  // sides of the bus boxes a face map exists for
@@ -12,7 +12,6 @@ const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES =
 export const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
 const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and the hinted doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
-const VEHICLES = 'Concrete vehicles:', TYPE_SET = 'Type set:';  // captions of the two groups of buttons in the header
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
 const open = new Set(['Dimensions', 'Sections']);  // accordion groups that are open; survives edits and bus switches
@@ -59,26 +58,21 @@ export const el = (tag, props = {}, ...kids) => {
 };
 
 /**
- * Fills the header: a captioned group of buttons for the buses and one for the tabs, then the title with the link to the selected
- * bus's input JSON as loaded beside it, fleet-number plate and operator line. A page takes the bus's
- * place in the title and the line below it, and has no source link.
- * @param {{id: string, inp: object, src: string, set?: string}[]} buses the buses that get a button, src is the JSON
- *   url; a bus of a set is named by its whole model
- * @param {{id: string, inp: object, src: string}} cur the selected bus, inp its input with the valid edits applied
- * @param {(id: string) => void} pick called when another bus is chosen
- * @param {{label: string, on: boolean, go: () => void}[]} [tabs] buttons after the buses, on: shown as pressed
- * @param {?{title: string, sub: string}} [page] the page shown in place of the bus
+ * Fills the header: the captioned groups of buttons, then the title with the link to the shown
+ * bus's input JSON as loaded beside it, fleet-number plate and operator line. A page takes the
+ * bus's place in the title and the line below it, and has no JSON links.
+ * @param {{caption: string, btns: {label: string, on: boolean, go: () => void}[]}[]} groups on: shown as pressed
+ * @param {{inp: object, src: string}} cur the selected bus: its input with the valid edits applied, and the JSON url
+ * @param {?{title: string, sub: string}} page the page shown in place of the bus
  */
-export const header = (buses, cur, pick, tabs = [], page = null) => {
+export const header = (groups, cur, page) => {
   const { inp, src } = cur;
   const title = page?.title ?? `${inp.brand} ${inp.model}`;
   Object.assign(document.getElementById('src'), { href: src, title: `Input JSON of ${title} as loaded` });
   document.getElementById('json').hidden = !!page;
-  const group = (caption, btns) => el('div', { className: 'pick', role: 'group', ariaLabel: caption }, el('span', {}, caption), ...btns);
   document.getElementById('models').replaceChildren(
-    group(VEHICLES, buses.map((b) =>
-      el('button', { onclick: () => pick(b.id), ariaPressed: String(!page && b.id === cur.id) }, `${b.inp.brand} ${b.set ? b.inp.model : b.inp.model.split(' ')[0]}`))),
-    ...(tabs.length ? [group(TYPE_SET, tabs.map((t) => el('button', { onclick: t.go, ariaPressed: String(t.on) }, t.label)))] : []),
+    ...groups.map(({ caption, btns }) =>
+      el('div', { className: 'pick', role: 'group', ariaLabel: caption }, el('span', {}, caption), ...btns.map((b) => el('button', { onclick: b.go, ariaPressed: String(b.on) }, b.label)))),
   );
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;
@@ -162,13 +156,12 @@ const input = (st, on, f, more = {}) => {
     const pick = framed((v) => on.set(path, v));
     return el('span', { className: 'swatch' }, el('code', {}, () => val() ?? NONE), el('input', { ...base, value: () => val() ?? BLACK, oninput: (e) => pick(e.target.value) }));
   }
-  const read = (v) => (v === '' ? undefined : kind === 'int' ? Number(v) : v);
   return el('input', {
     ...base,
     ...(kind === 'int' ? { min: sp.minimum ?? '', max: sp.maximum ?? '', step: 1 } : {}),
-    ...(f.hint ? { placeholder: () => f.hint(st.draft.value) ?? '' } : {}),
+    ...(f.hint ? { placeholder: () => (val() === '' ? '' : f.hint(st.draft.value) ?? '') } : {}),  // an empty value is not the default the hint shows
     value: () => val() ?? '',
-    onchange: (e) => on.set(path, ((v) => (f.to ? shifted(st.draft.peek(), f, v) : v))(read(e.target.value.trim()))),
+    onchange: (e) => on.set(path, ((v) => (f.to ? shifted(st.draft.peek(), f, v) : v))(typed(f, e.target.value.trim()))),
   });
 };
 

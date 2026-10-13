@@ -58,6 +58,10 @@ const side = (len, top, fill, ds = [], ws = [], [lo, hi] = [0, top]) => {
 /** Font size at which a text stays inside a width: the full size, or smaller for a long text. track is the letter spacing per font size. */
 const fit = (text, width, full, track) => Math.min(full, width / (text.length * (GLYPH + track)));
 
+/** A text on a front map, centred on x, y. track is its letter spacing per font size. */
+const label = (text, x, y, size, track, fill) =>
+  svg('text', { x, y, fill, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text);
+
 /**
  * The destination display at the top of the windscreen's pane, which lies at x, y and is w by h:
  * a dark quad with an outline, the text centred in it and set smaller when it is long. Nothing
@@ -69,7 +73,7 @@ const display = (text, x, y, w, h) => {
   return dh < DISPLAY_MIN ? [] : [svg(
     'g', { class: 'display' },
     svg('rect', { x: x + DISPLAY_GAP, y: y + DISPLAY_GAP, width: dw, height: dh, fill: DISPLAY, stroke: DISPLAY_EDGE, 'stroke-width': DISPLAY_EDGE_W }),
-    svg('text', { x: x + w / 2, y: y + DISPLAY_GAP + dh / 2, fill: DISPLAY_INK, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text),
+    label(text, x + w / 2, y + DISPLAY_GAP + dh / 2, size, track, DISPLAY_INK),
   )];
 };
 
@@ -88,8 +92,8 @@ const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).d
  */
 const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light, sign) => {
   const by = y1 - BADGE_H, cy = y1 - BADGE_H / 2, bx = (w * (1 - BADGE_W)) / 2, ys = Math.min(y2, by - SCREEN_GAP);
-  const label = text.toUpperCase(), track = BADGE_SPACING / BADGE_FONT;  // letter spacing per font size
-  const size = fit(label, w * BADGE_W - 2 * BADGE_PAD, BADGE_FONT, track), screen = ys - y > 2 * FRAME_W, edge = SCREEN_SIDE + FRAME_W;
+  const name = text.toUpperCase(), track = BADGE_SPACING / BADGE_FONT;  // letter spacing per font size
+  const size = fit(name, w * BADGE_W - 2 * BADGE_PAD, BADGE_FONT, track), screen = ys - y > 2 * FRAME_W, edge = SCREEN_SIDE + FRAME_W;
   const left = attr(light.cloneNode(true), { class: 'headlight', x: LAMP_SIDE, y: by, width: bx - LAMP_GAP - LAMP_SIDE, height: BADGE_H });
   return face(
     w, h,
@@ -99,7 +103,7 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2 }, light, sign
     left,
     svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
     svg('rect', { class: 'badge', x: bx, y: by, width: w * BADGE_W, height: BADGE_H, rx: BADGE_R, fill: BADGE }),
-    svg('text', { x: w / 2, y: cy, fill: BADGE_INK, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, label),
+    label(name, w / 2, cy, size, track, BADGE_INK),
   );
 };
 
