@@ -2,7 +2,7 @@ import { mkBus } from './bus.js';
 import { hints, total } from './derive.js';
 import { MM } from './dims.js';
 import { signed } from './edit.js';
-import { mkStage } from './scene.js';
+import { mkStage, ready } from './scene.js';
 import { NAMES, el } from './ui.js';
 import { faces } from './vector.js';
 import { mkViews } from './views.js';
@@ -13,16 +13,6 @@ const TWO_DECKS = 'low_floor_lower_level', NOT_DRAWN = 'Two decks are not drawn 
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-/** Resolves once every texture of a model has its image: the face maps are rasterised off the main task. */
-const ready = (g) => {
-  const maps = [];
-  g.traverse((o) => maps.push(...[o.material ?? []].flat().flatMap((m) => m.map ?? [])));
-  return new Promise((res) => {
-    const chk = () => (maps.every((t) => t.image) ? res() : requestAnimationFrame(chk));
-    chk();
-  });
-};
-
 /**
  * Draws each bus on one off-screen stage, one after the other, and sets its picture as the src of
  * its img. One stage for all of them: a browser keeps only so many WebGL contexts alive.

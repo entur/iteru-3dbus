@@ -8,12 +8,73 @@ const SUN_AT = [-14, 22, -18], FILL_AT = [15, 8, 10];
 const SHADOW_MAP = 2048, SHADOW_BOX = 12, SHADOW_FAR = 70, SHADOW_BIAS = -0.0004;
 const MIN_DIST = 5, MAX_DIST = 90, MAX_POLAR = Math.PI * 0.495;
 const DAY = { sky: 0xe4eaee, ground: 0xf1f4f6, bounce: 0xbfc8ce }, NIGHT = { sky: 0x1a232a, ground: 0x2b353c, bounce: 0x2a3138 };
+const PLANE_LIFT = 0.06, LIGHT_BG = 0.5;  // the plane: share of the way from its background to black (light one) or white (dark one)
+const READY_MS = 5000;  // longest wait for a model's textures before a picture is taken anyway
 
 const dispose = (g) =>
   g.traverse((o) => {
     o.geometry?.dispose();
     [o.material ?? []].flat().forEach((m) => (m.map?.dispose(), m.dispose()));
   });
+
+/** Relative luminance of sRGB channels 0–1, not linearised: enough to tell a light background from a dark one. */
+const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const up = (e) => (e ? [e, ...up(e.parentElement)] : []);
+
+/**
+ * Reads a CSS colour as getComputedStyle or a custom property gives it.
+ * @param {string} css `#rgb`, `#rrggbb`, `rgb(…)` or `rgba(…)`, comma or space separated
+ * @returns {number[] | null} [r, g, b, a], each 0–1; null for anything else
+ */
+export const rgba = (css = '') => {
+  const s = css.trim(), hex = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+  if (hex) return (hex.length === 3 ? hex.replace(/./g, '$&$&') : hex).match(/../g).map((h) => parseInt(h, 16) / 255).concat(1);
+  const n = s.match(/^rgba?\(([^)]*)\)$/i)?.[1].split(/[\s,/]+/).filter(Boolean).map(Number) ?? [];
+  return n.length < 3 || n.some(Number.isNaN) ? null : [...n.slice(0, 3).map((v) => v / 255), n[3] ?? 1];
+};
+
+/**
+ * Composites background colours over an opaque white canvas: the colour that shows through them all.
+ * @param {number[][]} layers [r, g, b, a] each, the top one first
+ * @returns {number[]} [r, g, b], each 0–1
+ */
+export const flat = (layers) => layers.reduceRight((under, [r, g, b, a]) => [r, g, b].map((c, i) => c * a + under[i] * (1 - a)), [1, 1, 1]);
+
+/**
+ * The ground colour for a picture that lies on bg: PLANE_LIFT of the way to black on a light
+ * background, to white on a dark one, so the plane's edge against the sky shows.
+ * @param {number[]} bg [r, g, b], each 0–1
+ * @returns {number[]} [r, g, b], each 0–1
+ */
+export const plane = (bg) => {
+  const to = lum(bg) > LIGHT_BG ? 0 : 1;
+  return bg.map((c) => c + (to - c) * PLANE_LIFT);
+};
+
+/**
+ * What shows through an element: its background and every ancestor's, composited over white.
+ * An element outside the document has no computed colours and gives white.
+ * @param {Element} el element a picture will lie on
+ * @returns {string} that colour as `rgb(r g b)`, channels 0–255
+ */
+export const bgOf = (el) =>
+  `rgb(${flat(up(el).map((e) => rgba(getComputedStyle(e).backgroundColor)).filter(Boolean)).map((c) => Math.round(c * 255)).join(' ')})`;
+
+/**
+ * Resolves once every texture under root has its image, or after ms: a face map is rasterised off
+ * the main task, and one that never loads must not hold up the pictures after it.
+ * @param {THREE.Object3D} root a model or a whole scene
+ * @param {number} [ms] longest wait
+ * @returns {Promise<void>}
+ */
+export const ready = (root, ms = READY_MS) => {
+  const maps = [], t0 = performance.now();
+  root.traverse((o) => maps.push(...[o.material ?? []].flat().flatMap((m) => m.map ?? [])));
+  return new Promise((res) => {
+    const chk = () => (maps.every((t) => t.image) || performance.now() - t0 > ms ? res() : requestAnimationFrame(chk));
+    chk();
+  });
+};
 
 /**
  * Sets up the stage: renderer with shadows, sky and fog, three lights, a ground disc and
