@@ -9,9 +9,9 @@ const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, imp
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
 const face = (w, h) => ({ w, h, svg: { cloneNode: () => ({}) } });
 /** Stub face maps in the sizes faces() gives them, without a DOM. */
-const maps = (inp) => {
-  const h = bodyTop(inp) - CLEARANCE, sides = () => layout(inp).map((b) => face(b.len, h));
-  return { right: sides(), left: sides(), front: [face(inp.width_mm, endH(inp))], rear: [face(inp.width_mm, endH(inp))] };
+const maps = (inp, f = face) => {
+  const h = bodyTop(inp) - CLEARANCE, sides = () => layout(inp).map((b) => f(b.len, h));
+  return { right: sides(), left: sides(), front: [f(inp.width_mm, endH(inp))], rear: [f(inp.width_mm, endH(inp))] };
 };
 const patch = (m, side, f) => ({ ...m, [side]: m[side].map((x, i) => (i === 0 ? f(x) : x)) });
 
@@ -36,11 +36,7 @@ test('maps of another bus do not fit', () => assert.equal(mapErrs(citaro, maps(v
 Object.entries(bad).forEach(([name, f]) => test(`rejects ${name}`, () => assert.equal(mapErrs(citaro, f(maps(citaro))).length, 1)));
 
 /** Face maps whose clones note the width tex rasterises them at. */
-const noted = (inp, ws) => {
-  const f = (w, h) => ({ w, h, svg: { cloneNode: () => ({ setAttribute: (k, v) => k === 'width' && ws.push(v) }) } });
-  const h = bodyTop(inp) - CLEARANCE, sides = () => layout(inp).map((b) => f(b.len, h));
-  return { right: sides(), left: sides(), front: [f(inp.width_mm, endH(inp))], rear: [f(inp.width_mm, endH(inp))] };
-};
+const noted = (inp, ws) => maps(inp, (w, h) => ({ w, h, svg: { cloneNode: () => ({ setAttribute: (k, v) => k === 'width' && ws.push(v) }) } }));
 
 test('detail scales every face texture, 1 by default', (t) => {
   globalThis.XMLSerializer = class { serializeToString() { return '<svg/>'; } };

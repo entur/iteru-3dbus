@@ -10,7 +10,7 @@ import { mkViews } from './views.js';
 const SHOT_W = 640, SHOT_H = 360, VIEW = 'quarter';  // every card's picture, in css px
 const CLOSER = 0.3;  // share of the way from the view's eye to its target: a card has no chrome to keep clear of
 const TWO_DECKS = 'low_floor_lower_level', NOT_DRAWN = 'Two decks are not drawn yet';
-const DETAIL = 0.35;  // texture density for a card's picture, 1280 px wide at most: a third of the viewer's, measured 2.6× faster to shoot
+const DETAIL = 0.35;  // texture density for a card's picture, 1280 px wide at most: a third of the viewer's; shooting #busnordic went from 17 long tasks to 1
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;

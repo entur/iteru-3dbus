@@ -13,14 +13,16 @@ const READY_MS = 5000;  // longest wait for a model's textures before a picture 
 const SHOT_W = 640, SHOT_H = 360;  // a picture's default size in css px
 const SHADOW_A = 0.3, SHADE_LIFT = 0.005;  // a picture's shadow: its darkness on the plane, its disc's lift above the plane in m
 
+const mats = (o) => [o.material ?? []].flat();
 const dispose = (g) =>
   g.traverse((o) => {
     o.geometry?.dispose();
-    [o.material ?? []].flat().forEach((m) => (m.map?.dispose(), m.dispose()));
+    mats(o).forEach((m) => (m.map?.dispose(), m.dispose()));
   });
 
 /** Relative luminance of sRGB channels 0–1, not linearised: enough to tell a light background from a dark one. */
 const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const light = (c) => lum(c) > LIGHT_BG;
 const up = (e) => (e ? [e, ...up(e.parentElement)] : []);
 
 /**
@@ -49,7 +51,7 @@ export const flat = (layers) => layers.reduceRight((under, [r, g, b, a]) => [r, 
  * @returns {number[]} [r, g, b], each 0–1
  */
 export const plane = (bg) => {
-  const to = lum(bg) > LIGHT_BG ? 0 : 1;
+  const to = light(bg) ? 0 : 1;
   return bg.map((c) => c + (to - c) * PLANE_LIFT);
 };
 
@@ -71,7 +73,7 @@ export const bgOf = (el) =>
  */
 export const ready = (root, ms = READY_MS) => {
   const maps = [], t0 = performance.now();
-  root.traverse((o) => maps.push(...[o.material ?? []].flat().flatMap((m) => m.map ?? [])));
+  root.traverse((o) => maps.push(...mats(o).flatMap((m) => m.map ?? [])));
   return new Promise((res) => {
     const chk = () => (maps.every((t) => t.image) || performance.now() - t0 > ms ? res() : requestAnimationFrame(chk));
     chk();
@@ -81,7 +83,7 @@ export const ready = (root, ms = READY_MS) => {
 const disc = (r, mat) => Object.assign(new THREE.Mesh(new THREE.CircleGeometry(r, GROUND_SEG), mat), { receiveShadow: true }).rotateX(-Math.PI / 2);
 
 /** Scene, three lights, camera and orbit controls on gl, with the floor meshes; free disposes all of it but a model still added. */
-const rig = (gl, pal, floor) => {
+const rig = (gl, bounce, floor) => {
   gl.shadowMap.enabled = true;
   const scene = new THREE.Scene();
   const sun = new THREE.DirectionalLight(0xffffff, SUN);
@@ -93,7 +95,7 @@ const rig = (gl, pal, floor) => {
   Object.assign(sun.shadow.camera, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: SHADOW_FAR });
   const fill = new THREE.DirectionalLight(0xdfe8ff, FILL);
   fill.position.set(...FILL_AT);
-  scene.add(new THREE.HemisphereLight(0xffffff, pal.bounce, HEMI), sun, fill, ...floor);
+  scene.add(new THREE.HemisphereLight(0xffffff, bounce, HEMI), sun, fill, ...floor);
 
   const cam = new THREE.PerspectiveCamera(FOV, 1, NEAR, FAR);
   const ctl = new OrbitControls(cam, gl.domElement);
@@ -122,7 +124,7 @@ export const mkStage = (el) => {
   const gl = new THREE.WebGLRenderer({ antialias: true });
   gl.setPixelRatio(Math.min(devicePixelRatio, MAX_DPR));
   el.append(gl.domElement);
-  const { scene, cam, ctl, add, drop, free } = rig(gl, pal, [disc(GROUND_R, new THREE.MeshStandardMaterial({ color: pal.ground, roughness: 1 }))]);
+  const { scene, cam, ctl, add, drop, free } = rig(gl, pal.bounce, [disc(GROUND_R, new THREE.MeshStandardMaterial({ color: pal.ground, roughness: 1 }))]);
   scene.background = new THREE.Color(pal.sky);
   scene.fog = new THREE.Fog(pal.sky, FOG_NEAR, FOG_FAR);
 
@@ -167,7 +169,7 @@ export const mkStage = (el) => {
  *   frees everything but a model still added
  */
 export const mkStageShot = ({ w = SHOT_W, h = SHOT_H, bg = bgOf(document.body) } = {}) => {
-  const base = (rgba(bg) ?? [1, 1, 1]).slice(0, 3), pal = lum(base) > LIGHT_BG ? DAY : NIGHT;
+  const base = (rgba(bg) ?? [1, 1, 1]).slice(0, 3), pal = light(base) ? DAY : NIGHT;
   const gl = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   gl.setPixelRatio(Math.min(devicePixelRatio, MAX_DPR));
   gl.setSize(w, h, false);
@@ -175,7 +177,7 @@ export const mkStageShot = ({ w = SHOT_W, h = SHOT_H, bg = bgOf(document.body) }
   const shade = disc(2 * SHADOW_BOX, new THREE.ShadowMaterial({ opacity: SHADOW_A }));
   shade.position.y = SHADE_LIFT;
   const floor = disc(GROUND_R, new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...plane(base), THREE.SRGBColorSpace) }));
-  const { scene, cam, ctl, add, drop, free } = rig(gl, pal, [floor, shade]);
+  const { scene, cam, ctl, add, drop, free } = rig(gl, pal.bounce, [floor, shade]);
   Object.assign(cam, { aspect: w / h, fov: w < h ? FOV_TALL : FOV }).updateProjectionMatrix();
   ctl.enableDamping = false;
 
@@ -187,6 +189,6 @@ export const mkStageShot = ({ w = SHOT_W, h = SHOT_H, bg = bgOf(document.body) }
       gl.render(scene, cam);
       return new Promise((res) => gl.domElement.toBlob(res, 'image/png'));
     },
-    dispose: free,
+    dispose: () => (free(), gl.forceContextLoss()),  // one context per cards page: give it back now, not when the canvas is collected
   };
 };
