@@ -86,7 +86,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   `faces(inp, { headlight })`), placed again mirrored. `test/raw.js` lets node load that
   `?raw` import; a test file reaching `vector.js` imports it first.
   `test/vector.test.js` runs `faces` against a stand-in `document`.
-- **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
+- **`bus.js`** — `mkBus(inp, maps, { detail })` (`detail` scales the face textures' density, 1 for the viewer): per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
   `height_mm - roof_equipment_mm`. The side profile in `profile()` and the SVG path in
   `vector.js` `side()` share the box outline (skirt, roof, corners) and must change together; the
@@ -128,7 +128,8 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
   door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
 - **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per bus in the order given, no edit chrome. Every
-  picture is taken on one `mkStageShot` stage, on the colour behind the cards (`bgOf`), one bus after the other: a
+  picture is taken on one `mkStageShot` stage, on the colour behind the cards (`bgOf`), at `DETAIL` texture density
+  (a card needs a third of the viewer's; rasterising the SVG maps was most of the cost of shooting), one bus after the other: a
   `<bus-3d>` per card would run past the browser's WebGL context limit. A card opens its bus in
   the viewer.
 - **`main.js`** — loads every `examples/**/*.json` through `import.meta.glob`, so any file dropped in
