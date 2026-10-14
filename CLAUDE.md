@@ -134,7 +134,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - **`main.js`** — loads every `examples/**/*.json` through `import.meta.glob`, so any file dropped in
   `examples/` becomes a selectable bus. A bus in a directory under `examples/` belongs to that set:
   no header button of its own, but a card on the set's page, which is the route `#<set>` and one
-  header button (`SETS`; `busnordic` is the only one). Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
+  header button (`SETS`; `busnordic` is the only one). A set's cards page is cached per colour scheme: the pictures take the page's colours, so a scheme switch shoots them again once. Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
   header button. Opening a bus from a button or a card pushes a history entry naming it in `?bus=`;
   `follow` selects the address bar's bus and route after a step in the history. A selected bus of a set gets the last button among the
   concrete vehicles, pressed while the viewer shows it; the set's own button is pressed on its
