@@ -40,7 +40,7 @@ scene.add(mkBus(inp, maps)); // a THREE.Group in metres: front end at x = 0, gro
 ```
 
 `3dbus/core` is the part without DOM or three (schema, `validate`, the derived numbers), `3dbus/faces`
-the maps alone, without three. `mkStage` and `mkViews` are an optional stage and named camera views.
+the maps alone, without three. `mkStage` and `mkViews` are an optional stage and named camera views; `mkStageShot` is a stage for transparent pictures.
 
 User guide example: [`guide/bus-3d.js`](guide/bus-3d.js) wraps the library as one custom element, `<bus-3d>`,
 with the rebuild, camera and disposal handling a host needs. The app here is its host; it is not part of the package.

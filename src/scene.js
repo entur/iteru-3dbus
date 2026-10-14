@@ -10,6 +10,8 @@ const MIN_DIST = 5, MAX_DIST = 90, MAX_POLAR = Math.PI * 0.495;
 const DAY = { sky: 0xe4eaee, ground: 0xf1f4f6, bounce: 0xbfc8ce }, NIGHT = { sky: 0x1a232a, ground: 0x2b353c, bounce: 0x2a3138 };
 const PLANE_LIFT = 0.06, LIGHT_BG = 0.5;  // the plane: share of the way from its background to black (light one) or white (dark one)
 const READY_MS = 5000;  // longest wait for a model's textures before a picture is taken anyway
+const SHOT_W = 640, SHOT_H = 360;  // a picture's default size in css px
+const SHADOW_A = 0.3, SHADE_LIFT = 0.005;  // a picture's shadow: its darkness on the plane, its disc's lift above the plane in m
 
 const dispose = (g) =>
   g.traverse((o) => {
@@ -148,5 +150,43 @@ export const mkStage = (el) => {
     offset: (px) => ((shift = px), fit()),
     shot: () => (ctl.update(), gl.render(scene, cam), gl.domElement.toDataURL('image/jpeg', SHOT_Q)),  // read back in the task that drew it
     dispose: () => (gl.setAnimationLoop(null), ro.disconnect(), free(), gl.domElement.remove()),
+  };
+};
+
+/**
+ * A stage that only takes pictures: a canvas outside the document, no frame loop, no sky. The
+ * ground is an unlit plane in a colour taken from bg (see plane), with a sharp edge against the
+ * transparent sky; shadows lie on it. Drive it as mkStage, with mkViews, but go(view, true) only.
+ * @param {{w?: number, h?: number, bg?: string}} [opts] picture size in css px (default
+ *   640 × 360); the CSS colour the picture will lie on (default: what shows through
+ *   document.body, see bgOf)
+ * @returns {{cam: THREE.PerspectiveCamera, ctl: OrbitControls, ticks: (() => void)[],
+ *   add: (g: THREE.Object3D) => void, drop: (g: THREE.Object3D) => void,
+ *   shot: () => Promise<Blob>, dispose: () => void}} add/drop swap a model in and out, ticks
+ *   never run, shot waits for the model's textures and resolves to a PNG with alpha, dispose
+ *   frees everything but a model still added
+ */
+export const mkStageShot = ({ w = SHOT_W, h = SHOT_H, bg = bgOf(document.body) } = {}) => {
+  const base = (rgba(bg) ?? [1, 1, 1]).slice(0, 3), pal = lum(base) > LIGHT_BG ? DAY : NIGHT;
+  const gl = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  gl.setPixelRatio(Math.min(devicePixelRatio, MAX_DPR));
+  gl.setSize(w, h, false);
+  gl.setClearColor(0x000000, 0);
+  const shade = disc(2 * SHADOW_BOX, new THREE.ShadowMaterial({ opacity: SHADOW_A }));
+  shade.position.y = SHADE_LIFT;
+  const floor = disc(GROUND_R, new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...plane(base), THREE.SRGBColorSpace) }));
+  const { scene, cam, ctl, add, drop, free } = rig(gl, pal, [floor, shade]);
+  Object.assign(cam, { aspect: w / h, fov: w < h ? FOV_TALL : FOV }).updateProjectionMatrix();
+  ctl.enableDamping = false;
+
+  return {
+    cam, ctl, add, drop, ticks: [],
+    shot: async () => {
+      await ready(scene);
+      ctl.update();
+      gl.render(scene, cam);
+      return new Promise((res) => gl.domElement.toBlob(res, 'image/png'));
+    },
+    dispose: free,
   };
 };
