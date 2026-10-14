@@ -32,14 +32,14 @@ npm run validate -- examples/*.json examples/busnordic/*.json
 As a library, in any host (`npm run build:lib` builds it to `dist-lib/`, three and ajv left to the host):
 
 ```js
-import { validate, faces, mkBus } from "3dbus";
+import { validate, faces, mkBus } from "@entur/iteru-3dbus";
 
 const errs = validate(inp); // string[], empty when valid; faces and mkBus take a valid inp
 const maps = faces(inp); // SVG maps per box side, in mm; { headlight: svg } swaps the headlight drawing
 scene.add(mkBus(inp, maps)); // a THREE.Group in metres: front end at x = 0, ground at y = 0
 ```
 
-`3dbus/core` is the part without DOM or three (schema, `validate`, the derived numbers), `3dbus/faces`
+`@entur/iteru-3dbus/core` is the part without DOM or three (schema, `validate`, the derived numbers), `@entur/iteru-3dbus/faces`
 the maps alone, without three. `mkStage` and `mkViews` are an optional stage and named camera views; `mkStageShot` is a stage for transparent pictures.
 
 User guide example: [`guide/bus-3d.js`](guide/bus-3d.js) wraps the library as one custom element, `<bus-3d>`,

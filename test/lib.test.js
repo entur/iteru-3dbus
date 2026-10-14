@@ -39,3 +39,20 @@ test('the guide element needs the package entry only', async () => {
   assert.deepEqual(specs(GUIDE), ['../src/index.js']);
   assert.equal(typeof (await import('../guide/bus-3d.js')).Bus3d, 'function');
 });
+
+test('the package is the lib build, and leaves to the host only what it depends on', async () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const { default: cfg } = await import('../vite.lib.config.js');
+  const { entry } = cfg.build.lib, external = cfg.build.rollupOptions.external;
+  assert.equal(pkg.name, '@entur/iteru-3dbus');
+  assert.match(pkg.repository?.url ?? '', /github\.com\/entur\/iteru-3dbus/);
+  assert.equal(pkg.scripts.prepack, 'npm run build:lib');
+  Object.entries(pkg.exports).forEach(([k, v]) => {
+    const n = k === '.' ? 'index' : k.slice(2);
+    assert.ok(n in entry, `${k} has no lib entry`);
+    assert.equal(v, `./dist-lib/${n}.js`);
+  });
+  const host = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.peerDependencies ?? {})];
+  ['three', 'ajv'].forEach((d) => assert.ok(external.some((re) => re.test(d)) && host.includes(d), `${d}: external and depended on`));
+  assert.ok(pkg.peerDependencies?.three && !pkg.dependencies?.three, 'three is a peer');
+});
