@@ -80,6 +80,13 @@ export const ready = (root, ms = READY_MS) => {
   });
 };
 
+/**
+ * Encodes a canvas as PNG: toBlob hands its callback null when it cannot, which becomes a rejection here.
+ * @param {HTMLCanvasElement} canvas a canvas drawn in this task, or with preserveDrawingBuffer
+ * @returns {Promise<Blob>}
+ */
+export const png = (canvas) => new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('the canvas gave no PNG'))), 'image/png'));
+
 const disc = (r, mat) => Object.assign(new THREE.Mesh(new THREE.CircleGeometry(r, GROUND_SEG), mat), { receiveShadow: true }).rotateX(-Math.PI / 2);
 
 /** Scene, three lights, camera and orbit controls on gl, with the floor meshes; free disposes all of it but a model still added. */
@@ -165,7 +172,8 @@ export const mkStage = (el) => {
  * @returns {{cam: THREE.PerspectiveCamera, ctl: OrbitControls, ticks: (() => void)[],
  *   add: (g: THREE.Object3D) => void, drop: (g: THREE.Object3D) => void,
  *   shot: () => Promise<Blob>, dispose: () => void}} add/drop swap a model in and out, ticks
- *   never run, shot waits for the model's textures and resolves to a PNG with alpha, dispose
+ *   never run, shot waits for the model's textures and resolves to a PNG with alpha (rejects when
+ *   the canvas cannot be encoded), dispose
  *   frees everything but a model still added
  */
 export const mkStageShot = ({ w = SHOT_W, h = SHOT_H, bg = bgOf(document.body) } = {}) => {
@@ -187,7 +195,7 @@ export const mkStageShot = ({ w = SHOT_W, h = SHOT_H, bg = bgOf(document.body) }
       await ready(scene);
       ctl.update();
       gl.render(scene, cam);
-      return new Promise((res) => gl.domElement.toBlob(res, 'image/png'));
+      return png(gl.domElement);
     },
     dispose: () => (free(), gl.forceContextLoss()),  // one context per cards page: give it back now, not when the canvas is collected
   };

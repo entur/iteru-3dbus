@@ -28,12 +28,19 @@ const shoot = (shots) => {
     group.position.x = -len / 2;
     Object.assign(cur, { group, len });
     stage.add(group);
-    go(VIEW, true);
-    stage.cam.position.lerp(stage.ctl.target, CLOSER);
-    img.src = URL.createObjectURL(await stage.shot());
-    stage.drop(group);
+    try {
+      go(VIEW, true);
+      stage.cam.position.lerp(stage.ctl.target, CLOSER);
+      const url = URL.createObjectURL(await stage.shot());
+      img.onload = img.onerror = () => URL.revokeObjectURL(url);  // a loaded img keeps its picture: the blob need not outlive it
+      img.src = url;
+    } finally {
+      stage.drop(group);
+    }
   };
-  return shots.reduce((p, s) => p.then(() => one(s)), Promise.resolve()).finally(() => stage.dispose());
+  // a bus that cannot be shot keeps its blank picture; the buses after it are still shot
+  const each = (s) => one(s).catch((e) => console.warn(`no picture of ${s.inp.model}:`, e));
+  return shots.reduce((p, s) => p.then(() => each(s)), Promise.resolve()).finally(() => stage.dispose());
 };
 
 const card = (b, img, pick) => {

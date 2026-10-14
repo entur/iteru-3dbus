@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { bgOf, flat, plane, ready, rgba } from '../src/scene.js';
+import { bgOf, flat, plane, png, ready, rgba } from '../src/scene.js';
 
 const near = (a, b) => a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) < 1e-3, `${a} ≉ ${b}`));
 
@@ -50,4 +50,10 @@ test('ready waits for every texture image, and gives up after ms', async (t) => 
   const t0 = performance.now();
   await ready({ traverse: (f) => f({ material: { map: {} } }) }, 30);
   assert.ok(performance.now() - t0 >= 30);
+});
+
+test('png resolves to the canvas PNG, and rejects when the canvas gives none', async () => {
+  const b = {};
+  assert.equal(await png({ toBlob: (cb, type) => cb(type === 'image/png' ? b : null) }), b);
+  await assert.rejects(png({ toBlob: (cb) => cb(null) }), /no PNG/);
 });
