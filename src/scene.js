@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const FOV = 32, FOV_TALL = 48, NEAR = 0.1, FAR = 300, MAX_DPR = 2, SHOT_Q = 0.9;
-const FOG_NEAR = 40, FOG_FAR = 110, GROUND_R = 80;
+const FOG_NEAR = 40, FOG_FAR = 110, GROUND_R = 80, GROUND_SEG = 64;
 const HEMI = 2.4, SUN = 2.7, FILL = 0.8;
 const SUN_AT = [-14, 22, -18], FILL_AT = [15, 8, 10];
 const SHADOW_MAP = 2048, SHADOW_BOX = 12, SHADOW_FAR = 70, SHADOW_BIAS = -0.0004;
@@ -76,6 +76,34 @@ export const ready = (root, ms = READY_MS) => {
   });
 };
 
+const disc = (r, mat) => Object.assign(new THREE.Mesh(new THREE.CircleGeometry(r, GROUND_SEG), mat), { receiveShadow: true }).rotateX(-Math.PI / 2);
+
+/** Scene, three lights, camera and orbit controls on gl, with the floor meshes; free disposes all of it but a model still added. */
+const rig = (gl, pal, floor) => {
+  gl.shadowMap.enabled = true;
+  const scene = new THREE.Scene();
+  const sun = new THREE.DirectionalLight(0xffffff, SUN);
+  sun.position.set(...SUN_AT);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
+  sun.shadow.bias = SHADOW_BIAS;
+  sun.shadow.autoUpdate = false;  // nothing moves: the shadow map is redrawn only when the model is swapped
+  Object.assign(sun.shadow.camera, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: SHADOW_FAR });
+  const fill = new THREE.DirectionalLight(0xdfe8ff, FILL);
+  fill.position.set(...FILL_AT);
+  scene.add(new THREE.HemisphereLight(0xffffff, pal.bounce, HEMI), sun, fill, ...floor);
+
+  const cam = new THREE.PerspectiveCamera(FOV, 1, NEAR, FAR);
+  const ctl = new OrbitControls(cam, gl.domElement);
+  Object.assign(ctl, { enableDamping: true, maxPolarAngle: MAX_POLAR, minDistance: MIN_DIST, maxDistance: MAX_DIST });
+  return {
+    scene, cam, ctl,
+    add: (g) => (g.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true)), scene.add(g), (sun.shadow.needsUpdate = true)),
+    drop: (g) => (scene.remove(g), dispose(g), (sun.shadow.needsUpdate = true)),
+    free: () => (ctl.dispose(), dispose(scene), sun.dispose(), gl.dispose()),
+  };
+};
+
 /**
  * Sets up the stage: renderer with shadows, sky and fog, three lights, a ground disc and
  * orbit controls. Colours follow the OS colour scheme. The canvas follows the size of el.
@@ -91,30 +119,10 @@ export const mkStage = (el) => {
   const pal = matchMedia('(prefers-color-scheme: dark)').matches ? NIGHT : DAY;
   const gl = new THREE.WebGLRenderer({ antialias: true });
   gl.setPixelRatio(Math.min(devicePixelRatio, MAX_DPR));
-  gl.shadowMap.enabled = true;
   el.append(gl.domElement);
-
-  const scene = new THREE.Scene();
+  const { scene, cam, ctl, add, drop, free } = rig(gl, pal, [disc(GROUND_R, new THREE.MeshStandardMaterial({ color: pal.ground, roughness: 1 }))]);
   scene.background = new THREE.Color(pal.sky);
   scene.fog = new THREE.Fog(pal.sky, FOG_NEAR, FOG_FAR);
-
-  const sun = new THREE.DirectionalLight(0xffffff, SUN);
-  sun.position.set(...SUN_AT);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
-  sun.shadow.bias = SHADOW_BIAS;
-  sun.shadow.autoUpdate = false;  // nothing moves: the shadow map is redrawn only when the model is swapped
-  Object.assign(sun.shadow.camera, { left: -SHADOW_BOX, right: SHADOW_BOX, top: SHADOW_BOX, bottom: -SHADOW_BOX, near: 1, far: SHADOW_FAR });
-  const fill = new THREE.DirectionalLight(0xdfe8ff, FILL);
-  fill.position.set(...FILL_AT);
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(GROUND_R, 64), new THREE.MeshStandardMaterial({ color: pal.ground, roughness: 1 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  scene.add(new THREE.HemisphereLight(0xffffff, pal.bounce, HEMI), sun, fill, ground);
-
-  const cam = new THREE.PerspectiveCamera(FOV, 1, NEAR, FAR);
-  const ctl = new OrbitControls(cam, gl.domElement);
-  Object.assign(ctl, { enableDamping: true, maxPolarAngle: MAX_POLAR, minDistance: MIN_DIST, maxDistance: MAX_DIST });
 
   const ticks = [], fits = [];
   let shift = 0;
@@ -136,19 +144,9 @@ export const mkStage = (el) => {
   fit();
 
   return {
-    cam, ctl, ticks, fits,
+    cam, ctl, ticks, fits, add, drop,
     offset: (px) => ((shift = px), fit()),
     shot: () => (ctl.update(), gl.render(scene, cam), gl.domElement.toDataURL('image/jpeg', SHOT_Q)),  // read back in the task that drew it
-    dispose: () => {
-      gl.setAnimationLoop(null);
-      ro.disconnect();
-      ctl.dispose();
-      dispose(scene);
-      sun.dispose();
-      gl.dispose();
-      gl.domElement.remove();
-    },
-    add: (g) => (g.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true)), scene.add(g), (sun.shadow.needsUpdate = true)),
-    drop: (g) => (scene.remove(g), dispose(g), (sun.shadow.needsUpdate = true)),
+    dispose: () => (gl.setAnimationLoop(null), ro.disconnect(), free(), gl.domElement.remove()),
   };
 };
