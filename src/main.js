@@ -30,6 +30,9 @@ const link = document.getElementById('src'), mod = document.getElementById('mod'
 // src: the example as loaded; draft: src with every edit, valid or not; ok: the last valid draft, which is what is drawn
 const id = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
 const route = signal('');  // the set whose cards page is open, '' for the viewer
+const DARK = matchMedia('(prefers-color-scheme: dark)');
+const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
+DARK.addEventListener('change', (e) => (dark.value = e.matches));
 const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
 const errs = computed(() => (draft.value ? validate(draft.value) : []));
 const dirty = computed(() => !same(draft.value, src.value));
@@ -112,12 +115,12 @@ effect(() => {
     r ? { title: SETS[r].title, sub: SETS[r].sub(inSet(r).length) } : null,
   );
 });
-// a cards page is built, and its buses drawn, the first time it is opened
+// a cards page is built, and its buses drawn, the first time it is opened in a colour scheme
 effect(() => {
   const r = route.value;
   document.body.toggleAttribute('data-page', !!r);
   cards.hidden = !r;
-  r && cards.replaceChildren((pages[r] ??= gallery(inSet(r), view)));
+  r && cards.replaceChildren((pages[`${r}:${dark.value}`] ??= gallery(inSet(r), view)));
 });
 effect(() => (err.textContent = [...fail.value, ...errs.value].join('\n')));
 

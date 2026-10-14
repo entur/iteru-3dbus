@@ -86,7 +86,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   `faces(inp, { headlight })`), placed again mirrored. `test/raw.js` lets node load that
   `?raw` import; a test file reaching `vector.js` imports it first.
   `test/vector.test.js` runs `faces` against a stand-in `document`.
-- **`bus.js`** — `mkBus(inp, maps)`: per section an extruded side profile with arch cut-outs, liners,
+- **`bus.js`** — `mkBus(inp, maps, { detail })` (`detail` scales the face textures' density, 1 for the viewer): per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to
   `height_mm - roof_equipment_mm`. The side profile in `profile()` and the SVG path in
   `vector.js` `side()` share the box outline (skirt, roof, corners) and must change together; the
@@ -98,7 +98,9 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   day/night palette from the OS colour scheme. The canvas follows `el` through a `ResizeObserver`.
   `ticks` are per-frame callbacks, `fits` per-resize ones; `drop` disposes geometry, materials and
   maps of a model, `dispose` the stage itself; `shot` draws a frame and returns it as a JPEG data URL. The frame loop runs only while `el` has a size:
-  a hidden stage draws nothing.
+  a hidden stage draws nothing. `mkStageShot({ w, h, bg })` is the same rig for pictures only: a canvas
+  outside the document, no frame loop, a transparent sky, an unlit plane in `plane(bg)` ending in a sharp edge,
+  and `shot()` a PNG `Blob` once the textures are in (`ready`). `bgOf(el)` gives the colour a picture lies on.
 - **`views.js`** — `VIEWS` and animated flights between them (registered as a stage tick). No buttons.
 - **`guide/bus-3d.js`** — `<bus-3d>`, not in the package: needs both `inp` and `faces`; setting
   either queues one rebuild in a microtask. The first rebuild aims at `view`, later ones keep the
@@ -106,7 +108,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   do not fit its sections, fire `buserror` and leave the last render. Disconnecting disposes the
   stage; reconnecting rebuilds. It imports `src/index.js` alone, as a host imports the package.
 - **`core.js`**, **`index.js`** — package entries (`./core`, `.`); `./faces` is `vector.js` itself.
-  `index.js` adds `faces`, `mkBus`, `mapErrs`, `mkStage`, `mkViews` and `VIEWS` to core.
+  `index.js` adds `faces`, `mkBus`, `mapErrs`, `mkStage`, `mkStageShot`, `mkViews` and `VIEWS` to core.
 - **`edit.js`** — pure, node-safe: `FIELDS` / `SECTION` list every schema value as a row (group,
   path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
   The total length is the one derived row that is editable: `to` names the input value its edits
@@ -126,13 +128,14 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
   door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
 - **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per bus in the order given, no edit chrome. Every
-  picture is taken on one off-screen stage (`mkStage` + `shot()`), one bus after the other: a
+  picture is taken on one `mkStageShot` stage, on the colour behind the cards (`bgOf`), at `DETAIL` texture density
+  (a card needs a third of the viewer's; rasterising the SVG maps was most of the cost of shooting), one bus after the other: a
   `<bus-3d>` per card would run past the browser's WebGL context limit. A card opens its bus in
   the viewer.
 - **`main.js`** — loads every `examples/**/*.json` through `import.meta.glob`, so any file dropped in
   `examples/` becomes a selectable bus. A bus in a directory under `examples/` belongs to that set:
   no header button of its own, but a card on the set's page, which is the route `#<set>` and one
-  header button (`SETS`; `busnordic` is the only one). Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
+  header button (`SETS`; `busnordic` is the only one). A set's cards page is cached per colour scheme: the pictures take the page's colours, so a scheme switch shoots them again once. Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
   header button. Opening a bus from a button or a card pushes a history entry naming it in `?bus=`;
   `follow` selects the address bar's bus and route after a step in the history. A selected bus of a set gets the last button among the
   concrete vehicles, pressed while the viewer shows it; the set's own button is pressed on its

@@ -2,49 +2,45 @@ import { mkBus } from './bus.js';
 import { hints, total } from './derive.js';
 import { MM } from './dims.js';
 import { signed } from './edit.js';
-import { mkStage } from './scene.js';
+import { bgOf, mkStageShot } from './scene.js';
 import { NAMES, el } from './ui.js';
 import { faces } from './vector.js';
 import { mkViews } from './views.js';
 
-const SHOT_W = 640, SHOT_H = 360, VIEW = 'quarter';  // the one stage every card's picture is taken on, in css px
+const SHOT_W = 640, SHOT_H = 360, VIEW = 'quarter';  // every card's picture, in css px
 const CLOSER = 0.3;  // share of the way from the view's eye to its target: a card has no chrome to keep clear of
 const TWO_DECKS = 'low_floor_lower_level', NOT_DRAWN = 'Two decks are not drawn yet';
+const DETAIL = 0.35;  // texture density for a card's picture, 1280 px wide at most: a third of the viewer's; shooting #busnordic went from 17 long tasks to 1
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-/** Resolves once every texture of a model has its image: the face maps are rasterised off the main task. */
-const ready = (g) => {
-  const maps = [];
-  g.traverse((o) => maps.push(...[o.material ?? []].flat().flatMap((m) => m.map ?? [])));
-  return new Promise((res) => {
-    const chk = () => (maps.every((t) => t.image) ? res() : requestAnimationFrame(chk));
-    chk();
-  });
-};
 
 /**
- * Draws each bus on one off-screen stage, one after the other, and sets its picture as the src of
- * its img. One stage for all of them: a browser keeps only so many WebGL contexts alive.
+ * Draws each bus on one stage, one after the other, and sets its picture as the src of its img.
+ * One stage for all of them: a browser keeps only so many WebGL contexts alive. The pictures
+ * take the colour behind the first img, so the page must be in the document by now.
  */
 const shoot = (shots) => {
-  const box = el('div');
-  Object.assign(box.style, { position: 'fixed', left: `${-2 * SHOT_W}px`, top: '0', width: `${SHOT_W}px`, height: `${SHOT_H}px` });
-  document.body.append(box);
-  const stage = mkStage(box), cur = { group: null, len: 0 };
+  const stage = mkStageShot({ w: SHOT_W, h: SHOT_H, bg: bgOf(shots[0].img) }), cur = { group: null, len: 0 };
   const go = mkViews(stage, () => cur);
   const one = async ({ inp, img }) => {
-    const group = mkBus(inp, faces(signed(inp))), len = total(inp) * MM;
+    const group = mkBus(inp, faces(signed(inp)), { detail: DETAIL }), len = total(inp) * MM;
     group.position.x = -len / 2;
     Object.assign(cur, { group, len });
     stage.add(group);
-    go(VIEW, true);
-    stage.cam.position.lerp(stage.ctl.target, CLOSER);
-    await ready(group);
-    img.src = stage.shot();
-    stage.drop(group);
+    try {
+      go(VIEW, true);
+      stage.cam.position.lerp(stage.ctl.target, CLOSER);
+      const url = URL.createObjectURL(await stage.shot());
+      img.onload = img.onerror = () => URL.revokeObjectURL(url);  // a loaded img keeps its picture: the blob need not outlive it
+      img.src = url;
+    } finally {
+      stage.drop(group);
+    }
   };
-  return shots.reduce((p, s) => p.then(() => one(s)), Promise.resolve()).finally(() => (stage.dispose(), box.remove()));
+  // a bus that cannot be shot keeps its blank picture; the buses after it are still shot
+  const each = (s) => one(s).catch((e) => console.warn(`no picture of ${s.inp.model}:`, e));
+  return shots.reduce((p, s) => p.then(() => each(s)), Promise.resolve()).finally(() => stage.dispose());
 };
 
 const card = (b, img, pick) => {
@@ -69,6 +65,6 @@ const card = (b, img, pick) => {
  */
 export const gallery = (buses, pick) => {
   const shots = buses.map(({ inp }) => ({ inp, img: el('img', { src: BLANK, alt: `${inp.brand} ${inp.model} in 3D`, width: SHOT_W, height: SHOT_H }) }));
-  shoot(shots);
+  shots.length && queueMicrotask(() => shoot(shots));
   return el('div', { className: 'gallery' }, ...buses.map((b, i) => card(b, shots[i].img, pick)));
 };

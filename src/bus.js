@@ -101,9 +101,11 @@ export const mapErrs = (inp, maps) => {
  * @param {object} inp validated bus input
  * @param {Record<'right'|'left'|'front'|'rear', {svg: SVGSVGElement, w: number, h: number}[]>} maps
  *   face maps for inp in mm, as vector.js faces() returns them: one side map per section
+ * @param {{detail?: number}} [opts] detail scales the face textures' density (SIDE_PX, END_PX):
+ *   1, the default, is for a bus filling the screen; a small picture needs far less
  * @returns {THREE.Group} group in metres, front end at x = 0 running towards +x, ground at y = 0
  */
-export const mkBus = (inp, maps) => {
+export const mkBus = (inp, maps, { detail = 1 } = {}) => {
   const w = inp.width_mm, r = tyreDia(inp.tyre) / 2;
   const top = bodyTop(inp), roof = inp.roof_equipment_mm ?? 0;  // body stops below the roof pod
   const twin = inp.tyre.rear_twin ?? true;
@@ -120,7 +122,7 @@ export const mkBus = (inp, maps) => {
   const wh = wheel(r, mats), ln = liner(r, w, mats.liner);  // one of each, cloned per axle: clones share geometry
   const skin = (map) => std(0xffffff, { map, roughness: BODY_ROUGH, metalness: BODY_METAL });
   const end = (f, x, rot) => {
-    const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX))), x, END_EDGE + f.h / 2, 0);
+    const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX * detail))), x, END_EDGE + f.h / 2, 0);
     m.rotation.y = rot;
     return m;
   };
@@ -135,7 +137,7 @@ export const mkBus = (inp, maps) => {
     geo.addGroup(caps.start + n, n, 1);
     geo.addGroup(walls.start, walls.count, 2);
     const h = top - CLEARANCE, L = s.len * MM, v = [1 / (h * MM), -CLEARANCE / h];
-    const sides = [tex(maps.right[i], SIDE_PX, [-1 / L, v[0]], [1, v[1]]), tex(maps.left[i], SIDE_PX, [1 / L, v[0]], [0, v[1]])];
+    const sides = [tex(maps.right[i], SIDE_PX * detail, [-1 / L, v[0]], [1, v[1]]), tex(maps.left[i], SIDE_PX * detail, [1 / L, v[0]], [0, v[1]])];
     return [
       at(new THREE.Mesh(geo, [...sides.map(skin), mats.body]), s.x0, 0, 0),
       ...(i === 0 ? [end(maps.front[0], -END_GAP, -Math.PI / 2)] : []),
