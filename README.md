@@ -29,7 +29,17 @@ npm test
 npm run validate -- examples/*.json examples/busnordic/*.json
 ```
 
-As a library, in any host (`npm run build:lib` builds it to `dist-lib/`, three and ajv left to the host):
+As a library, in any host (`npm run build:lib` builds it to `dist-lib/`, three and ajv left to the host). Install a
+release, with three alongside as its peer:
+
+```sh
+npm i https://github.com/entur/iteru-3dbus/releases/latest/download/entur-iteru-3dbus.tgz three@^0.180.0
+```
+
+Pin a version with `releases/download/v<version>/entur-iteru-3dbus-<version>.tgz`. While the repo is private the URL
+needs auth: `gh release download -R entur/iteru-3dbus -p 'entur-iteru-3dbus-*.tgz'`, then
+`npm i ./entur-iteru-3dbus-<version>.tgz three@^0.180.0`.
+
 
 ```js
 import { validate, faces, mkBus } from "@entur/iteru-3dbus";
@@ -51,3 +61,14 @@ count per row; every other dimension in those files is generic, not measured.
 
 Remaining work: [issues](https://github.com/entur/iteru-3dbus/issues).
 Full pipeline including the ML branch: `docs/flowchart.html`.
+
+## Release
+
+```sh
+npm version minor --no-git-tag-version   # in a PR; merge it
+git tag v$(node -p "require('./package.json').version") && git push origin --tags   # on main, after the merge
+```
+
+The tag runs `.github/workflows/release.yml`: tests, then `npm pack`, then a GitHub Release with the tarball
+(`entur-iteru-3dbus-<version>.tgz`, and `entur-iteru-3dbus.tgz` for `releases/latest/download/`) and generated notes.
+A tag with a `-` (`v0.2.0-rc.1`) makes a prerelease.

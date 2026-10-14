@@ -1,0 +1,35 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # the GitHub Release and its assets
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - name: Tag is the package version
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm test
+      - run: npm run validate -- examples/*.json examples/busnordic/*.json
+      # the tarball npm publish would send; the versionless copy serves releases/latest/download/
+      - run: |
+          npm run build:lib
+          npm pack --ignore-scripts
+          cp "entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz" entur-iteru-3dbus.tgz
+      - run: gh release create "$GITHUB_REF_NAME" "entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz" entur-iteru-3dbus.tgz --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
