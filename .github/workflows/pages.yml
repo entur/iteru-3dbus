@@ -26,6 +26,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run validate -- examples/*.json examples/busnordic/*.json
+      # The package: dist-lib/ builds, and every export is in the tarball. The build runs first and the pack
+      # skips prepack, so the vite log stays out of the JSON; npm <= 11 gives an array, npm 12 an object by name.
+      - run: |
+          npm run build:lib
+          npm pack --dry-run --json --ignore-scripts | node -e "const j = JSON.parse(require('fs').readFileSync(0)), p = Array.isArray(j) ? j[0] : Object.values(j)[0]; const f = new Set(p.files.map((x) => x.path)); const miss = Object.values(require('./package.json').exports).map((e) => e.slice(2)).filter((e) => !f.has(e)); if (miss.length) { console.error('missing from the package:', miss); process.exit(1); }"
       - id: pages
         if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v6
