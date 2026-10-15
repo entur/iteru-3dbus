@@ -8,7 +8,7 @@ permissions:
   contents: write   # the GitHub Release and its assets
 
 concurrency:
-  group: release
+  group: release-${{ github.ref }}   # per tag: a waiting release of one version never replaces another's
   cancel-in-progress: false
 
 jobs:
