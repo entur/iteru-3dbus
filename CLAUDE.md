@@ -23,7 +23,11 @@ npm run build:lib                             # the library as ES modules in dis
 npm test                                      # node --test, picks up test/*.test.js
 node --test --test-name-pattern='derives'     # single test by name
 npm run validate -- examples/*.json           # schema + cross-field rules, exit 1 on any failure
+npm pack --dry-run                            # what a release ships; prepack builds dist-lib/ first
 ```
+
+Releases: a `v<version>` tag on `main` attaches the package tarball (`@entur/iteru-3dbus`) to a GitHub Release
+(`release.yml`); the version is bumped in a PR first. The package stays `private` until a registry is picked (#37).
 
 ## Architecture
 
