@@ -32,7 +32,14 @@ jobs:
           npm run build:lib
           npm pack --ignore-scripts
           cp "entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz" entur-iteru-3dbus.tgz
-      - run: gh release create "$GITHUB_REF_NAME" "entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz" entur-iteru-3dbus.tgz --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
+      # a rerun after a failed publish keeps the release and takes its tarball, so npm gets the released bytes
+      - run: |
+          tgz="entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release download "$GITHUB_REF_NAME" -p "$tgz" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$tgz" entur-iteru-3dbus.tgz --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
       # the same tarball to npm; a prerelease goes to `next`, never `latest`
