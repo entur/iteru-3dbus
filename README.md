@@ -29,17 +29,12 @@ npm test
 npm run validate -- examples/*.json examples/busnordic/*.json
 ```
 
-As a library, in any host (`npm run build:lib` builds it to `dist-lib/`, three and ajv left to the host). Install a
-release, with three alongside as its peer:
+As a library, in any host (`npm run build:lib` builds it to `dist-lib/`, three and ajv left to the host), with three
+alongside as its peer:
 
 ```sh
-npm i https://github.com/entur/iteru-3dbus/releases/latest/download/entur-iteru-3dbus.tgz three@^0.180.0
+npm i @entur/iteru-3dbus three@^0.180.0
 ```
-
-Pin a version with `releases/download/v<version>/entur-iteru-3dbus-<version>.tgz`. While the repo is private the URL
-needs auth: `gh release download -R entur/iteru-3dbus -p 'entur-iteru-3dbus-*.tgz'`, then
-`npm i ./entur-iteru-3dbus-<version>.tgz three@^0.180.0`.
-
 
 ```js
 import { validate, faces, mkBus } from "@entur/iteru-3dbus";
@@ -70,5 +65,9 @@ git tag v$(node -p "require('./package.json').version") && git push origin --tag
 ```
 
 The tag runs `.github/workflows/release.yml`: tests, then `npm pack`, then a GitHub Release with the tarball
-(`entur-iteru-3dbus-<version>.tgz`, and `entur-iteru-3dbus.tgz` for `releases/latest/download/`) and generated notes.
-A tag with a `-` (`v0.2.0-rc.1`) makes a prerelease.
+(`entur-iteru-3dbus-<version>.tgz`, and `entur-iteru-3dbus.tgz` for `releases/latest/download/`) and generated notes,
+then `npm publish` of that same tarball. A tag with a `-` (`v0.2.0-rc.1`) makes a prerelease, published under `next`.
+
+CI publishes through npm trusted publishing: the registry accepts `release.yml` of this repo by OIDC, no token.
+That trust can only be set on a package that exists, so the first version goes up by hand:
+[`scripts/publish-by-hand.sh`](scripts/publish-by-hand.sh) publishes a tag from a worktree and sets the trust.

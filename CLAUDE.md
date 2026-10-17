@@ -27,7 +27,8 @@ npm pack --dry-run                            # what a release ships; prepack bu
 ```
 
 Releases: a `v<version>` tag on `main` attaches the package tarball (`@entur/iteru-3dbus`) to a GitHub Release
-(`release.yml`); the version is bumped in a PR first. The package stays `private` until a registry is picked (#37).
+and publishes it to npm (`release.yml`, trusted publishing by OIDC); the version is bumped in a PR first.
+`scripts/publish-by-hand.sh` is the one-off first publish, needed before npm lets a package trust a workflow.
 
 ## Architecture
 
