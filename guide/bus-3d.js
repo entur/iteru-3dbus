@@ -1,5 +1,5 @@
 // The user guide's example host: the library wrapped as one custom element. Not part of the
-// package. A host of the published package imports the same names from '3dbus'.
+// package. A host of the published package imports the same names from '@entur/iteru-3dbus'.
 import { MM, VIEWS, mapErrs, mkBus, mkStage, mkViews, total, validate } from '../src/index.js';
 
 const TAG = 'bus-3d', FIRST = 'quarter';

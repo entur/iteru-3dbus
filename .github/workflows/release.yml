@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write   # the GitHub Release and its assets
+  id-token: write   # npm trusted publishing: the registry trusts this workflow by OIDC, no token
 
 concurrency:
   group: release-${{ github.ref }}   # per tag: a waiting release of one version never replaces another's
@@ -20,16 +21,26 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
+          registry-url: https://registry.npmjs.org
       - run: npm ci
       - name: Tag is the package version
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
       - run: npm test
       - run: npm run validate -- examples/*.json examples/busnordic/*.json
-      # the tarball npm publish would send; the versionless copy serves releases/latest/download/
+      # the tarball npm publish sends; the versionless copy serves releases/latest/download/
       - run: |
           npm run build:lib
           npm pack --ignore-scripts
           cp "entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz" entur-iteru-3dbus.tgz
-      - run: gh release create "$GITHUB_REF_NAME" "entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz" entur-iteru-3dbus.tgz --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
+      # a rerun after a failed publish keeps the release and takes its tarball, so npm gets the released bytes
+      - run: |
+          tgz="entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release download "$GITHUB_REF_NAME" -p "$tgz" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$tgz" entur-iteru-3dbus.tgz --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
+      # the same tarball to npm; a prerelease goes to `next`, never `latest`
+      - run: npm publish "entur-iteru-3dbus-${GITHUB_REF_NAME#v}.tgz" --ignore-scripts ${{ contains(github.ref_name, '-') && '--tag next' || '' }}
