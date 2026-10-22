@@ -88,6 +88,16 @@ export const header = (groups, cur, page) => {
 };
 
 /**
+ * Fills the limits switch: Nordic-limited or fantasy bus, pressed as the signal says.
+ * @param {{value: boolean}} nordic signal, true when the Nordic limits count as errors
+ */
+export const modeBar = (nordic) =>
+  document.getElementById('mode').replaceChildren(
+    ...[[true, 'Nordic-limited'], [false, 'Fantasy bus']].map(([v, label]) =>
+      el('button', { onclick: () => (nordic.value = v), ariaPressed: () => String(nordic.value === v) }, label)),
+  );
+
+/**
  * Fills the camera-view bar: one button per named view of the 3D element.
  * @param {HTMLElement} bus the bus-3d element
  */

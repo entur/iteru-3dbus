@@ -4,12 +4,14 @@ import '../guide/bus-3d.js';
 import { total } from './derive.js';
 import { addAxle, addDoor, rmAxle, rmDoor, same, set, toJson } from './edit.js';
 import { gallery } from './gallery.js';
-import { form, header, mapCard, viewBar } from './ui.js';
+import { limits } from './limits.js';
+import { form, header, mapCard, modeBar, viewBar } from './ui.js';
 import { validate } from './validate.js';
 import { faces } from './vector.js';
 
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
 
+const MODE_KEY = '3dbus.limits', FANTASY = 'fantasy';  // localStorage key of the limits switch, and its value for a fantasy bus
 const VEHICLES = 'Concrete vehicles:', TYPE_SET = 'Type set:';  // captions of the two groups of buttons in the header
 // a page of cards per set: the route is the directory under examples/ that holds the set's buses; order: its cards by class, here as the Bus Nordic tables run
 const SETS = { busnordic: { title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions`, order: ['a', 'i', 'ii', 'b', 'iii'] } };
@@ -34,7 +36,12 @@ const DARK = matchMedia('(prefers-color-scheme: dark)');
 const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
 DARK.addEventListener('change', (e) => (dark.value = e.matches));
 const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
-const errs = computed(() => (draft.value ? validate(draft.value) : []));
+/** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
+const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
+const nordic = signal(saved() !== FANTASY);  // Nordic-limited: the limits count as errors; false: a fantasy bus, the schema alone
+/** The errors of an input: the schema and its rules, and the Nordic limits while they are on. */
+const check = (inp) => [...validate(inp), ...(nordic.value ? limits(inp) : [])];
+const errs = computed(() => (draft.value ? check(draft.value) : []));
 const dirty = computed(() => !same(draft.value, src.value));
 const maps = computed(() => (ok.value ? faces(ok.value) : null));  // the face maps of what is drawn
 const mapped = mapCard(maps);
@@ -46,13 +53,12 @@ const commit = (next, key) =>
   batch(() => {
     draft.value = next;
     marks.value = errs.value.length ? [...new Set([...marks.value, key])] : [];
-    errs.value.length || (ok.value = next);
   });
 
 /** Shows the chosen bus as loaded, dropping any edits. Another bus re-aims the current view; the same one does not. */
 const select = (to) => {
   const inp = buses.find((b) => b.id === to)?.inp;
-  fail.value = inp ? validate(inp) : [`no example named ${to}`];
+  fail.value = inp ? check(inp) : [`no example named ${to}`];
   if (fail.value.length) return;
   aim = to !== id.value;
   stop?.();  // before the signals change: the old form's effects must not see another bus
@@ -65,6 +71,10 @@ const select = (to) => {
   stop = end;
   info.replaceChildren(mapped, card);
 };
+
+// the draft is drawn once it has no errors: also when a switch to fantasy bus clears the ones it had; a switch back keeps the last legal bus
+effect(() => errs.value.length || (ok.value = draft.value));
+effect(() => { try { localStorage.setItem(MODE_KEY, nordic.value ? 'nordic' : FANTASY); } catch { /* the flag lasts the session */ } });
 
 const on = {
   set: (path, v) => commit(set(draft.value, path, v), path.join('.')),
@@ -146,6 +156,7 @@ const shift = () => (bus.offsetX = wide.matches ? PANEL_SHIFT : 0);
 wide.addEventListener('change', shift);
 shift();
 viewBar(bus);
+modeBar(nordic);
 
 const toggle = document.getElementById('toggle');
 toggle.onclick = () => (toggle.ariaExpanded = String(info.classList.toggle('open')));
