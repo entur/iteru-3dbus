@@ -79,6 +79,7 @@ figcaption { color: var(--steel); font-size: 13px; margin-top: 4px; }
 .head .limits button { padding: 1px 8px; font-size: 14px; border: 0; border-radius: 6px; }
 .head button, .axles button, .door-top button, .door button, dialog button { border: 1px solid var(--line); }
 .head button { padding: 1px 10px; font-size: 14px; }
+.head > button { margin-left: auto; }  /* Reset keeps the right edge, also when the head wraps */
 .input { padding-bottom: 10px; }
 .input h2 { margin: 0; }
 details { border-top: 1px solid var(--line); }
