@@ -1,12 +1,13 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { dashDefault, doorWidth, hints, spans, total, tyreDia, windows } from './derive.js';
+import { arch, dashDefault, doorKey, doorWidth, doors, spans, total, tyreDia, windows, zone } from './derive.js';
+import { limits } from './limits.js';
+import { validate } from './validate.js';
 
 const DEFS = schema.$defs;
+const ZONES = DEFS.door_hint.properties.zone.enum;
 
 /** Accordion groups of the input card, in order. Sections is filled from SECTION, once per section. */
-export const GROUPS = ['Identity', 'Classification', 'Dimensions', 'Tyre', 'Colour', 'Front', 'Sections', 'Photo', 'Meta'];
-
-const doors = (inp) => (hints(inp).length ? `${hints(inp).length} hinted, ${inp.door_side ?? 'right'} side` : 'class default');
+export const GROUPS = ['Dimensions', 'Tyre', 'Colour', 'Front', 'Sections'];
 
 /**
  * One row per input value outside the sections, plus the derived rows. A row has a `path` into
@@ -16,14 +17,6 @@ const doors = (inp) => (hints(inp).length ? `${hints(inp).length} hinted, ${inp.
  * input value its edits land on (see `shifted`).
  */
 export const FIELDS = [
-  { group: 'Identity', label: 'Brand', path: ['brand'], kind: 'text', edit: true },
-  { group: 'Identity', label: 'Model', path: ['model'] },
-  { group: 'Identity', label: 'Schema version', path: ['schema_version'] },
-  { group: 'Classification', label: 'Body', path: ['body'] },
-  { group: 'Classification', label: 'Class', path: ['bus_class'] },
-  { group: 'Classification', label: 'Floor', path: ['floor_type'] },
-  { group: 'Classification', label: 'Door side', path: ['door_side'] },
-  { group: 'Classification', label: 'Doors', of: doors },
   { group: 'Dimensions', label: 'Length', of: total, unit: 'mm', kind: 'int', edit: true, to: ['sections', 0, 'length_mm'] },
   { group: 'Dimensions', label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
   { group: 'Dimensions', label: 'Height', path: ['height_mm'], kind: 'int', edit: true },
@@ -37,15 +30,8 @@ export const FIELDS = [
   { group: 'Tyre', label: 'Effective diameter', of: (inp) => tyreDia(inp.tyre), unit: 'mm' },
   { group: 'Tyre', label: 'Twin rear', path: ['tyre', 'rear_twin'], kind: 'bool', edit: true },
   { group: 'Colour', label: 'Base', path: ['base_color', 'hex'], kind: 'color', edit: true },
-  { group: 'Colour', label: 'Name', path: ['base_color', 'name'] },
-  { group: 'Front', label: 'Template', path: ['front', 'template'] },
-  { group: 'Front', label: 'Badge text', path: ['front', 'badge_text'], kind: 'text', edit: true, hint: (inp) => inp.brand },
-  { group: 'Front', label: 'Display', path: ['front_display'], kind: 'text', edit: true, blank: true, hint: (inp) => inp.model },
-  { group: 'Photo', label: 'URI', path: ['photo', 'uri'] },
-  { group: 'Photo', label: 'Straight', path: ['photo', 'straight'] },
-  { group: 'Meta', label: 'Operator', path: ['meta', 'operator'] },
-  { group: 'Meta', label: 'Fleet number', path: ['meta', 'fleet_number'] },
-  { group: 'Meta', label: 'NeTEx VehicleType', path: ['meta', 'netex_vehicle_type_ref'] },
+  { group: 'Front', label: 'Badge text', path: ['front', 'badge_text'], kind: 'text', edit: true },
+  { group: 'Front', label: 'Display', path: ['front_display'], kind: 'text', edit: true, blank: true },
 ];
 
 /** Derived values shown on the title row of the groups they sum up, so they are readable with the group closed. */
@@ -64,6 +50,7 @@ export const SECTION = [
   { label: 'Wheelbase', of: (s) => spans(s).wheelbases, unit: 'mm' },
   { label: 'Rear overhang', of: (s) => spans(s).rear, unit: 'mm' },
   { label: 'Doors', path: ['doors_hint'], kind: 'doors', edit: true },
+  { label: 'Doors', path: ['doors'], kind: 'doors', edit: true },
   { label: 'Windows', path: ['windows_hint', 'count'], kind: 'int', edit: true, hint: (inp, i) => windows(inp)[i].length },
 ];
 
@@ -78,6 +65,14 @@ export const DOOR = [
   { label: 'Width', path: ['width_mm'], kind: 'int', edit: true, hint: (d) => doorWidth({ leaves: d.leaves }) },
   { label: 'Glazed', path: ['glazed'], kind: 'bool', edit: true },
   { label: 'Axle gap', path: ['axle_gap'], kind: 'int', edit: true, hint: () => DEFS.door_hint.properties.axle_gap.default },
+];
+
+/** Rows of one absolute door, as DOOR: every value is drawn, so every one is editable. */
+export const DOOR_AT = [
+  { label: 'X', path: ['x_mm'], kind: 'int', edit: true },
+  { label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
+  { label: 'Leaves', path: ['leaves'], kind: 'enum', edit: true },
+  { label: 'Glazed', path: ['glazed'], kind: 'bool', edit: true },
 ];
 
 const bare = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
@@ -178,38 +173,40 @@ export const addAxle = (inp, i) => {
 export const rmAxle = (inp, i) => set(inp, ['sections', i, 'axles_mm'], inp.sections[i].axles_mm.slice(0, -1));
 
 /**
- * Appends a door hint to section i: two leaves, in the zone that holds the fewest doors so far.
- * A section with one axle has no zone between axles.
+ * Appends a door to section i: two leaves, in the zone that holds the fewest doors so far. A
+ * section with absolute doors gets an absolute one, at the place the hint would take; a section
+ * with one axle has no zone between axles.
  * @param {object} inp bus input
  * @param {number} i section index
  * @returns {object} the edited copy
  */
 export const addDoor = (inp, i) => {
-  const s = inp.sections[i], ds = s.doors_hint ?? [], n = (z) => ds.filter((d) => d.zone === z).length;
-  const zone = DEFS.door_hint.properties.zone.enum
-    .filter((z) => z !== 'between_axles' || s.axles_mm.length > 1)
-    .reduce((a, z) => (n(z) < n(a) ? z : a));
-  return set(inp, ['sections', i, 'doors_hint'], [...ds, { zone, leaves: 2 }]);
+  const s = inp.sections[i], key = doorKey(s), ds = s[key] ?? [], { dx } = arch(tyreDia(inp.tyre) / 2);
+  const open = ZONES.filter((z) => z !== 'between_axles' || s.axles_mm.length > 1);
+  const zoneOf = (d) => {
+    if (key === 'doors_hint') return d.zone;
+    const c = d.x_mm + d.width_mm / 2;
+    return open.find((z) => { const [lo, hi] = zone(s, dx, { zone: z }); return lo <= c && c <= hi; });
+  };
+  const n = (z) => ds.filter((d) => zoneOf(d) === z).length;
+  const pick = open.reduce((a, z) => (n(z) < n(a) ? z : a));
+  const hint = { zone: pick, leaves: 2 };
+  if (key === 'doors_hint') return set(inp, ['sections', i, key], [...ds, hint]);
+  const [{ x0, x1 }] = doors({ ...inp, sections: [{ ...s, doors: undefined, doors_hint: [hint] }] })[0];
+  return set(inp, ['sections', i, key], [...ds, { x_mm: x0, width_mm: x1 - x0, leaves: 2 }]);
 };
 
 /**
- * Removes door hint j of section i, and the list with its last one.
+ * Removes door j of section i, and the list with its last one.
  * @param {object} inp bus input
  * @param {number} i section index
- * @param {number} j index of the hint
+ * @param {number} j index of the door
  * @returns {object} the edited copy
  */
 export const rmDoor = (inp, i, j) => {
-  const ds = inp.sections[i].doors_hint.filter((_, k) => k !== j);
-  return set(inp, ['sections', i, 'doors_hint'], ds.length ? ds : undefined);
+  const key = doorKey(inp.sections[i]), ds = inp.sections[i][key].filter((_, k) => k !== j);
+  return set(inp, ['sections', i, key], ds.length ? ds : undefined);
 };
-
-/**
- * The input as the app draws it: a bus without a front_display shows its model there.
- * @param {object} inp bus input
- * @returns {object} inp itself when it has a front_display, else a copy with model as that text
- */
-export const signed = (inp) => ('front_display' in inp ? inp : { ...inp, front_display: inp.model });
 
 /**
  * A bus input as the text of a JSON file: its keys in the order they have, two spaces of indent.
@@ -227,3 +224,16 @@ export const toJson = (inp) => `${JSON.stringify(inp, null, 2)}\n`;
  * @returns {string|number|undefined}
  */
 export const typed = (f, text) => (text === '' ? (f.blank ? '' : undefined) : f.kind === 'int' ? Number(text) : text);
+
+/**
+ * The errors of a draft: the schema and its rules, then, once those pass and while the Nordic
+ * limits are on, the limits. The limits need a valid input, so a draft the schema fails is never
+ * checked against them.
+ * @param {object} inp bus input, valid or not
+ * @param {boolean} nordic whether the Nordic limits count as errors (false: a fantasy bus)
+ * @returns {string[]} error messages, empty when the draft may be drawn
+ */
+export const checks = (inp, nordic) => {
+  const errs = validate(inp);
+  return errs.length || !nordic ? errs : limits(inp);
+};

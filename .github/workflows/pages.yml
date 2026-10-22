@@ -25,7 +25,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run validate -- examples/*.json examples/busnordic/*.json
+      - run: npm run validate -- examples/*.xml examples/busnordic/*.xml
       # The package: dist-lib/ builds, and every export is in the tarball. The build runs first and the pack
       # skips prepack, so the vite log stays out of the JSON; npm <= 11 gives an array, npm 12 an object by name.
       - run: |

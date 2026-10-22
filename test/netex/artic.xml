@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<netex:PublicationDelivery xmlns:netex="http://www.netex.org.uk/netex" version="1.15">
+  <netex:PublicationTimestamp>2026-10-22T00:00:00</netex:PublicationTimestamp>
+  <netex:ParticipantRef>3dbus</netex:ParticipantRef>
+  <netex:dataObjects>
+    <netex:CompositeFrame id="3dbus:CompositeFrame:artic" version="1">
+      <netex:frames>
+        <netex:ResourceFrame id="3dbus:ResourceFrame:artic" version="1">
+          <netex:vehicleModels>
+            <netex:VehicleModel id="3dbus:VehicleModel:citaro" version="1">
+              <netex:Name>Citaro</netex:Name>
+              <netex:Manufacturer>Mercedes-Benz</netex:Manufacturer>
+            </netex:VehicleModel>
+          </netex:vehicleModels>
+          <netex:vehicleTypes>
+            <netex:VehicleType id="3dbus:VehicleType:citaro-g" version="1">
+              <netex:keyList>
+                <netex:KeyValue><netex:Key>3dbus:tyre_diameter_mm</netex:Key><netex:Value>950</netex:Value></netex:KeyValue>
+                <netex:KeyValue><netex:Key>3dbus:base_color</netex:Key><netex:Value>#D6001C</netex:Value></netex:KeyValue>
+              </netex:keyList>
+              <netex:Name>Citaro G</netex:Name>
+              <netex:Length>18.2</netex:Length>
+              <netex:Width>2.55</netex:Width>
+              <netex:Height>3.1</netex:Height>
+              <netex:DeckPlanRef ref="3dbus:DeckPlan:citaro-g" version="1"/>
+              <netex:ClassifiedAsRef ref="3dbus:VehicleModel:citaro" version="1"/>
+            </netex:VehicleType>
+          </netex:vehicleTypes>
+          <netex:deckPlans>
+            <netex:DeckPlan id="3dbus:DeckPlan:citaro-g" version="1">
+              <netex:deckLevels>
+                <netex:DeckLevel id="3dbus:DeckLevel:main" version="1"/>
+              </netex:deckLevels>
+              <netex:decks>
+                <netex:Deck id="3dbus:Deck:lead" version="1">
+                  <netex:keyList>
+                    <netex:KeyValue><netex:Key>3dbus:length_mm</netex:Key><netex:Value>10600</netex:Value></netex:KeyValue>
+                    <netex:KeyValue><netex:Key>3dbus:axles_mm</netex:Key><netex:Value>2700,8600</netex:Value></netex:KeyValue>
+                  </netex:keyList>
+                  <netex:DeckLevelRef ref="3dbus:DeckLevel:main" version="1"/>
+                  <netex:deckSpaces>
+                    <netex:PassengerSpace id="3dbus:PassengerSpace:lead" version="1">
+                      <netex:deckEntrances>
+                        <netex:PassengerEntrance id="3dbus:PassengerEntrance:middle" version="1">
+                          <netex:keyList>
+                            <netex:KeyValue><netex:Key>3dbus:leaves</netex:Key><netex:Value>2</netex:Value></netex:KeyValue>
+                          </netex:keyList>
+                          <netex:DistanceFromFront>4.8</netex:DistanceFromFront>
+                          <netex:Width>1.25</netex:Width>
+                          <netex:VehicleSide>rightSide</netex:VehicleSide>
+                        </netex:PassengerEntrance>
+                        <netex:PassengerEntrance id="3dbus:PassengerEntrance:front" version="1">
+                          <netex:keyList>
+                            <netex:KeyValue><netex:Key>3dbus:leaves</netex:Key><netex:Value>2</netex:Value></netex:KeyValue>
+                          </netex:keyList>
+                          <netex:DistanceFromFront>0.6</netex:DistanceFromFront>
+                          <netex:Width>1.25</netex:Width>
+                          <netex:VehicleSide>rightSide</netex:VehicleSide>
+                        </netex:PassengerEntrance>
+                        <netex:PassengerEntrance id="3dbus:PassengerEntrance:driver" version="1">
+                          <netex:DistanceFromFront>0.3</netex:DistanceFromFront>
+                          <netex:Width>0.6</netex:Width>
+                          <netex:VehicleSide>leftSide</netex:VehicleSide>
+                        </netex:PassengerEntrance>
+                      </netex:deckEntrances>
+                    </netex:PassengerSpace>
+                  </netex:deckSpaces>
+                </netex:Deck>
+                <netex:Deck id="3dbus:Deck:trailer" version="1">
+                  <netex:keyList>
+                    <netex:KeyValue><netex:Key>3dbus:length_mm</netex:Key><netex:Value>7000</netex:Value></netex:KeyValue>
+                    <netex:KeyValue><netex:Key>3dbus:bellows_ahead_mm</netex:Key><netex:Value>600</netex:Value></netex:KeyValue>
+                    <netex:KeyValue><netex:Key>3dbus:axles_mm</netex:Key><netex:Value>4700</netex:Value></netex:KeyValue>
+                  </netex:keyList>
+                  <netex:DeckLevelRef ref="3dbus:DeckLevel:main" version="1"/>
+                  <netex:deckSpaces>
+                    <netex:PassengerSpace id="3dbus:PassengerSpace:trailer" version="1">
+                      <netex:deckEntrances>
+                        <netex:PassengerEntrance id="3dbus:PassengerEntrance:rear" version="1">
+                          <netex:keyList>
+                            <netex:KeyValue><netex:Key>3dbus:leaves</netex:Key><netex:Value>2</netex:Value></netex:KeyValue>
+                          </netex:keyList>
+                          <netex:DistanceFromFront>11.5</netex:DistanceFromFront>
+                          <netex:Width>1.25</netex:Width>
+                        </netex:PassengerEntrance>
+                      </netex:deckEntrances>
+                    </netex:PassengerSpace>
+                  </netex:deckSpaces>
+                </netex:Deck>
+              </netex:decks>
+            </netex:DeckPlan>
+          </netex:deckPlans>
+        </netex:ResourceFrame>
+      </netex:frames>
+    </netex:CompositeFrame>
+  </netex:dataObjects>
+</netex:PublicationDelivery>

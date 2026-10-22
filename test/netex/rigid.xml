@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PublicationDelivery xmlns="http://www.netex.org.uk/netex" version="1.15">
+  <PublicationTimestamp>2026-10-22T00:00:00</PublicationTimestamp>
+  <ParticipantRef>3dbus</ParticipantRef>
+  <dataObjects>
+    <ResourceFrame id="3dbus:ResourceFrame:rigid" version="1">
+      <vehicleModels>
+        <VehicleModel id="3dbus:VehicleModel:8900" version="1">
+          <Name>8900 LE</Name>
+          <Manufacturer><Text>Volvo</Text></Manufacturer>
+        </VehicleModel>
+      </vehicleModels>
+      <vehicleTypes>
+        <VehicleType id="3dbus:VehicleType:8900-12.4" version="1">
+          <keyList>
+            <KeyValue><Key>3dbus:tyre_size</Key><Value>295/80 R22.5</Value></KeyValue>
+            <KeyValue><Key>3dbus:base_color</Key><Value>#E9ECEC</Value></KeyValue>
+            <KeyValue><Key>3dbus:axles_mm</Key><Value>2769, 9099</Value></KeyValue>
+            <KeyValue><Key>3dbus:windows_count</Key><Value>5</Value></KeyValue>
+            <KeyValue><Key>3dbus:band_above_mm</Key><Value>250</Value></KeyValue>
+          </keyList>
+          <Name>8900 LE 12.4 m</Name>
+          <Length>12.396</Length>
+          <Width>2.55</Width>
+          <Height>3.3</Height>
+          <ClassifiedAsRef ref="3dbus:VehicleModel:8900" version="1"/>
+        </VehicleType>
+      </vehicleTypes>
+    </ResourceFrame>
+  </dataObjects>
+</PublicationDelivery>

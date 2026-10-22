@@ -1,11 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { mapErrs, mkBus } from '../src/bus.js';
 import { bodyTop, endH, layout } from '../src/derive.js';
 import { CLEARANCE } from '../src/dims.js';
+import { load } from './examples.js';
 
-const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
 const face = (w, h) => ({ w, h, svg: { cloneNode: () => ({}) } });
 /** Stub face maps in the sizes faces() gives them, without a DOM. */

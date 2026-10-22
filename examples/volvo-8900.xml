@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PublicationDelivery xmlns="http://www.netex.org.uk/netex" version="2.0">
+  <PublicationTimestamp>2026-10-22T00:00:00</PublicationTimestamp>
+  <ParticipantRef>3dbus</ParticipantRef>
+  <dataObjects>
+    <ResourceFrame id="ITR:ResourceFrame:volvo-8900" version="1">
+      <vehicleTypes>
+        <VehicleType id="ITR:VehicleType:volvo-8900" version="1">
+          <keyList>
+            <KeyValue><Key>3dbus:tyre_size</Key><Value>295/80 R22.5</Value></KeyValue>
+            <KeyValue><Key>3dbus:tyre_rear_twin</Key><Value>true</Value></KeyValue>
+            <KeyValue><Key>3dbus:base_color</Key><Value>#E9ECEC</Value></KeyValue>
+            <KeyValue><Key>3dbus:roof_equipment_mm</Key><Value>0</Value></KeyValue>
+          </keyList>
+          <Name>8900 LE 12.4 m</Name>
+          <DeckPlanRef ref="ITR:DeckPlan:volvo-8900" version="1"/>
+          <Length>12.396</Length>
+          <Width>2.55</Width>
+          <Height>3.3</Height>
+          <ClassifiedAsRef ref="ITR:VehicleModel:volvo-8900" version="1"/>
+        </VehicleType>
+      </vehicleTypes>
+      <vehicleModels>
+        <VehicleModel id="ITR:VehicleModel:volvo-8900" version="1">
+          <Name>8900 LE 12.4 m</Name>
+          <Manufacturer>Volvo</Manufacturer>
+        </VehicleModel>
+      </vehicleModels>
+      <deckPlans>
+        <DeckPlan id="ITR:DeckPlan:volvo-8900" version="1">
+          <decks>
+            <Deck id="ITR:Deck:volvo-8900-1" version="1">
+              <keyList>
+                <KeyValue><Key>3dbus:length_mm</Key><Value>12396</Value></KeyValue>
+                <KeyValue><Key>3dbus:axles_mm</Key><Value>2769,9099</Value></KeyValue>
+              </keyList>
+              <deckSpaces>
+                <PassengerSpace id="ITR:PassengerSpace:volvo-8900-1" version="1">
+                  <deckEntrances>
+                    <PassengerEntrance id="ITR:PassengerEntrance:volvo-8900-1" version="1">
+                      <keyList>
+                        <KeyValue><Key>3dbus:leaves</Key><Value>2</Value></KeyValue>
+                      </keyList>
+                      <Width>1.25</Width>
+                      <VehicleSide>rightSide</VehicleSide>
+                      <DistanceFromFront>0.385</DistanceFromFront>
+                    </PassengerEntrance>
+                    <PassengerEntrance id="ITR:PassengerEntrance:volvo-8900-2" version="1">
+                      <keyList>
+                        <KeyValue><Key>3dbus:leaves</Key><Value>2</Value></KeyValue>
+                      </keyList>
+                      <Width>1.25</Width>
+                      <VehicleSide>rightSide</VehicleSide>
+                      <DistanceFromFront>6.95</DistanceFromFront>
+                    </PassengerEntrance>
+                  </deckEntrances>
+                </PassengerSpace>
+              </deckSpaces>
+            </Deck>
+          </decks>
+        </DeckPlan>
+      </deckPlans>
+    </ResourceFrame>
+  </dataObjects>
+</PublicationDelivery>

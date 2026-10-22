@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@entur/iteru-3dbus)](https://www.npmjs.com/package/@entur/iteru-3dbus)
 [![license](https://img.shields.io/npm/l/@entur/iteru-3dbus)](https://github.com/entur/iteru-3dbus/blob/main/LICENSE.txt)
 
-A boxy 3D bus in three.js, drawn from one JSON input: sections, axles, bellows, doors, windows, colour and front.
+A boxy 3D bus in three.js, drawn from one JSON input (A), which can be read from a NeTEx `VehicleType` file (B): sections, axles, bellows, doors, windows, colour and front.
 
 **Live:** <https://entur.github.io/iteru-3dbus/>, with two concrete buses
 ([`?bus=volvo-8900`](https://entur.github.io/iteru-3dbus/?bus=volvo-8900)) and the Bus Nordic 2.0 bus types as cards
@@ -28,15 +28,42 @@ scene.add(mkBus(inp, maps)); // a THREE.Group in metres: front end at x = 0, gro
 ```
 
 `inp` is one object against [`schema/bus-input.schema.json`](https://github.com/entur/iteru-3dbus/blob/main/schema/bus-input.schema.json)
-(contract v2.0), lengths in mm. [`examples/`](https://github.com/entur/iteru-3dbus/tree/main/examples) has two
-concrete buses and, in `busnordic/`, one bus per row of the Bus Nordic 2.0 "Examples of bus types" tables (17). The
+(contract v3.0), lengths in mm. [`examples/`](https://github.com/entur/iteru-3dbus/tree/main/examples) has two
+concrete buses as NeTEx XML and, in `busnordic/`, one bus per row of the Bus Nordic 2.0 "Examples of bus types" tables (17). The
 standard gives those a class, a maximum length, a floor type and a door count; every other dimension is generic, not measured.
+
+**Schema 3.0 is a breaking change** (package 0.2.0): the input holds only what is drawn. `brand`, `model`,
+`bus_class`, `floor_type`, `body`, `door_side`, `front.template`, `photo`, `meta` and `base_color.name` are gone; the
+badge is `front.badge_text` and the display `front_display`, nothing falls back to anything else. A section takes
+absolute `doors` (`x_mm`, `width_mm`, `leaves`, `glazed`) or `doors_hint`, never both. Inputs of 2.0 need these
+fields removed and `schema_version` set to `"3.0"`.
 
 | Import | Gives | Needs |
 | --- | --- | --- |
-| `@entur/iteru-3dbus/core` | `validate`, `schema`, the derived numbers (`layout`, `doors`, `windows`, …), `MM` | nothing: runs in node |
+| `@entur/iteru-3dbus/core` | `validate`, `limits`, `schema`, the derived numbers (`layout`, `doors`, `windows`, …), `MM` | nothing: runs in node |
+| `@entur/iteru-3dbus/limits` | `limits`: the Nordic limits as messages, on top of `validate` | nothing: runs in node |
+| `@entur/iteru-3dbus/netex` | `fromNetex`, `KEYS`, `PREFIX`: a NeTEx `VehicleType` read into the input | nothing: runs in node; `fast-xml-parser` and `ajv` are dependencies |
 | `@entur/iteru-3dbus/faces` | `faces`: the SVG maps alone | a DOM, no three |
-| `@entur/iteru-3dbus` | all of the above, `mkBus`, `mapErrs`; an optional stage (`mkStage`, `mkStageShot`) and camera views (`mkViews`, `VIEWS`) | a DOM and three |
+| `@entur/iteru-3dbus` | all of the above (`./netex` too), `mkBus`, `mapErrs`; an optional stage (`mkStage`, `mkStageShot`) and camera views (`mkViews`, `VIEWS`) | a DOM and three |
+
+### A and B
+
+A is the input above. B is NeTEx: a `VehicleType`, with its `DeckPlan` (one `Deck` per section, `PassengerEntrance`
+per door) and `VehicleModel` (the badge) when the file has them. What NeTEx has no element for goes in
+`KeyValue`s under the prefix `3dbus:` (`KEYS` lists them per element).
+
+```js
+import { fromNetex, validate, limits } from "@entur/iteru-3dbus";
+
+const r = fromNetex(xml); // { ok: true, inp, warns } or { ok: false, errs }; { prefix, id } as a second argument
+const errs = r.ok ? [...validate(r.inp), ...limits(r.inp)] : r.errs; // limits are optional: a fantasy bus has none
+```
+
+`fromNetex` parses, picks, checks the NeTEx shape (a slice of the schema, made by
+[`scripts/netex-slice.js`](scripts/netex-slice.js)), reads the KeyValues, builds the input and runs `validate`; every
+error names its element or key. `limits` holds the Nordic length, width, height and door-count limits; **its Bus Nordic
+2.0 numbers have not been checked against the document.** The demo app has a "Nordic-limited | Fantasy bus" switch
+for them. A `Length` more than 10 mm off the sections' sum is a warning; a second deck level is not supported.
 
 ### As a custom element
 
@@ -51,7 +78,7 @@ flowchart LR
     subgraph inp["inp (validated)"]
         G["Body<br/>sections: length, axles, bellows<br/>width, height, roof equipment, tyre"]
         P["Placement<br/>bands, door hints, window hints"]
-        L["Look<br/>colour, brand, front"]
+        L["Look<br/>colour, front"]
     end
     H["headlight SVG<br/>(optional)"] -.-> F
     G --> F[/"faces(inp)"/]
@@ -68,10 +95,10 @@ flowchart LR
 
 ## Limits (v1)
 
-- `photo` is accepted and ignored: no ML branch yet (full pipeline: [`docs/flowchart.html`](docs/flowchart.html)).
-- One generic front; `front.template` and rear templates are not drawn.
-- Doors on the right side only; `door_side` is not honoured, door overlap (rule 5) is not checked.
-- One deck: `low_floor_lower_level` is not drawn as two.
+- No ML branch yet (full pipeline: [`docs/flowchart.html`](docs/flowchart.html)).
+- One generic front; rear templates are not drawn.
+- Doors on the right side only.
+- One deck: a second DeckLevel is rejected (double deck as A bands: #9).
 
 Remaining work: [issues](https://github.com/entur/iteru-3dbus/issues).
 
@@ -81,7 +108,7 @@ Remaining work: [issues](https://github.com/entur/iteru-3dbus/issues).
 npm i
 npm run dev                              # the demo app; ?bus=volvo-8900 picks an example
 npm test
-npm run validate -- examples/*.json examples/busnordic/*.json
+npm run validate -- examples/*.xml examples/busnordic/*.xml   # .xml through fromNetex, else input JSON
 npm run build:lib                        # the package, in dist-lib/
 ```
 

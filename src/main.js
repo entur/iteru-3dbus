@@ -1,26 +1,31 @@
 import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import '../guide/bus-3d.js';
-import { total } from './derive.js';
-import { addAxle, addDoor, rmAxle, rmDoor, same, set, signed, toJson } from './edit.js';
+import { doorKey, total } from './derive.js';
+import { addAxle, addDoor, checks, rmAxle, rmDoor, same, set, toJson } from './edit.js';
 import { gallery } from './gallery.js';
-import { form, header, mapCard, viewBar } from './ui.js';
-import { validate } from './validate.js';
+import { fromNetex } from './netex.js';
+import { form, header, mapCard, modeBar, viewBar } from './ui.js';
 import { faces } from './vector.js';
 
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
 
+const MODE_KEY = '3dbus.limits', FANTASY = 'fantasy';  // localStorage key of the limits switch, and its value for a fantasy bus
 const VEHICLES = 'Concrete vehicles:', TYPE_SET = 'Type set:';  // captions of the two groups of buttons in the header
 // a page of cards per set: the route is the directory under examples/ that holds the set's buses; order: its cards by class, here as the Bus Nordic tables run
-const SETS = { busnordic: { title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions`, order: ['A', 'I', 'II', 'B', 'III'] } };
+const SETS = { busnordic: { title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions`, order: ['a', 'i', 'ii', 'b', 'iii'] } };
 
-const srcs = import.meta.glob('../examples/**/*.json', { eager: true, query: '?url', import: 'default' });
-const buses = Object.entries(import.meta.glob('../examples/**/*.json', { eager: true, import: 'default' })).map(([p, inp]) => ({
-  id: p.match(/([^/]+)\.json$/)[1],
-  set: p.match(/examples\/(?:([^/]+)\/)?[^/]+$/)[1],  // undefined for a bus with a button of its own
-  inp,
-  src: srcs[p],
-}));
+// every example twice: its url, for the Original link, and its text, read through fromNetex; a file it rejects keeps its errors, shown when the bus is selected
+const srcs = import.meta.glob('../examples/**/*.xml', { eager: true, query: '?url', import: 'default' });
+const buses = Object.entries(import.meta.glob('../examples/**/*.xml', { eager: true, query: '?raw', import: 'default' })).map(([p, xml]) => {
+  const { inp, errs = [], warns = [] } = fromNetex(xml);
+  return {
+    id: p.match(/([^/]+)\.xml$/)[1],
+    set: p.match(/examples\/(?:([^/]+)\/)?[^/]+$/)[1],  // undefined for a bus with a button of its own
+    inp, errs, warns,
+    src: srcs[p],
+  };
+});
 const own = buses.filter((b) => !b.set);  // the buses with a button of their own
 const cards = document.getElementById('cards'), pages = {};
 const bus = document.querySelector('bus-3d');
@@ -33,45 +38,56 @@ const route = signal('');  // the set whose cards page is open, '' for the viewe
 const DARK = matchMedia('(prefers-color-scheme: dark)');
 const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
 DARK.addEventListener('change', (e) => (dark.value = e.matches));
-const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
-const errs = computed(() => (draft.value ? validate(draft.value) : []));
+const touched = signal([]), fail = signal([]);  // keys edited since the bus was selected; errors of a bus that could not be selected
+const warns = signal([]);  // what fromNetex warned of when it read the selected bus's file
+/** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
+const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
+const nordic = signal(saved() !== FANTASY);  // Nordic-limited: the limits count as errors; false: a fantasy bus, the schema alone
+/** The errors of an input: the schema and its rules, and the Nordic limits once those pass, while they are on. */
+const check = (inp) => checks(inp, nordic.value);
+const errs = computed(() => (draft.value ? check(draft.value) : []));
+const marks = computed(() => (errs.value.length ? touched.value : []));  // what the controls show as invalid: only while the draft has errors, in either mode
 const dirty = computed(() => !same(draft.value, src.value));
-const maps = computed(() => (ok.value ? faces(signed(ok.value)) : null));  // the face maps of what is drawn
+const maps = computed(() => (ok.value ? faces(ok.value) : null));  // the face maps of what is drawn
 const mapped = mapCard(maps);
 const edited = computed(() => !!ok.value && !same(ok.value, src.value));  // what is drawn differs from the file
 let aim = false, stop = null;
 
-/** Takes an edited draft: it is always kept, and drawn when valid. While it is invalid, every control edited stays marked. */
+/** Takes an edited draft: it is always kept, and drawn when it has no errors. While it has some, every control edited since the bus was selected is marked. */
 const commit = (next, key) =>
   batch(() => {
     draft.value = next;
-    marks.value = errs.value.length ? [...new Set([...marks.value, key])] : [];
-    errs.value.length || (ok.value = next);
+    touched.value = [...new Set([...touched.value, key])];
   });
 
 /** Shows the chosen bus as loaded, dropping any edits. Another bus re-aims the current view; the same one does not. */
 const select = (to) => {
-  const inp = buses.find((b) => b.id === to)?.inp;
-  fail.value = inp ? validate(inp) : [`no example named ${to}`];
+  const b = buses.find((x) => x.id === to), inp = b?.inp;
+  fail.value = !b ? [`no example named ${to}`] : inp ? check(inp) : b.errs;
   if (fail.value.length) return;
   aim = to !== id.value;
   stop?.();  // before the signals change: the old form's effects must not see another bus
   batch(() => {
     id.value = to;
     src.value = draft.value = ok.value = inp;
-    marks.value = [];
+    touched.value = [];
+    warns.value = b.warns;
   });
   const [card, end] = form({ draft, ok, marks, dirty }, on);
   stop = end;
   info.replaceChildren(mapped, card);
 };
 
+// the draft is drawn once it has no errors: also when a switch to fantasy bus clears the ones it had; a switch back keeps the last legal bus
+effect(() => errs.value.length || (ok.value = draft.value));
+effect(() => { try { localStorage.setItem(MODE_KEY, nordic.value ? 'nordic' : FANTASY); } catch { /* the flag lasts the session */ } });
+
 const on = {
   set: (path, v) => commit(set(draft.value, path, v), path.join('.')),
   add: (i) => commit(addAxle(draft.value, i), `sections.${i}.axles_mm`),
   rm: (i) => commit(rmAxle(draft.value, i), `sections.${i}.axles_mm`),
-  addDoor: (i) => commit(addDoor(draft.value, i), `sections.${i}.doors_hint`),
-  rmDoor: (i, j) => commit(rmDoor(draft.value, i, j), `sections.${i}.doors_hint`),
+  addDoor: (i) => commit(addDoor(draft.value, i), `sections.${i}.${doorKey(draft.value.sections[i])}`),
+  rmDoor: (i, j) => commit(rmDoor(draft.value, i, j), `sections.${i}.${doorKey(draft.value.sections[i])}`),
   reset: () => select(id.value),
 };
 
@@ -96,22 +112,19 @@ const follow = () => {
   route.value = routed();
   route.value || named() === id.value || select(named());
 };
-/** The buses of a set in the order of its cards: by class as the set lists them, then by length. */
+/** The buses of a set in the order of its cards: by class as the set lists them, the class being the second part of the id, then by length. A file fromNetex rejected has no card. */
 const inSet = (s) =>
-  buses.filter((b) => b.set === s).sort((a, b) => SETS[s].order.indexOf(a.inp.bus_class) - SETS[s].order.indexOf(b.inp.bus_class) || total(a.inp) - total(b.inp));
-/** A bus on its button: brand and the first word of the model; a bus of a set has its whole model, which is what tells it apart. */
-const name = ({ inp, set }) => `${inp.brand} ${set ? inp.model : inp.model.split(' ')[0]}`;
-
+  buses.filter((b) => b.set === s && b.inp).sort((a, b) => SETS[s].order.indexOf(a.id.split('-')[1]) - SETS[s].order.indexOf(b.id.split('-')[1]) || total(a.inp) - total(b.inp));
 effect(() => {
   if (!ok.value) return;
   const r = route.value, sel = buses.find((b) => b.id === id.value);
   header(
     [
       // a selected bus of a set takes the last place among the vehicles, which is there for it alone
-      { caption: VEHICLES, btns: [...own, ...(sel.set ? [sel] : [])].map((b) => ({ label: name(b), on: !r && b === sel, go: () => view(b.id) })) },
+      { caption: VEHICLES, btns: [...own, ...(sel.set ? [sel] : [])].map((b) => ({ label: b.id, on: !r && b === sel, go: () => view(b.id) })) },
       { caption: TYPE_SET, btns: Object.entries(SETS).map(([s, { title }]) => ({ label: title, on: r === s, go: () => (location.hash = s) })) },
     ],
-    { inp: ok.value, src: sel.src },
+    { id: sel.id, inp: ok.value, src: sel.src },
     r ? { title: SETS[r].title, sub: SETS[r].sub(inSet(r).length) } : null,
   );
 });
@@ -122,7 +135,8 @@ effect(() => {
   cards.hidden = !r;
   r && cards.replaceChildren((pages[`${r}:${dark.value}`] ??= gallery(inSet(r), view)));
 });
-effect(() => (err.textContent = [...fail.value, ...errs.value].join('\n')));
+effect(() => (document.getElementById('mode').hidden = !!route.value));
+effect(() => (err.textContent = [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)].join('\n')));
 
 // Modified: the bus as drawn, with its valid edits, as a file to download; there is none until an edit
 effect(() => {
@@ -149,6 +163,7 @@ const shift = () => (bus.offsetX = wide.matches ? PANEL_SHIFT : 0);
 wide.addEventListener('change', shift);
 shift();
 viewBar(bus);
+modeBar(nordic);
 
 const toggle = document.getElementById('toggle');
 toggle.onclick = () => (toggle.ariaExpanded = String(info.classList.toggle('open')));

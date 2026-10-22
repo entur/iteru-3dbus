@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Boxy 3D bus rendered in three.js from one input JSON (`schema/bus-input.schema.json`, contract v2.0).
-This is v1: no ML branch (no VLM, no OpenCV). The schema's `photo` field is accepted and ignored.
+Boxy 3D bus rendered in three.js from one input JSON (`schema/bus-input.schema.json`, contract v3.0: only what is drawn) (A). A NeTEx `VehicleType` file (B) is read into that input by `fromNetex`.
+This is v1: no ML branch (no VLM, no OpenCV).
 `docs/flowchart.html` shows the full intended pipeline including the ML branch, for reference only.
 
 Plain ES modules, no TypeScript, no framework, no linter. Vite for the browser app, `node --test` for tests.
@@ -17,12 +17,12 @@ app in `main.js` / `ui.js` uses that element.
 
 ```sh
 npm i
-npm run dev                                   # vite; ?bus=<id> picks an example (id = file name without .json)
+npm run dev                                   # vite; ?bus=<id> picks an example (id = file name without .xml)
 npm run build
 npm run build:lib                             # the library as ES modules in dist-lib/, three and ajv external
 npm test                                      # node --test, picks up test/*.test.js
 node --test --test-name-pattern='derives'     # single test by name
-npm run validate -- examples/*.json           # schema + cross-field rules, exit 1 on any failure
+npm run validate -- examples/*.xml            # .xml through fromNetex, anything else as input JSON; exit 1 on any failure
 npm pack --dry-run                            # what a release ships; prepack builds dist-lib/ first
 ```
 
@@ -36,7 +36,7 @@ Everything flows from one validated input object (`inp`). Units are **mm** every
 three.js, where `MM = 0.001` (`dims.js`) converts to metres at the last moment.
 
 ```
-core   validate.js  derive.js  dims.js                  pure, no DOM, no three
+core   validate.js  derive.js  dims.js  limits.js  netex.js   pure, no DOM, no three
 2D     vector.js                                        core only: no three
 3D     bus.js  scene.js  views.js                       core + three: no vector.js
 guide  guide/bus-3d.js  <bus-3d>                        the package entry (index.js) only
@@ -49,13 +49,36 @@ and fails when a layer reaches the wrong way, or when the guide element needs mo
 package entry. Tabs, caption, view bar, header and cards are host chrome, not part of the library.
 
 - **`validate.js`** — Ajv (draft 2020-12) against the schema, then the `rules` array for what JSON
-  Schema cannot express. The rules are numbered (1)–(5) in the schema's top-level `$comment`;
-  (1)–(4) are implemented, (5) (door overlap) is not checked yet. Cross-field rules only run
-  when the schema passes. Returns `string[]`, empty when valid.
+  Schema cannot express. The rules are numbered in the schema's top-level `$comment`; `validate`
+  runs (1), (4) and (5): (5) is door clashes (`clashes` in `derive.js`), for absolute and hinted
+  doors alike. (2) and (3) are Nordic limits and live in `limits.js`. Cross-field rules only run
+  when the schema passes, (5) only when (1) and (4) pass. Returns `string[]`, empty when valid.
+  The schema also bounds what can be rendered (width 1500–4000, height 1500–6000, section length
+  1000–30000 mm).
+- **`limits.js`** — `limits(inp)`: the Nordic limits as `string[]` (width, height, total length by
+  section and axle count, two doors over 9500 mm; a bus naming no doors is not checked for them).
+  Core, package entry `./limits`. **The Bus Nordic 2.0 numbers in it were not checked against the
+  document.** The app runs it after `validate` passes (`checks` in `edit.js`: it needs a valid input), in the "Nordic-limited" mode and not in "Fantasy bus"
+  (`modeBar` in `ui.js`, remembered in `localStorage` under `3dbus.limits`, default Nordic-limited).
+  In Nordic mode a limit is an error like any other: the last legal bus stays on screen and the
+  marks follow `errs`.
+- **`netex.js`** — `fromNetex(xml, { prefix, id })`, package entry `./netex` (also re-exported from
+  `.`), reads a NeTEx `VehicleType`, with its `DeckPlan` and `VehicleModel` when the file has them,
+  into the input. Steps; within a step every error is collected, a step with errors ends the run:
+  (1) parse with fast-xml-parser, pick the VehicleType (by `id` when the file has several) and its
+  refs; (2) Ajv against `schema/netex/vehicle-type.schema.json`; (3) the KeyValues, which carry
+  what NeTEx has no element for (`KEYS` per element: VehicleType, Deck, PassengerEntrance), all under
+  `PREFIX = '3dbus:'`; (4) build the input (A) and `validate` it, an error on a section blamed on
+  its Deck, one on a root value on its element (`Width`, `Height`, `Name`, `Manufacturer`) or KeyValue. Returns `{ ok, inp, warns } | { ok: false, errs }`. A `Length` more than 10 mm off the
+  sum of the sections is a warning; a Deck on a second DeckLevel is an error ("not supported"). The
+  badge comes from `VehicleModel/Manufacturer`, the display from the VehicleType `Name`; entrances
+  on the right side (or with no side) become absolute `doors`. The slice is generated by
+  `scripts/netex-slice.js <base.schema.json>` from the NeTEx draft-07 schema, with post-fixes for
+  netex-typescript-model#52, #16, #19 and #18 (epic #53); `test/netex-slice.test.js` covers it.
 - **`derive.js`** — pure functions, no DOM, no three: `layout` (per-section `x0`, absolute axle x,
-  bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `endH` (the height of a flat end face, which `faces` draws and `mapErrs` checks), `hints`, `arch` (the
-  wheel-arch circle the model cuts out), `doors` (every hint placed as a span per section:
-  the zone gives a span clear of body ends and arches, the bias a position in it), `lintel` (the
+  bellows), `total`, `spans` (overhangs/wheelbases), `tyreDia`, `bodyTop`, `endH` (the height of a flat end face, which `faces` draws and `mapErrs` checks), `hints`, `doorKey` (`doors` when a section has absolute doors, else `doors_hint`; a section takes one, never both), `clashes` (rule 5), `arch` (the
+  wheel-arch circle the model cuts out), `doors` (every door placed as a span per section: absolute doors as given; a hint by its
+  zone, which gives a span clear of body ends and arches, and its bias, a position in it), `lintel` (the
   line doors and side windows reach up to: the body top less `band_above_mm`), `sill` (the line
   side windows reach down to: `win_band_height_mm` below `lintel`, never below the skirt; both
   are root values of the input for the whole bus, their defaults read from the schema), `grill`
@@ -84,8 +107,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   to the badge than `SCREEN_GAP` (an end map starts `CORNER` below the body top), left out
   when there is no room for it; a root `front_display` text is shown on a destination display
   (`display`: dark quad, dark-gray outline) at the top of the windscreen's pane, when the pane is
-  high enough (the app passes `signed(inp)` from `edit.js`, which puts `model` there when the
-  input has none); the badge
+  high enough (from `front_display` only, no fallback); the badge (`front.badge_text` only, missing: no text)
   stands on `grill`, with a headlight on each side of it: one
   drawing of the left one (`src/headlight.svg`, imported as text and parsed, or
   `faces(inp, { headlight })`), placed again mirrored. `test/raw.js` lets node load that
@@ -112,18 +134,18 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   camera, so a host that wants a re-aim calls `go()` on `busrender`. An invalid `inp`, or maps that
   do not fit its sections, fire `buserror` and leave the last render. Disconnecting disposes the
   stage; reconnecting rebuilds. It imports `src/index.js` alone, as a host imports the package.
-- **`core.js`**, **`index.js`** — package entries (`./core`, `.`); `./faces` is `vector.js` itself.
-  `index.js` adds `faces`, `mkBus`, `mapErrs`, `mkStage`, `mkStageShot`, `mkViews` and `VIEWS` to core.
+- **`core.js`**, **`index.js`** — package entries (`./core`, `.`); `./faces` is `vector.js` itself, `./limits` and `./netex` are
+  `limits.js` and `netex.js`. `core.js` has `limits`; `index.js` adds `fromNetex`, `KEYS`, `PREFIX`, `faces`, `mkBus`, `mapErrs`, `mkStage`, `mkStageShot`, `mkViews` and `VIEWS` to core.
 - **`edit.js`** — pure, node-safe: `FIELDS` / `SECTION` list every schema value as a row (group,
-  path, label) and mark the editable ones, which are the values the renderer draws plus `brand`.
+  path, label) and mark the editable ones, which are the values the renderer draws.
   The total length is the one derived row that is editable: `to` names the input value its edits
   land on (the first section's length) and `shifted` gives the value to write there.
-  `DOOR` lists the values of one door hint the same way, all editable. `windows_hint.count` is
+  `DOOR` lists the values of one door hint the same way, `DOOR_AT` those of one absolute door, all editable. `windows_hint.count` is
   a row of `SECTION`, with the panes drawn by default as its hint.
   `get` / `set` work on key-array paths and never mutate; `addAxle` / `rmAxle`; `addDoor` (two
-  leaves, in the zone holding the fewest doors) / `rmDoor` (by index; the last one takes the
-  `doors_hint` key with it); `spec` and `axleLim` read limits and defaults from the schema, `spec`
-  also down into a section's lists and its windows hint.
+  leaves, in the zone holding the fewest doors) / `rmDoor` (by index, on whichever list `doorKey` names; the last one takes that key with it); `spec` and `axleLim` read limits and defaults from the schema, `spec`
+  also down into a section's lists and its windows hint. `checks(inp, nordic)` is the app's errors of a
+  draft: `validate`, then `limits` when that passes and the limits are on.
   `test/edit.test.js` fails when a schema value has no row, or
   when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card (tabs per side, clones of the face maps of the open side,
@@ -137,8 +159,10 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   (a card needs a third of the viewer's; rasterising the SVG maps was most of the cost of shooting), one bus after the other: a
   `<bus-3d>` per card would run past the browser's WebGL context limit. A card opens its bus in
   the viewer.
-- **`main.js`** — loads every `examples/**/*.json` through `import.meta.glob`, so any file dropped in
-  `examples/` becomes a selectable bus. A bus in a directory under `examples/` belongs to that set:
+- **`main.js`** — loads every `examples/**/*.xml` through `import.meta.glob` (`?raw` for `fromNetex`, `?url` for
+  Original), so any file dropped in `examples/` becomes a selectable bus; a file `fromNetex` rejects
+  keeps its errors, shown when it is selected, and has no card. A section's door row is rebuilt when
+  its `doorKey` changes. A bus in a directory under `examples/` belongs to that set:
   no header button of its own, but a card on the set's page, which is the route `#<set>` and one
   header button (`SETS`; `busnordic` is the only one). A set's cards page is cached per colour scheme: the pictures take the page's colours, so a scheme switch shoots them again once. Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
   header button. Opening a bus from a button or a card pushes a history entry naming it in `?bus=`;
@@ -153,7 +177,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   face maps of `ok`. Everything
   drawn (model, maps, header, derived rows) reads `ok`; the controls read `draft`, so an invalid
   edit stays in its field, marked, while the last valid bus stays on screen. Only another bus
-  re-aims the camera. Beside the title, `#json` holds two links: Original, the file as loaded, which warns
+  re-aims the camera. Beside the title, `#json` holds two links: Original, the XML file as loaded, which warns
   through `<dialog id="drift">` once `draft` differs from `src`, and Modified, a download of
   `toJson(ok)` (`edit.js`), there once `ok` differs from `src`.
 
@@ -167,25 +191,26 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 
 ### Schema and examples
 
-- `examples/` are the schema's own `examples` (Citaro G has `roof_equipment_mm` added). Tests load
-  `volvo-8900` and `citaro-g` by name and assert exact derived numbers, and the reject cases are
-  built by patching those two — changing them means updating `test/validate.test.js`.
+- `examples/*.xml` are NeTEx files (VehicleType + DeckPlan + VehicleModel), read through `fromNetex`;
+  the app and the CLI do the same, the CLI dispatching on the extension. `test/examples.js` has
+  `load(name)` (the input of one example, throws on a reject) and `all()` (every example with its set
+  and warns). Tests load `volvo-8900` and `citaro-g` by name and assert exact derived numbers, and the
+  reject cases are built by patching those two — changing them means updating `test/validate.test.js`.
 - `examples/busnordic/` is one generic bus per row of the Bus Nordic 2.0 "Examples of bus types"
-  tables (17), brand `BusNordic`, model `<class>:<max length> <floor or HC>`. Only class, length
-  band, floor type and door count come from the standard. `test/validate.test.js` checks the set.
+  tables (17), manufacturer `BusNordic`, name `<class>:<max length> <floor or HC>`. Only class, length
+  band, floor type and door count come from the standard; the input keeps none of them.
+  `test/validate.test.js` checks the set.
 - The schema is strict (`additionalProperties: false`, `unevaluatedProperties: false` on sections).
 - `vite.config.js` sets `assetsInlineLimit: 0` on purpose: the header's source link must point at a
-  real `.json` file, not a `data:` URL.
+  real file, not a `data:` URL.
 
 ## Not done yet (v1)
 
-Tracked in `README.md`; these are parsed/validated but not drawn:
+Tracked in `README.md`:
 
-- The door-overlap rule (5) for the placed doors
-- The left side: no doors of its own (a driver door), and `door_side` is not honoured
-- Default door set per `bus_class`, window band per `floor_type`
-- Front template (`front.template`): the front map is one generic front (windscreen, headlights, badge); rear template
-- Two decks for `low_floor_lower_level`; `door_side`
+- The left side: no doors of its own (a driver door)
+- Rear template; the front map is one generic front (windscreen, headlights, badge)
+- Double deck, as A bands (#9); `fromNetex` rejects a second DeckLevel
 
 ## Conventions in this code
 

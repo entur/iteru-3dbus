@@ -1,33 +1,40 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, signed, spec, toJson, typed } from '../src/edit.js';
-import { total } from '../src/derive.js';
+import { DOOR, DOOR_AT, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, checks, get, rmAxle, rmDoor, same, set, shifted, spec, toJson, typed } from '../src/edit.js';
+import { doors, total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
+import { load } from './examples.js';
 
-const EDITABLE = ['brand', 'width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
-const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count'];
+const EDITABLE = ['width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
+const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'doors', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
-const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
+/** A section's doors as hints, its absolute doors dropped. */
+const hint = (inp, i, hs) => set(set(inp, ['sections', i, 'doors'], undefined), ['sections', i, 'doors_hint'], hs);
+/** Volvo with the hints that place its doors where the file has them. */
+const hinted = hint(volvo, 0, [{ zone: 'front_overhang', leaves: 2 }, { zone: 'between_axles', bias: 'rear', leaves: 2 }]);
 /** Paths of the values under a schema node: an object with properties is walked, anything else is one leaf. */
 const leaves = (props, at = []) => Object.entries(props).flatMap(([k, s]) => (s.properties ? leaves(s.properties, [...at, k]) : [[...at, k].join('.')]));
 const paths = (fs) => fs.filter((f) => f.path).map((f) => f.path.join('.'));
 
 test('every schema value has a row', () => {
-  const { sections, ...top } = schema.properties;
+  const { sections, schema_version, ...top } = schema.properties;
   assert.deepEqual(paths(FIELDS).sort(), leaves(top).sort());
   const { windows_hint: _, ...common } = schema.$defs.section_common.properties;
   assert.deepEqual(paths(SECTION).sort(), [...Object.keys(common), ...leaves({ windows_hint: schema.$defs.windows_hint }), 'bellows_ahead_mm'].sort());
   assert.deepEqual(paths(DOOR).sort(), Object.keys(schema.$defs.door_hint.properties).sort());
+  assert.deepEqual(paths(DOOR_AT).sort(), Object.keys(schema.$defs.door_at.properties).sort());
   assert.deepEqual([...new Set(FIELDS.map((f) => f.group))].filter((g) => !GROUPS.includes(g)), []);
 });
 
-test('the editable set is the drawn fields plus brand', () => {
+test('the editable set is the drawn fields', () => {
+  assert.ok(FIELDS.filter((f) => f.path).every((f) => f.edit));
   assert.deepEqual(paths(FIELDS.filter((f) => f.edit)), EDITABLE);
   assert.deepEqual(paths(SECTION.filter((f) => f.edit)), SEC_EDITABLE);
   assert.deepEqual(DOOR.filter((f) => !f.edit), []);
+  assert.deepEqual(DOOR_AT.filter((f) => !f.edit), []);
   assert.deepEqual(FIELDS.filter((f) => f.of && f.edit).map((f) => [f.label, f.to.join('.')]), [['Length', 'sections.0.length_mm']]);
 });
 
@@ -55,11 +62,11 @@ test('set removes a key on undefined, and an optional parent it empties', () => 
   const badged = set(citaro, ['front', 'badge_text'], 'MB');
   assert.deepEqual(badged.front, { badge_text: 'MB' });
   assert.equal('front' in set(badged, ['front', 'badge_text'], undefined), false);
-  assert.deepEqual(set(volvo, ['front', 'badge_text'], undefined).front, { template: 'intercity' });
+  assert.equal('front' in set(volvo, ['front', 'badge_text'], undefined), false);
 });
 
 test('same ignores key order', () => {
-  assert.ok(same(set(set(volvo, ['brand'], undefined), ['brand'], 'Volvo'), volvo));
+  assert.ok(same(set(set(volvo, ['front_display'], undefined), ['front_display'], '8900 LE 12.4 m'), volvo));
   assert.ok(!same(set(volvo, ['width_mm'], 2500), volvo));
   assert.ok(!same(set(volvo, ['roof_equipment_mm'], undefined), volvo));
 });
@@ -71,15 +78,15 @@ test('axles are added and removed inside the schema limits', () => {
   assert.deepEqual(more.sections[0].axles_mm, [2769, 9099, 10748]);
   assert.deepEqual(validate(more), []);
   assert.deepEqual(trail.sections[1].axles_mm, [4700, 5850]);
-  assert.deepEqual(validate(trail), []);
+  assert.deepEqual(validate(trail), ['sections[1] door 2 lies on axle 2']);  // rule (5): the new axle is under the rear door
   assert.deepEqual(rmAxle(more, 0), volvo);
   assert.deepEqual(rmAxle(trail, 1), citaro);
 });
 
 test('spec reads limits and defaults from the schema', () => {
-  assert.equal(spec(['width_mm']).maximum, 2550);
+  assert.equal(spec(['width_mm']).maximum, 4000);
   assert.equal(spec(['tyre', 'rear_twin']).default, true);
-  assert.equal(spec(['sections', 0, 'length_mm']).minimum, 2000);
+  assert.equal(spec(['sections', 0, 'length_mm']).minimum, 1000);
   assert.equal(spec(['sections', 1, 'bellows_ahead_mm']).maximum, 1200);
   assert.equal(spec(['sections', 0, 'axles_mm', 1]).minimum, 0);
   assert.equal(spec(['sections', 0, 'doors_hint']).maxItems, 4);
@@ -90,25 +97,27 @@ test('spec reads limits and defaults from the schema', () => {
   assert.deepEqual([spec(['band_above_mm']).default, spec(['win_band_height_mm']).default, spec(['band_below_grill_mm']).default], [250, 1400, 35]);
 });
 
+test('the hinted volvo has its doors where the file has them', () => assert.deepEqual(doors(hinted), doors(volvo)));
+
 test('a door is added with two leaves, in the zone that holds the fewest', () => {
-  const last = (inp, i) => inp.sections[i].doors_hint.at(-1), bare = set(volvo, ['sections', 0, 'doors_hint'], undefined);
-  assert.deepEqual(last(addDoor(volvo, 0), 0), { zone: 'rear_overhang', leaves: 2 });
+  const last = (inp, i) => inp.sections[i].doors_hint.at(-1), bare = hint(volvo, 0, undefined);
+  assert.deepEqual(last(addDoor(hinted, 0), 0), { zone: 'rear_overhang', leaves: 2 });
   assert.deepEqual(addDoor(bare, 0).sections[0].doors_hint, [{ zone: 'front_overhang', leaves: 2 }]);
-  assert.deepEqual(last(addDoor(addDoor(volvo, 0), 0), 0), { zone: 'front_overhang', leaves: 2 });
-  assert.deepEqual(validate(addDoor(volvo, 0)), []);
+  assert.deepEqual(last(addDoor(addDoor(hinted, 0), 0), 0), { zone: 'front_overhang', leaves: 2 });
+  assert.deepEqual(validate(addDoor(hinted, 0)), []);
 });
 
 test('a door is never added between the axles of a one-axle section', () => {
-  const full = [0, 1, 2].reduce((inp) => addDoor(inp, 1), set(citaro, ['sections', 1, 'doors_hint'], undefined));
+  const full = [0, 1, 2].reduce((inp) => addDoor(inp, 1), hint(citaro, 1, undefined));
   assert.deepEqual(full.sections[1].doors_hint.map((d) => d.zone), ['front_overhang', 'rear_overhang', 'front_overhang']);
-  assert.deepEqual(validate(full), []);
+  assert.deepEqual(validate(full), ['sections[1] door 3 lies on door 1']);  // rule (5): the third door shares the front zone
 });
 
 test('a door is removed by its index, and the list with its last door', () => {
-  assert.deepEqual(rmDoor(volvo, 0, 0).sections[0].doors_hint, [volvo.sections[0].doors_hint[1]]);
-  assert.deepEqual(rmDoor(addDoor(volvo, 0), 0, 2), volvo);
-  assert.equal('doors_hint' in rmDoor(rmDoor(volvo, 0, 0), 0, 0).sections[0], false);
-  assert.equal(volvo.sections[0].doors_hint.length, 2);
+  assert.deepEqual(rmDoor(hinted, 0, 0).sections[0].doors_hint, [hinted.sections[0].doors_hint[1]]);
+  assert.deepEqual(rmDoor(addDoor(hinted, 0), 0, 2), hinted);
+  assert.equal('doors_hint' in rmDoor(rmDoor(hinted, 0, 0), 0, 0).sections[0], false);
+  assert.equal(hinted.sections[0].doors_hint.length, 2);
 });
 
 const WIN = ['sections', 0, 'windows_hint'];
@@ -130,19 +139,17 @@ test('emptying the window count takes windows_hint with it', () => {
   assert.ok(same(set(counted, [...WIN, 'count'], undefined), volvo));
 });
 
-test('the app shows the model on the front display of a bus that names no text for it', () => {
-  assert.equal(signed(volvo).front_display, volvo.model);
-  assert.equal('front_display' in volvo, false);
-  const off = { ...volvo, front_display: '' }, own = { ...volvo, front_display: '21 Tjuvholmen' };
-  assert.equal(signed(off), off);
-  assert.equal(signed(own), own);
+test('a bus with an empty front_display is valid: the display is off', () => {
+  assert.deepEqual(validate({ ...volvo, front_display: '' }), []);
 });
 
 test('a bus input as a JSON file: the same input back, keys in their order, a newline at the end', () => {
   const edited = set(volvo, ['front_display'], '21');
   assert.deepEqual(JSON.parse(toJson(edited)), edited);
-  assert.equal(toJson(volvo), readFileSync(new URL('../examples/volvo-8900.json', import.meta.url), 'utf8'));
-  assert.ok(toJson(edited).trimEnd().endsWith('"front_display": "21"\n}'));
+  assert.deepEqual(JSON.parse(toJson(volvo)), volvo);
+  assert.ok(toJson(volvo).endsWith('}\n'));
+  assert.ok(toJson(edited).includes('"front_display": "21",'));
+  assert.ok(toJson(edited).endsWith('}\n'));
 });
 
 test('an emptied control takes its value out, but the display keeps an empty text, which turns it off', () => {
@@ -153,5 +160,51 @@ test('an emptied control takes its value out, but the display keeps an empty tex
   assert.equal(typed(row('height_mm'), '3300'), 3300);
   assert.equal(typed(row('height_mm'), ''), undefined);
   const off = set(volvo, ['front_display'], typed(row('front_display'), ''));
-  assert.deepEqual([validate(off), signed(off).front_display], [[], '']);
+  assert.deepEqual([validate(off), off.front_display], [[], '']);
+});
+
+const omit = (o, k) => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
+const abs = { ...volvo, sections: volvo.sections.map((s, i) => (i ? s : { ...omit(s, 'doors_hint'), doors: [{ x_mm: 600, width_mm: 1250, leaves: 2 }, { x_mm: 6000, width_mm: 1250, leaves: 2 }] })) };
+
+test('a door added to a section with absolute doors is absolute, two leaves, where the hint would go', () => {
+  const hinted = { ...abs, sections: [{ ...abs.sections[0], doors: undefined, doors_hint: [{ zone: 'rear_overhang', leaves: 2 }] }, ...abs.sections.slice(1)] };
+  const [{ x0, x1 }] = doors(hinted)[0], out = addDoor(abs, 0);
+  assert.deepEqual(out.sections[0].doors.at(-1), { x_mm: x0, width_mm: x1 - x0, leaves: 2 });
+  assert.equal('doors_hint' in out.sections[0], false);
+  assert.equal(abs.sections[0].doors.length, 2);
+});
+
+test('rmDoor removes an absolute door, and the list with its last one', () => {
+  assert.deepEqual(rmDoor(abs, 0, 0).sections[0].doors, [abs.sections[0].doors[1]]);
+  assert.equal('doors' in rmDoor(rmDoor(abs, 0, 0), 0, 0).sections[0], false);
+});
+
+test('the limits of an absolute door come from the schema', () => {
+  assert.equal(spec(['sections', 0, 'doors']).maxItems, 4);
+  assert.equal(spec(['sections', 0, 'doors', 1, 'width_mm']).maximum, 1600);
+  assert.equal(spec(['sections', 0, 'doors', 1, 'glazed']).default, true);
+});
+
+test('the header counts absolute doors and hinted ones alike', async () => {
+  const { brief } = await import('../src/ui.js');
+  assert.match(brief(abs), /2 doors$/);
+  assert.match(brief(volvo), /2 doors$/);
+});
+
+test('a section whose last absolute door is removed takes hints again', () => {
+  const none = rmDoor(rmDoor(abs, 0, 1), 0, 0), out = addDoor(none, 0);
+  assert.equal('doors' in none.sections[0], false);
+  assert.deepEqual(out.sections[0].doors_hint, [{ zone: 'front_overhang', leaves: 2 }]);
+  assert.equal('doors' in out.sections[0], false);
+});
+
+test('checks runs the limits only on a draft the schema passes, and only while they are on', () => {
+  const bad = set(volvo, ['tyre', 'size'], '295/80');
+  [true, false].forEach((nordic) => assert.deepEqual(checks(bad, nordic), validate(bad), `nordic ${nordic}`));
+  assert.ok(checks(bad, true).some((e) => e.startsWith('/tyre/size')));
+  const wide = set(volvo, ['width_mm'], 2600);
+  assert.deepEqual(validate(wide), []);
+  assert.deepEqual(checks(wide, true), ['width 2600 mm exceeds 2550 mm']);
+  assert.deepEqual(checks(wide, false), []);
+  assert.deepEqual(checks(volvo, true), []);
 });

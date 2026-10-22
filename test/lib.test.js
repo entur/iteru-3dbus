@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import './raw.js';  // vector.js imports an .svg as text
 
 const SRC = new URL('../src/', import.meta.url), GUIDE = new URL('../guide/bus-3d.js', import.meta.url);
-const LIB = ['core.js', 'vector.js', 'index.js'], APP = ['./main.js', './ui.js', './edit.js', /^@preact/, /guide\//];
+const LIB = ['core.js', 'limits.js', 'netex.js', 'vector.js', 'index.js'], APP = ['./main.js', './ui.js', './edit.js', /^@preact/, /guide\//];
 const D3 = ['./bus.js', './scene.js', './views.js'], D2 = ['./vector.js'];
 const IMPORT = /(?:import|export)\s[^'";]*?from\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]/g;
 
@@ -22,6 +22,8 @@ test('the face maps reach neither three nor a 3D file', () => assert.deepEqual(h
 
 test('core reaches no three, 2D or 3D file', () => assert.deepEqual(hits('core.js', [/^three/, ...D2, ...D3]), []));
 
+test('netex reaches no three, 2D or 3D file', () => assert.deepEqual(hits('netex.js', [/^three/, ...D2, ...D3]), []));
+
 test('core loads without a DOM', async () => {
   const core = await import('../src/core.js');
   assert.equal(typeof core.validate, 'function');
@@ -32,7 +34,7 @@ test('core loads without a DOM', async () => {
 test('the library loads without a DOM', async () => {
   const lib = await import('../src/index.js');
   assert.deepEqual(Object.keys(lib.VIEWS), ['quarter', 'left', 'right', 'front', 'rear', 'top']);
-  ['faces', 'mkBus', 'mapErrs', 'mkStage', 'mkStageShot', 'mkViews'].forEach((n) => assert.equal(typeof lib[n], 'function', n));
+  ['faces', 'mkBus', 'mapErrs', 'mkStage', 'mkStageShot', 'mkViews', 'fromNetex'].forEach((n) => assert.equal(typeof lib[n], 'function', n));
 });
 
 test('the guide element needs the package entry only', async () => {
@@ -53,6 +55,6 @@ test('the package is the lib build, and leaves to the host only what it depends 
     assert.equal(v, `./dist-lib/${n}.js`);
   });
   const host = [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.peerDependencies ?? {})];
-  ['three', 'ajv'].forEach((d) => assert.ok(external.some((re) => re.test(d)) && host.includes(d), `${d}: external and depended on`));
+  ['three', 'ajv', 'fast-xml-parser'].forEach((d) => assert.ok(external.some((re) => re.test(d)) && host.includes(d), `${d}: external and depended on`));
   assert.ok(pkg.peerDependencies?.three && !pkg.dependencies?.three, 'three is a peer');
 });
