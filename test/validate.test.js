@@ -249,7 +249,7 @@ test('hinted doors clash the same way', () => {
 
 test('a hinted door centred on a short front overhang reaches past the front end', () => {
   const short = hint(volvo, 0, [{ zone: 'front_overhang', leaves: 2 }], { axles_mm: [1800, 9099] });
-  assert.deepEqual(doors(short)[0], [{ x0: -99, x1: 1151, leaves: 2, glazed: true }]);
+  assert.deepEqual(doors(short)[0], [door(-99, 1151)]);
   assert.deepEqual(clashes(short), [{ section: 0, door: 0, end: 'front' }]);
   assert.deepEqual(validate(short), ['sections[0] door 1 reaches past the front end']);
 });
