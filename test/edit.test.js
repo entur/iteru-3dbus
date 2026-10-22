@@ -134,3 +134,22 @@ test('emptying the window count takes windows_hint with it', () => {
 test('a bus with an empty front_display is valid: the display is off', () => {
   assert.deepEqual(validate({ ...volvo, front_display: '' }), []);
 });
+
+test('a bus input as a JSON file: the same input back, keys in their order, a newline at the end', () => {
+  const edited = set(volvo, ['front_display'], '21');
+  assert.deepEqual(JSON.parse(toJson(edited)), edited);
+  assert.equal(toJson(volvo), readFileSync(new URL('../examples/volvo-8900.json', import.meta.url), 'utf8'));
+  assert.ok(toJson(edited).includes('"front_display": "21",'));
+  assert.ok(toJson(edited).endsWith('}\n'));
+});
+
+test('an emptied control takes its value out, but the display keeps an empty text, which turns it off', () => {
+  const row = (p) => FIELDS.find((f) => f.path?.join('.') === p);
+  assert.equal(typed(row('front.badge_text'), ''), undefined);
+  assert.equal(typed(row('front_display'), ''), '');
+  assert.equal(typed(row('front_display'), '21'), '21');
+  assert.equal(typed(row('height_mm'), '3300'), 3300);
+  assert.equal(typed(row('height_mm'), ''), undefined);
+  const off = set(volvo, ['front_display'], typed(row('front_display'), ''));
+  assert.deepEqual([validate(off), off.front_display], [[], '']);
+});

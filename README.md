@@ -51,7 +51,7 @@ flowchart LR
     subgraph inp["inp (validated)"]
         G["Body<br/>sections: length, axles, bellows<br/>width, height, roof equipment, tyre"]
         P["Placement<br/>bands, door hints, window hints"]
-        L["Look<br/>colour, brand, front"]
+        L["Look<br/>colour, front"]
     end
     H["headlight SVG<br/>(optional)"] -.-> F
     G --> F[/"faces(inp)"/]
@@ -68,10 +68,10 @@ flowchart LR
 
 ## Limits (v1)
 
-- `photo` is accepted and ignored: no ML branch yet (full pipeline: [`docs/flowchart.html`](docs/flowchart.html)).
-- One generic front; `front.template` and rear templates are not drawn.
-- Doors on the right side only; `door_side` is not honoured, door overlap (rule 5) is not checked.
-- One deck: `low_floor_lower_level` is not drawn as two.
+- No ML branch yet (full pipeline: [`docs/flowchart.html`](docs/flowchart.html)).
+- One generic front; rear templates are not drawn.
+- Doors on the right side only; door overlap (rule 5) is not checked.
+- One deck.
 
 Remaining work: [issues](https://github.com/entur/iteru-3dbus/issues).
 
