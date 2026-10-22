@@ -22,10 +22,10 @@ const rules = [
 
 /** Rule (5), after (1) and (4): one message per clash of a placed door. */
 const doorClashes = (inp) =>
-  clashes(inp).map(({ section, door, other, axle }) =>
+  clashes(inp).map(({ section, door, other, axle, end }) =>
     other !== undefined ? `sections[${section}] door ${door + 1} lies on door ${other + 1}`
     : axle !== undefined ? `sections[${section}] door ${door + 1} lies on axle ${axle + 1}`
-    : `sections[${section}] door ${door + 1} reaches past the rear end`);
+    : `sections[${section}] door ${door + 1} reaches past the ${end} end`);
 
 /**
  * Validates a bus input against the schema, then the cross-field rules.

@@ -133,8 +133,8 @@ export const doors = (inp) => {
  * The places where a placed door lies on another door, on a wheel arch or past a section end.
  * Doors that only touch do not clash.
  * @param {object} inp validated bus input
- * @returns {{section: number, door: number, other?: number, axle?: number, end?: 'rear'}[]} per
- *   door its clashes: earlier doors, then axles, then the end
+ * @returns {{section: number, door: number, other?: number, axle?: number, end?: 'front'|'rear'}[]}
+ *   per door its clashes: earlier doors, then axles, then the ends
  */
 export const clashes = (inp) => {
   const { R } = arch(tyreDia(inp.tyre) / 2), placed = doors(inp);
@@ -142,6 +142,7 @@ export const clashes = (inp) => {
     placed[section].flatMap((d, door) => [
       ...placed[section].slice(0, door).flatMap((o, other) => (d.x0 < o.x1 && o.x0 < d.x1 ? [{ section, door, other }] : [])),
       ...s.axles_mm.flatMap((a, axle) => (d.x0 < a + R && a - R < d.x1 ? [{ section, door, axle }] : [])),
+      ...(d.x0 < 0 ? [{ section, door, end: 'front' }] : []),
       ...(d.x1 > s.length_mm ? [{ section, door, end: 'rear' }] : []),
     ]),
   );

@@ -218,13 +218,15 @@ const door = (st, on, i, j, rm, key) => {
 };
 
 /** One full-width row: the doors of section i (its hints or its absolute doors, per the row's path), each with its remove, and add. Only the list is rebuilt, and only when the count changes. */
-const doorList = (st, on, f) => {
+const doorList = (st, on, f, box) => {
   const i = f.path[1], key = f.path[2], path = ['sections', i, key], max = spec(path).maxItems, sec = `section ${i + 1}`;
   const n = computed(() => get(st.draft.value, path)?.length ?? 0);
   const list = el('div', { className: 'doors' });
-  // a control that goes away or hits its limit hands focus on: add to the new door, remove to its neighbour or back to add
+  // a control that goes away or hits its limit hands focus on: add to the new door, remove to its neighbour or back to add,
+  // to the add of the new list when the last door took its list with it and box holds a rebuilt row
+  const live = (t) => (t.isConnected ? t : box.querySelector('.door-top button'));
   const add = el('button', { type: 'button', ariaLabel: `Add a door to ${sec}`, disabled: () => n.value >= max, onclick: (e) => (on.addDoor(i), e.target.disabled && list.lastChild.querySelector('select, input').focus()) }, '+');
-  const rm = (j) => () => (on.rmDoor(i, j), ((list.children[j] ?? list.lastChild)?.querySelector('button') ?? add).focus());
+  const rm = (j) => () => (on.rmDoor(i, j), live((list.children[j] ?? list.lastChild)?.querySelector('button') ?? add).focus());
   bind(() => {
     const [kids, stop] = scoped(() => Array.from({ length: n.value }, (_, j) => door(st, on, i, j, rm(j), key)));
     list.replaceChildren(...kids);
@@ -237,7 +239,7 @@ const doorList = (st, on, f) => {
 const doorSwitch = (st, on, f) => {
   const i = f.path[1], key = computed(() => doorKey(st.draft.value.sections[i])), box = el('div', {});
   bind(() => {
-    const [kid, stop] = scoped(() => doorList(st, on, { ...f, path: ['sections', i, key.value] }));
+    const [kid, stop] = scoped(() => doorList(st, on, { ...f, path: ['sections', i, key.value] }, box));
     box.replaceChildren(kid);
     return stop;
   });
