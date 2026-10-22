@@ -66,25 +66,23 @@ export const brief = (inp) =>
   [`${total(inp) / 1000} m`, plural(inp.sections.flatMap((s) => s.axles_mm).length, 'axle'), plural(doors(inp).flat().length, 'door')].join(' · ');
 
 /**
- * Fills the header: the captioned groups of buttons, then the title with the link to the shown
- * bus's input file as loaded beside it and a line of its main figures. A page takes the
- * bus's place in the title and the line below it, and has no JSON links.
- * @param {{caption: string, btns: {label: string, on: boolean, go: () => void}[]}[]} groups on: shown as pressed
- * @param {{id: string, inp: object, src: string}} cur the selected bus: its id, its input with the valid edits applied, and the url of its file
+ * Fills the header: the title with the link to the other route beside it, then a line of the
+ * shown bus's main figures with the links to its input file. A page takes the bus's place in the
+ * title and the line below it, and has no file links.
+ * @param {?{id: string, inp: object, src: string}} cur the selected bus: its id, its input with the
+ *   valid edits applied, and the url of its file; null before any bus is opened
  * @param {?{title: string, sub: string}} page the page shown in place of the bus
+ * @param {?{label: string, href: string, go: () => void}} other the link to the other route, null for none
  */
-export const header = (groups, cur, page) => {
-  const { id, inp, src } = cur;
-  const title = page?.title ?? id;
-  Object.assign(document.getElementById('src'), { href: src, title: `NeTEx XML of ${title} as loaded` });
+export const header = (cur, page, other) => {
+  const title = page?.title ?? cur.id, src = document.getElementById('src'), link = document.getElementById('other');
+  cur ? Object.assign(src, { href: cur.src, title: `NeTEx XML of ${cur.id} as loaded` }) : src.removeAttribute('href');
   document.getElementById('json').hidden = !!page;
-  document.getElementById('models').replaceChildren(
-    ...groups.map(({ caption, btns }) =>
-      el('div', { className: 'pick', role: 'group', ariaLabel: caption }, el('span', {}, caption), ...btns.map((b) => el('button', { onclick: b.go, ariaPressed: String(b.on) }, b.label)))),
-  );
+  Object.assign(link, { hidden: !other, textContent: other?.label ?? '', onclick: other && ((e) => (e.preventDefault(), other.go())) });
+  other ? (link.href = other.href) : link.removeAttribute('href');
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;
-  document.getElementById('sub').textContent = page?.sub ?? brief(inp);
+  document.getElementById('sub').textContent = page?.sub ?? brief(cur.inp);
 };
 
 /**

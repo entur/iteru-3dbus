@@ -11,9 +11,12 @@
   <body>
     <bus-3d></bus-3d>
     <header>
-      <nav id="models" aria-label="Choose bus"></nav>
-      <div class="row">
+      <div class="row title">
         <h1 id="title"></h1>
+        <a id="other" hidden></a>
+      </div>
+      <div class="row">
+        <p id="sub"></p>
         <span id="json" role="group" aria-label="Input JSON">
           <span>{ }</span>
           <a id="src" target="_blank" rel="noopener">Original</a>
@@ -21,7 +24,6 @@
         </span>
         <span id="mode" role="group" aria-label="Limits"></span>
       </div>
-      <p><span id="sub"></span></p>
     </header>
     <main id="cards" hidden></main>
     <button id="toggle" aria-expanded="false" aria-controls="info">Details</button>

@@ -43,7 +43,7 @@ const card = (b, img, pick) => {
   const { inp } = b;
   return el(
     'a',
-    { className: 'card bus', href: `?bus=${b.id}`, onclick: (e) => (e.preventDefault(), pick(b.id)) },
+    { className: 'card bus', href: b.href, onclick: (e) => (e.preventDefault(), pick(b.file)) },
     img,
     el('h2', {}, b.id),
     el('p', {}, brief(inp)),
@@ -53,8 +53,8 @@ const card = (b, img, pick) => {
 /**
  * A page of cards, one per bus: its 3D picture, id and main figures. The pictures are taken
  * once and come in one by one. A card opens its bus in the viewer.
- * @param {{id: string, inp: object}[]} buses valid buses to show, in the order of their cards
- * @param {(id: string) => void} pick called with the id of the card chosen
+ * @param {{id: string, file: string, inp: object, href: string}[]} buses valid buses to show, in the order of their cards
+ * @param {(file: string) => void} pick called with the file of the card chosen
  * @returns {HTMLElement} the page
  */
 export const gallery = (buses, pick) => {

@@ -5,40 +5,50 @@ import { doorKey, total } from './derive.js';
 import { addAxle, addDoor, checks, rmAxle, rmDoor, same, set, toJson } from './edit.js';
 import { gallery } from './gallery.js';
 import { fromNetex } from './netex.js';
+import { LIST, href, parse } from './route.js';
 import { form, header, mapCard, modeBar, viewBar } from './ui.js';
 import { faces } from './vector.js';
 
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
 
 const MODE_KEY = '3dbus.limits', FANTASY = 'fantasy';  // localStorage key of the limits switch, and its value for a fantasy bus
-const VEHICLES = 'Concrete vehicles:', TYPE_SET = 'Type set:';  // captions of the two groups of buttons in the header
-// a page of cards per set: the route is the directory under examples/ that holds the set's buses; order: its cards by class, here as the Bus Nordic tables run
-const SETS = { busnordic: { title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions`, order: ['a', 'i', 'ii', 'b', 'iii'] } };
+const BASE = import.meta.env.BASE_URL;  // the path the site is served from: '/' in dev, '/iteru-3dbus/' on Pages
+// the list's title, which is also the link to it; the start of the link back to the selected bus
+const LIST_PAGE = { title: 'All buses', sub: (n) => `${n} NeTEx files in examples/` }, BACK = 'Back to';
+// the cards of a directory under examples/ by class, the second part of the id, as the Bus Nordic tables run; then by length
+const ORDER = { busnordic: ['a', 'i', 'ii', 'b', 'iii'] };
 
-// every example twice: its url, for the Original link, and its text, read through fromNetex; a file it rejects keeps its errors, shown when the bus is selected
+// every example twice: its url, for the Original link, and its text, read through fromNetex; a file it rejects keeps its errors, shown when it is opened
 const srcs = import.meta.glob('../examples/**/*.xml', { eager: true, query: '?url', import: 'default' });
 const buses = Object.entries(import.meta.glob('../examples/**/*.xml', { eager: true, query: '?raw', import: 'default' })).map(([p, xml]) => {
-  const { inp, errs = [], warns = [] } = fromNetex(xml);
+  const { inp, errs = [], warns = [] } = fromNetex(xml), file = p.replace('../examples/', '');
   return {
     id: p.match(/([^/]+)\.xml$/)[1],
-    set: p.match(/examples\/(?:([^/]+)\/)?[^/]+$/)[1],  // undefined for a bus with a button of its own
+    file,  // the path under examples/, which names the bus in /bus?file=
+    set: file.match(/^(?:([^/]+)\/)?[^/]+$/)[1],  // the directory it is in, undefined directly in examples/
     inp, errs, warns,
     src: srcs[p],
+    href: href({ page: 'bus', file }, BASE),
   };
 });
-const own = buses.filter((b) => !b.set);  // the buses with a button of their own
+const ids = new Map([...buses].reverse().map((b) => [b.id, b.file]));  // the file of an old ?bus=<id>; the first file of that name wins
+const cls = (b) => ORDER[b.set]?.indexOf(b.id.split('-')[1]) ?? -1, len = (b) => (ORDER[b.set] && b.inp ? total(b.inp) : 0);
+// the cards in order: the files directly in examples/ by name, then each directory, the rejected files last in it, by its ORDER
+const listed = [...buses].sort((a, b) =>
+  !!a.set - !!b.set || (a.set ?? '').localeCompare(b.set ?? '') || !a.inp - !b.inp || cls(a) - cls(b) || len(a) - len(b) || a.file.localeCompare(b.file));
 const cards = document.getElementById('cards'), pages = {};
 const bus = document.querySelector('bus-3d');
 const info = document.getElementById('info'), err = document.getElementById('err');
 const link = document.getElementById('src'), mod = document.getElementById('mod'), drift = document.getElementById('drift');
 
 // src: the example as loaded; draft: src with every edit, valid or not; ok: the last valid draft, which is what is drawn
-const id = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
-const route = signal('');  // the set whose cards page is open, '' for the viewer
+const file = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
+const sel = computed(() => buses.find((b) => b.file === file.value));  // the selected bus, undefined before one is opened
+const route = signal(LIST);
 const DARK = matchMedia('(prefers-color-scheme: dark)');
 const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
 DARK.addEventListener('change', (e) => (dark.value = e.matches));
-const touched = signal([]), fail = signal([]);  // keys edited since the bus was selected; errors of a bus that could not be selected
+const touched = signal([]), fail = signal([]);  // keys edited since the bus was selected; errors of a bus that could not be shown
 const warns = signal([]);  // what fromNetex warned of when it read the selected bus's file
 /** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
 const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
@@ -60,15 +70,18 @@ const commit = (next, key) =>
     touched.value = [...new Set([...touched.value, key])];
   });
 
-/** Shows the chosen bus as loaded, dropping any edits. Another bus re-aims the current view; the same one does not. */
+/**
+ * Shows the bus of a file as loaded, dropping any edits. Another bus re-aims the current view; the same one does not.
+ * Returns what stops it: an unknown file, one fromNetex rejected, or a bus failing the checks; empty when shown.
+ */
 const select = (to) => {
-  const b = buses.find((x) => x.id === to), inp = b?.inp;
-  fail.value = !b ? [`no example named ${to}`] : inp ? check(inp) : b.errs;
-  if (fail.value.length) return;
-  aim = to !== id.value;
+  const b = buses.find((x) => x.file === to), inp = b?.inp;
+  const e = !b ? ['no such example file'] : inp ? check(inp) : b.errs;
+  if (e.length) return e;
+  aim = to !== file.value;
   stop?.();  // before the signals change: the old form's effects must not see another bus
   batch(() => {
-    id.value = to;
+    file.value = to;
     src.value = draft.value = ok.value = inp;
     touched.value = [];
     warns.value = b.warns;
@@ -76,6 +89,7 @@ const select = (to) => {
   const [card, end] = form({ draft, ok, marks, dirty }, on);
   stop = end;
   info.replaceChildren(mapped, card);
+  return [];
 };
 
 // the draft is drawn once it has no errors: also when a switch to fantasy bus clears the ones it had; a switch back keeps the last legal bus
@@ -88,7 +102,7 @@ const on = {
   rm: (i) => commit(rmAxle(draft.value, i), `sections.${i}.axles_mm`),
   addDoor: (i) => commit(addDoor(draft.value, i), `sections.${i}.${doorKey(draft.value.sections[i])}`),
   rmDoor: (i, j) => commit(rmDoor(draft.value, i, j), `sections.${i}.${doorKey(draft.value.sections[i])}`),
-  reset: () => select(id.value),
+  reset: () => select(file.value),
 };
 
 effect(() => {
@@ -97,53 +111,44 @@ effect(() => {
   bus.faces = maps.value;
   bus.inp = inp;
 });
-/** The route in the address bar: a set's name as the hash, anything else is the viewer. */
-const routed = (h = location.hash.slice(1)) => (Object.hasOwn(SETS, h) ? h : '');
-/** The bus the address bar names: ?bus=, or else the first bus in the header, the first one directly in examples/. */
-const named = () => new URLSearchParams(location.search).get('bus') ?? own[0].id;
-/** Opens the viewer on a bus, leaving a cards page if one is open. A new history entry names the bus, unless the address bar already does. */
-const view = (to) => {
-  (route.value || named() !== to) && history.pushState(null, '', `${location.pathname}?bus=${encodeURIComponent(to)}`);
-  route.value = '';
-  select(to);
+/**
+ * Goes to a route, the one way the page changes: a bus route to another file selects it, keeping the
+ * edits when it is the selected one. A bus that cannot be shown gives the list instead, the reason in #err,
+ * and its address is replaced. Otherwise `how` ('push' or 'replace') says what the address bar does, unless it names the route already.
+ */
+const show = (r, how) => {
+  const e = r.page === 'bus' && r.file !== file.value ? select(r.file) : [];
+  fail.value = e.map((x) => `${r.file}: ${x}`);
+  const to = e.length ? LIST : r, url = href(to, BASE);
+  url === location.pathname + location.search || history[`${e.length ? 'replace' : how}State`](null, '', url);
+  route.value = to;
 };
-/** Follows the address bar after a step in the history: its route, and in the viewer its bus. */
-const follow = () => {
-  route.value = routed();
-  route.value || named() === id.value || select(named());
-};
-/** The buses of a set in the order of its cards: by class as the set lists them, the class being the second part of the id, then by length. A file fromNetex rejected has no card. */
-const inSet = (s) =>
-  buses.filter((b) => b.set === s && b.inp).sort((a, b) => SETS[s].order.indexOf(a.id.split('-')[1]) - SETS[s].order.indexOf(b.id.split('-')[1]) || total(a.inp) - total(b.inp));
+const toList = { label: LIST_PAGE.title, href: href(LIST, BASE), go: () => show(LIST, 'push') };
 effect(() => {
-  if (!ok.value) return;
-  const r = route.value, sel = buses.find((b) => b.id === id.value);
+  const list = route.value.page === 'list', b = sel.value;
   header(
-    [
-      // a selected bus of a set takes the last place among the vehicles, which is there for it alone
-      { caption: VEHICLES, btns: [...own, ...(sel.set ? [sel] : [])].map((b) => ({ label: b.id, on: !r && b === sel, go: () => view(b.id) })) },
-      { caption: TYPE_SET, btns: Object.entries(SETS).map(([s, { title }]) => ({ label: title, on: r === s, go: () => (location.hash = s) })) },
-    ],
-    { id: sel.id, inp: ok.value, src: sel.src },
-    r ? { title: SETS[r].title, sub: SETS[r].sub(inSet(r).length) } : null,
+    b && ok.value ? { id: b.id, inp: ok.value, src: b.src } : null,
+    list ? { title: LIST_PAGE.title, sub: LIST_PAGE.sub(buses.length) } : null,
+    !list ? toList : b ? { label: `${BACK} ${b.id}`, href: b.href, go: () => show({ page: 'bus', file: b.file }, 'push') } : null,
   );
 });
-// a cards page is built, and its buses drawn, the first time it is opened in a colour scheme
+// the list is built, and its buses drawn, the first time it is opened in a colour scheme
 effect(() => {
-  const r = route.value;
-  document.body.toggleAttribute('data-page', !!r);
-  cards.hidden = !r;
-  r && cards.replaceChildren((pages[`${r}:${dark.value}`] ??= gallery(inSet(r), view)));
+  const list = route.value.page === 'list';
+  document.body.toggleAttribute('data-page', list);
+  cards.hidden = !list;
+  list && cards.replaceChildren((pages[dark.value] ??= gallery(listed.filter((b) => b.inp), (to) => show({ page: 'bus', file: to }, 'push'))));
 });
-effect(() => (document.getElementById('mode').hidden = !!route.value));
-effect(() => (err.textContent = [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)].join('\n')));
+effect(() => (document.getElementById('mode').hidden = route.value.page === 'list'));
+// on the list, only why a bus could not be shown
+effect(() => (err.textContent = (route.value.page === 'list' ? fail.value : [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)]).join('\n')));
 
 // Modified: the bus as drawn, with its valid edits, as a file to download; there is none until an edit
 effect(() => {
   const was = mod.href;
   edited.value ? (mod.href = URL.createObjectURL(new Blob([toJson(ok.value)], { type: 'application/json' }))) : mod.removeAttribute('href');
   was && URL.revokeObjectURL(was);
-  Object.assign(mod, { download: `${id.value}.json`, ariaDisabled: String(!edited.value), title: edited.value ? 'Download the input JSON with your edits' : 'No edits yet' });
+  Object.assign(mod, { download: `${sel.value?.id}.json`, ariaDisabled: String(!edited.value), title: edited.value ? 'Download the input JSON with your edits' : 'No edits yet' });
 });
 
 bus.addEventListener('busrender', () => aim && ((aim = false), bus.go()));
@@ -168,7 +173,5 @@ modeBar(nordic);
 const toggle = document.getElementById('toggle');
 toggle.onclick = () => (toggle.ariaExpanded = String(info.classList.toggle('open')));
 
-// hashchange for a route opened by its button, popstate for a step that changes ?bus= alone; a step back to a route fires both
-['hashchange', 'popstate'].forEach((t) => addEventListener(t, follow));
-select(named());
-route.value = routed();
+addEventListener('popstate', () => show(parse(location, BASE, ids), 'replace'));
+show(parse(location, BASE, ids), 'replace');
