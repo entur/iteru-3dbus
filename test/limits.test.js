@@ -1,13 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
 import { validate } from '../src/validate.js';
 import { limits } from '../src/limits.js';
+import { all, load } from './examples.js';
 
-const EX = new URL('../examples/', import.meta.url);
-const read = (u) => JSON.parse(readFileSync(u, 'utf8'));
-const volvo = read(new URL('volvo-8900.json', EX)), citaro = read(new URL('citaro-g.json', EX));
-const nordic = readdirSync(new URL('busnordic/', EX)).map((f) => read(new URL(`busnordic/${f}`, EX)));
+const volvo = load('volvo-8900');
 const sec = (inp, i, patch) => ({ ...inp, sections: inp.sections.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
 
 /** A bus of n sections, the first with the given axles; every length is set so the total is `len`. */
@@ -18,9 +15,9 @@ const sized = (n, axles, len) => {
 };
 
 test('every example is within the Nordic limits', () => {
-  const all = [volvo, citaro, ...nordic];
-  assert.equal(all.length, 19);
-  all.forEach((inp) => assert.deepEqual(limits(inp), [], inp.front_display));
+  const buses = all();
+  assert.equal(buses.length, 19);
+  buses.forEach(({ id, inp }) => assert.deepEqual(limits(inp), [], id));
 });
 
 test('width over 2550 is over the limit', () => {
@@ -34,7 +31,7 @@ test('height over 4400 is over the limit', () => {
 });
 
 test('total length by sections and axles', () => {
-  const noDoors = (inp) => ({ ...inp, sections: inp.sections.map(({ doors_hint, ...s }) => s) });
+  const noDoors = (inp) => ({ ...inp, sections: inp.sections.map(({ doors, doors_hint, ...s }) => s) });
   [[1, [2000, 8000], 13500], [1, [2000, 6000, 8000], 15000], [2, [2000, 8000], 18750], [3, [2000, 8000], 24000]].forEach(([n, ax, max]) => {
     assert.deepEqual(limits(noDoors(sized(n, ax, max))), [], `${n} sections ${ax.length} axles ${max}`);
     assert.equal(limits(noDoors(sized(n, ax, max + 1))).length, 1, `${n} sections ${ax.length} axles ${max + 1}`);
@@ -43,9 +40,9 @@ test('total length by sections and axles', () => {
 
 test('over 9500 mm a bus with doors needs two', () => {
   const door = [{ zone: 'between_axles', leaves: 2 }];
-  assert.equal(limits(sec(volvo, 0, { doors_hint: door })).length, 1);
-  assert.equal(limits(sec(volvo, 0, { doors_hint: [] })).length, 1);
-  const { doors_hint, ...bare } = volvo.sections[0];
+  assert.equal(limits(sec(volvo, 0, { doors: undefined, doors_hint: door })).length, 1);
+  assert.equal(limits(sec(volvo, 0, { doors: undefined, doors_hint: [] })).length, 1);
+  const { doors, ...bare } = volvo.sections[0];
   assert.deepEqual(limits({ ...volvo, sections: [bare] }), []);
 });
 

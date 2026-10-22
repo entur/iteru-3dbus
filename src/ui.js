@@ -67,16 +67,16 @@ export const brief = (inp) =>
 
 /**
  * Fills the header: the captioned groups of buttons, then the title with the link to the shown
- * bus's input JSON as loaded beside it and a line of its main figures. A page takes the
+ * bus's input file as loaded beside it and a line of its main figures. A page takes the
  * bus's place in the title and the line below it, and has no JSON links.
  * @param {{caption: string, btns: {label: string, on: boolean, go: () => void}[]}[]} groups on: shown as pressed
- * @param {{id: string, inp: object, src: string}} cur the selected bus: its id, its input with the valid edits applied, and the JSON url
+ * @param {{id: string, inp: object, src: string}} cur the selected bus: its id, its input with the valid edits applied, and the url of its file
  * @param {?{title: string, sub: string}} page the page shown in place of the bus
  */
 export const header = (groups, cur, page) => {
   const { id, inp, src } = cur;
   const title = page?.title ?? id;
-  Object.assign(document.getElementById('src'), { href: src, title: `Input JSON of ${title} as loaded` });
+  Object.assign(document.getElementById('src'), { href: src, title: `NeTEx XML of ${title} as loaded` });
   document.getElementById('json').hidden = !!page;
   document.getElementById('models').replaceChildren(
     ...groups.map(({ caption, btns }) =>

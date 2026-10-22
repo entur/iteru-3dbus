@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fromNetex, KEYS, PREFIX } from '../src/netex.js';
+import { all } from './examples.js';
 
 const RIGID = readFileSync(new URL('./netex/rigid.xml', import.meta.url), 'utf8');
 const ARTIC = readFileSync(new URL('./netex/artic.xml', import.meta.url), 'utf8');
@@ -214,4 +215,10 @@ test('asks for an id when the file has two VehicleTypes', () => {
   assert.equal(other.inp.front, undefined);
   assert.equal(fromNetex(two, { id: '3dbus:VehicleType:8900-12.4' }).inp.sections[0].length_mm, 12396);
   rejects(fromNetex(two, { id: 'nope' }), 'nope');
+});
+
+test('every example reads through fromNetex with no errors or warnings', () => {
+  const buses = all();
+  assert.equal(buses.length, 19);
+  buses.forEach(({ id, warns }) => assert.deepEqual(warns, [], id));
 });

@@ -4,13 +4,17 @@ import { readFileSync } from 'node:fs';
 import { DOOR, DOOR_AT, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec, toJson, typed } from '../src/edit.js';
 import { doors, total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
+import { load } from './examples.js';
 
 const EDITABLE = ['width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
 const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'doors', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
-const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
+/** A section's doors as hints, its absolute doors dropped. */
+const hint = (inp, i, hs) => set(set(inp, ['sections', i, 'doors'], undefined), ['sections', i, 'doors_hint'], hs);
+/** Volvo with the hints that place its doors where the file has them. */
+const hinted = hint(volvo, 0, [{ zone: 'front_overhang', leaves: 2 }, { zone: 'between_axles', bias: 'rear', leaves: 2 }]);
 /** Paths of the values under a schema node: an object with properties is walked, anything else is one leaf. */
 const leaves = (props, at = []) => Object.entries(props).flatMap(([k, s]) => (s.properties ? leaves(s.properties, [...at, k]) : [[...at, k].join('.')]));
 const paths = (fs) => fs.filter((f) => f.path).map((f) => f.path.join('.'));
@@ -74,7 +78,7 @@ test('axles are added and removed inside the schema limits', () => {
   assert.deepEqual(more.sections[0].axles_mm, [2769, 9099, 10748]);
   assert.deepEqual(validate(more), []);
   assert.deepEqual(trail.sections[1].axles_mm, [4700, 5850]);
-  assert.deepEqual(validate(trail), ['sections[1] door 2 lies on axle 2', 'sections[1] door 2 reaches past the rear end']);  // rule (5): the hinted rear door has no room left
+  assert.deepEqual(validate(trail), ['sections[1] door 2 lies on axle 2']);  // rule (5): the new axle is under the rear door
   assert.deepEqual(rmAxle(more, 0), volvo);
   assert.deepEqual(rmAxle(trail, 1), citaro);
 });
@@ -93,25 +97,27 @@ test('spec reads limits and defaults from the schema', () => {
   assert.deepEqual([spec(['band_above_mm']).default, spec(['win_band_height_mm']).default, spec(['band_below_grill_mm']).default], [250, 1400, 35]);
 });
 
+test('the hinted volvo has its doors where the file has them', () => assert.deepEqual(doors(hinted), doors(volvo)));
+
 test('a door is added with two leaves, in the zone that holds the fewest', () => {
-  const last = (inp, i) => inp.sections[i].doors_hint.at(-1), bare = set(volvo, ['sections', 0, 'doors_hint'], undefined);
-  assert.deepEqual(last(addDoor(volvo, 0), 0), { zone: 'rear_overhang', leaves: 2 });
+  const last = (inp, i) => inp.sections[i].doors_hint.at(-1), bare = hint(volvo, 0, undefined);
+  assert.deepEqual(last(addDoor(hinted, 0), 0), { zone: 'rear_overhang', leaves: 2 });
   assert.deepEqual(addDoor(bare, 0).sections[0].doors_hint, [{ zone: 'front_overhang', leaves: 2 }]);
-  assert.deepEqual(last(addDoor(addDoor(volvo, 0), 0), 0), { zone: 'front_overhang', leaves: 2 });
-  assert.deepEqual(validate(addDoor(volvo, 0)), []);
+  assert.deepEqual(last(addDoor(addDoor(hinted, 0), 0), 0), { zone: 'front_overhang', leaves: 2 });
+  assert.deepEqual(validate(addDoor(hinted, 0)), []);
 });
 
 test('a door is never added between the axles of a one-axle section', () => {
-  const full = [0, 1, 2].reduce((inp) => addDoor(inp, 1), set(citaro, ['sections', 1, 'doors_hint'], undefined));
+  const full = [0, 1, 2].reduce((inp) => addDoor(inp, 1), hint(citaro, 1, undefined));
   assert.deepEqual(full.sections[1].doors_hint.map((d) => d.zone), ['front_overhang', 'rear_overhang', 'front_overhang']);
   assert.deepEqual(validate(full), ['sections[1] door 3 lies on door 1']);  // rule (5): the third door shares the front zone
 });
 
 test('a door is removed by its index, and the list with its last door', () => {
-  assert.deepEqual(rmDoor(volvo, 0, 0).sections[0].doors_hint, [volvo.sections[0].doors_hint[1]]);
-  assert.deepEqual(rmDoor(addDoor(volvo, 0), 0, 2), volvo);
-  assert.equal('doors_hint' in rmDoor(rmDoor(volvo, 0, 0), 0, 0).sections[0], false);
-  assert.equal(volvo.sections[0].doors_hint.length, 2);
+  assert.deepEqual(rmDoor(hinted, 0, 0).sections[0].doors_hint, [hinted.sections[0].doors_hint[1]]);
+  assert.deepEqual(rmDoor(addDoor(hinted, 0), 0, 2), hinted);
+  assert.equal('doors_hint' in rmDoor(rmDoor(hinted, 0, 0), 0, 0).sections[0], false);
+  assert.equal(hinted.sections[0].doors_hint.length, 2);
 });
 
 const WIN = ['sections', 0, 'windows_hint'];
@@ -140,7 +146,8 @@ test('a bus with an empty front_display is valid: the display is off', () => {
 test('a bus input as a JSON file: the same input back, keys in their order, a newline at the end', () => {
   const edited = set(volvo, ['front_display'], '21');
   assert.deepEqual(JSON.parse(toJson(edited)), edited);
-  assert.equal(toJson(volvo), readFileSync(new URL('../examples/volvo-8900.json', import.meta.url), 'utf8'));
+  assert.deepEqual(JSON.parse(toJson(volvo)), volvo);
+  assert.ok(toJson(volvo).endsWith('}\n'));
   assert.ok(toJson(edited).includes('"front_display": "21",'));
   assert.ok(toJson(edited).endsWith('}\n'));
 });

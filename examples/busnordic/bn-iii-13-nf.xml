@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PublicationDelivery xmlns="http://www.netex.org.uk/netex" version="2.0">
+  <PublicationTimestamp>2026-10-22T00:00:00</PublicationTimestamp>
+  <ParticipantRef>3dbus</ParticipantRef>
+  <dataObjects>
+    <ResourceFrame id="ITR:ResourceFrame:bn-iii-13-nf" version="1">
+      <vehicleTypes>
+        <VehicleType id="ITR:VehicleType:bn-iii-13-nf" version="1">
+          <keyList>
+            <KeyValue><Key>3dbus:tyre_size</Key><Value>295/80 R22.5</Value></KeyValue>
+            <KeyValue><Key>3dbus:base_color</Key><Value>#3A4750</Value></KeyValue>
+          </keyList>
+          <Name>III:13 NF</Name>
+          <DeckPlanRef ref="ITR:DeckPlan:bn-iii-13-nf" version="1"/>
+          <Length>13</Length>
+          <Width>2.55</Width>
+          <Height>3.7</Height>
+          <ClassifiedAsRef ref="ITR:VehicleModel:bn-iii-13-nf" version="1"/>
+        </VehicleType>
+      </vehicleTypes>
+      <vehicleModels>
+        <VehicleModel id="ITR:VehicleModel:bn-iii-13-nf" version="1">
+          <Name>III:13 NF</Name>
+          <Manufacturer>BusNordic</Manufacturer>
+        </VehicleModel>
+      </vehicleModels>
+      <deckPlans>
+        <DeckPlan id="ITR:DeckPlan:bn-iii-13-nf" version="1">
+          <decks>
+            <Deck id="ITR:Deck:bn-iii-13-nf-1" version="1">
+              <keyList>
+                <KeyValue><Key>3dbus:length_mm</Key><Value>13000</Value></KeyValue>
+                <KeyValue><Key>3dbus:axles_mm</Key><Value>2900,9300</Value></KeyValue>
+              </keyList>
+              <deckSpaces>
+                <PassengerSpace id="ITR:PassengerSpace:bn-iii-13-nf-1" version="1">
+                  <deckEntrances>
+                    <PassengerEntrance id="ITR:PassengerEntrance:bn-iii-13-nf-1" version="1">
+                      <keyList>
+                        <KeyValue><Key>3dbus:leaves</Key><Value>1</Value></KeyValue>
+                      </keyList>
+                      <Width>0.9</Width>
+                      <VehicleSide>rightSide</VehicleSide>
+                      <DistanceFromFront>0.626</DistanceFromFront>
+                    </PassengerEntrance>
+                    <PassengerEntrance id="ITR:PassengerEntrance:bn-iii-13-nf-2" version="1">
+                      <keyList>
+                        <KeyValue><Key>3dbus:leaves</Key><Value>1</Value></KeyValue>
+                      </keyList>
+                      <Width>0.9</Width>
+                      <VehicleSide>rightSide</VehicleSide>
+                      <DistanceFromFront>7.501</DistanceFromFront>
+                    </PassengerEntrance>
+                  </deckEntrances>
+                </PassengerSpace>
+              </deckSpaces>
+            </Deck>
+          </decks>
+        </DeckPlan>
+      </deckPlans>
+    </ResourceFrame>
+  </dataObjects>
+</PublicationDelivery>

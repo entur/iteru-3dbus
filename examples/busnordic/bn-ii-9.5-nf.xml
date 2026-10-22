@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PublicationDelivery xmlns="http://www.netex.org.uk/netex" version="2.0">
+  <PublicationTimestamp>2026-10-22T00:00:00</PublicationTimestamp>
+  <ParticipantRef>3dbus</ParticipantRef>
+  <dataObjects>
+    <ResourceFrame id="ITR:ResourceFrame:bn-ii-9.5-nf" version="1">
+      <vehicleTypes>
+        <VehicleType id="ITR:VehicleType:bn-ii-9.5-nf" version="1">
+          <keyList>
+            <KeyValue><Key>3dbus:tyre_size</Key><Value>275/70 R22.5</Value></KeyValue>
+            <KeyValue><Key>3dbus:base_color</Key><Value>#3E8E5A</Value></KeyValue>
+          </keyList>
+          <Name>II:9.5 NF</Name>
+          <DeckPlanRef ref="ITR:DeckPlan:bn-ii-9.5-nf" version="1"/>
+          <Length>9.5</Length>
+          <Width>2.55</Width>
+          <Height>3.3</Height>
+          <ClassifiedAsRef ref="ITR:VehicleModel:bn-ii-9.5-nf" version="1"/>
+        </VehicleType>
+      </vehicleTypes>
+      <vehicleModels>
+        <VehicleModel id="ITR:VehicleModel:bn-ii-9.5-nf" version="1">
+          <Name>II:9.5 NF</Name>
+          <Manufacturer>BusNordic</Manufacturer>
+        </VehicleModel>
+      </vehicleModels>
+      <deckPlans>
+        <DeckPlan id="ITR:DeckPlan:bn-ii-9.5-nf" version="1">
+          <decks>
+            <Deck id="ITR:Deck:bn-ii-9.5-nf-1" version="1">
+              <keyList>
+                <KeyValue><Key>3dbus:length_mm</Key><Value>9500</Value></KeyValue>
+                <KeyValue><Key>3dbus:axles_mm</Key><Value>2300,7000</Value></KeyValue>
+              </keyList>
+              <deckSpaces>
+                <PassengerSpace id="ITR:PassengerSpace:bn-ii-9.5-nf-1" version="1">
+                  <deckEntrances>
+                    <PassengerEntrance id="ITR:PassengerEntrance:bn-ii-9.5-nf-1" version="1">
+                      <keyList>
+                        <KeyValue><Key>3dbus:leaves</Key><Value>1</Value></KeyValue>
+                      </keyList>
+                      <Width>0.9</Width>
+                      <VehicleSide>rightSide</VehicleSide>
+                      <DistanceFromFront>0.342</DistanceFromFront>
+                    </PassengerEntrance>
+                  </deckEntrances>
+                </PassengerSpace>
+              </deckSpaces>
+            </Deck>
+          </decks>
+        </DeckPlan>
+      </deckPlans>
+    </ResourceFrame>
+  </dataObjects>
+</PublicationDelivery>

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import './raw.js';
+import { load } from './examples.js';
 
 const { faces } = await import('../src/vector.js');  // after raw.js: vector.js imports an .svg as text
 
@@ -20,9 +21,8 @@ globalThis.DOMParser = class {
   parseFromString(s) { return { documentElement: node('svg', { viewBox: VIEWBOX.exec(s)[1] }) }; }
 };
 
-const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
-const hinted = (inp, ...hs) => ({ ...inp, sections: [{ ...inp.sections[0], doors_hint: hs }] });
+const hinted = (inp, ...hs) => ({ ...inp, sections: [{ ...inp.sections[0], doors: undefined, doors_hint: hs }] });
 
 /** The doors drawn on a side map: per door its frame and its panes. */
 const drawn = (f) => f.svg.kids.filter((k) => k.attrs.class === 'door').map(({ kids: [frame, ...panes] }) => ({ frame: frame.attrs, panes: panes.map((p) => p.attrs) }));
@@ -54,7 +54,7 @@ test('a door runs from its sill up to the band above doors and windows', () => {
 const shape = (e) => (typeof e === 'string' ? e : [e.tag, e.attrs, e.kids.map(shape)]);
 
 test('a side map has no wheel arches: it follows neither the axles nor the tyre', () => {
-  const bare = { ...citaro, sections: citaro.sections.map(({ doors_hint, ...s }) => s) };
+  const bare = { ...citaro, sections: citaro.sections.map(({ doors, ...s }) => s) };
   const moved = { ...bare, tyre: { diameter_mm: 1100 }, sections: [{ ...bare.sections[0], axles_mm: [1500, 6000, 9000] }, { ...bare.sections[1], axles_mm: [3000] }] };
   const sides = ({ right, left }) => [...right, ...left].map((f) => shape(f.svg));
   assert.deepEqual(sides(faces(moved)), sides(faces(bare)));

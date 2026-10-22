@@ -5,6 +5,7 @@ import { doorKey, total } from './derive.js';
 import { addAxle, addDoor, rmAxle, rmDoor, same, set, toJson } from './edit.js';
 import { gallery } from './gallery.js';
 import { limits } from './limits.js';
+import { fromNetex } from './netex.js';
 import { form, header, mapCard, modeBar, viewBar } from './ui.js';
 import { validate } from './validate.js';
 import { faces } from './vector.js';
@@ -16,13 +17,17 @@ const VEHICLES = 'Concrete vehicles:', TYPE_SET = 'Type set:';  // captions of t
 // a page of cards per set: the route is the directory under examples/ that holds the set's buses; order: its cards by class, here as the Bus Nordic tables run
 const SETS = { busnordic: { title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions`, order: ['a', 'i', 'ii', 'b', 'iii'] } };
 
-const srcs = import.meta.glob('../examples/**/*.json', { eager: true, query: '?url', import: 'default' });
-const buses = Object.entries(import.meta.glob('../examples/**/*.json', { eager: true, import: 'default' })).map(([p, inp]) => ({
-  id: p.match(/([^/]+)\.json$/)[1],
-  set: p.match(/examples\/(?:([^/]+)\/)?[^/]+$/)[1],  // undefined for a bus with a button of its own
-  inp,
-  src: srcs[p],
-}));
+// every example twice: its url, for the Original link, and its text, read through fromNetex; a file it rejects keeps its errors, shown when the bus is selected
+const srcs = import.meta.glob('../examples/**/*.xml', { eager: true, query: '?url', import: 'default' });
+const buses = Object.entries(import.meta.glob('../examples/**/*.xml', { eager: true, query: '?raw', import: 'default' })).map(([p, xml]) => {
+  const { inp, errs = [], warns = [] } = fromNetex(xml);
+  return {
+    id: p.match(/([^/]+)\.xml$/)[1],
+    set: p.match(/examples\/(?:([^/]+)\/)?[^/]+$/)[1],  // undefined for a bus with a button of its own
+    inp, errs, warns,
+    src: srcs[p],
+  };
+});
 const own = buses.filter((b) => !b.set);  // the buses with a button of their own
 const cards = document.getElementById('cards'), pages = {};
 const bus = document.querySelector('bus-3d');
@@ -36,6 +41,7 @@ const DARK = matchMedia('(prefers-color-scheme: dark)');
 const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
 DARK.addEventListener('change', (e) => (dark.value = e.matches));
 const touched = signal([]), fail = signal([]);  // keys edited since the bus was selected; errors of a bus that could not be selected
+const warns = signal([]);  // what fromNetex warned of when it read the selected bus's file
 /** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
 const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
 const nordic = signal(saved() !== FANTASY);  // Nordic-limited: the limits count as errors; false: a fantasy bus, the schema alone
@@ -58,8 +64,8 @@ const commit = (next, key) =>
 
 /** Shows the chosen bus as loaded, dropping any edits. Another bus re-aims the current view; the same one does not. */
 const select = (to) => {
-  const inp = buses.find((b) => b.id === to)?.inp;
-  fail.value = inp ? check(inp) : [`no example named ${to}`];
+  const b = buses.find((x) => x.id === to), inp = b?.inp;
+  fail.value = !b ? [`no example named ${to}`] : inp ? check(inp) : b.errs;
   if (fail.value.length) return;
   aim = to !== id.value;
   stop?.();  // before the signals change: the old form's effects must not see another bus
@@ -67,6 +73,7 @@ const select = (to) => {
     id.value = to;
     src.value = draft.value = ok.value = inp;
     touched.value = [];
+    warns.value = b.warns;
   });
   const [card, end] = form({ draft, ok, marks, dirty }, on);
   stop = end;
@@ -107,9 +114,9 @@ const follow = () => {
   route.value = routed();
   route.value || named() === id.value || select(named());
 };
-/** The buses of a set in the order of its cards: by class as the set lists them, the class being the second part of the id, then by length. */
+/** The buses of a set in the order of its cards: by class as the set lists them, the class being the second part of the id, then by length. A file fromNetex rejected has no card. */
 const inSet = (s) =>
-  buses.filter((b) => b.set === s).sort((a, b) => SETS[s].order.indexOf(a.id.split('-')[1]) - SETS[s].order.indexOf(b.id.split('-')[1]) || total(a.inp) - total(b.inp));
+  buses.filter((b) => b.set === s && b.inp).sort((a, b) => SETS[s].order.indexOf(a.id.split('-')[1]) - SETS[s].order.indexOf(b.id.split('-')[1]) || total(a.inp) - total(b.inp));
 effect(() => {
   if (!ok.value) return;
   const r = route.value, sel = buses.find((b) => b.id === id.value);
@@ -131,7 +138,7 @@ effect(() => {
   r && cards.replaceChildren((pages[`${r}:${dark.value}`] ??= gallery(inSet(r), view)));
 });
 effect(() => (document.getElementById('mode').hidden = !!route.value));
-effect(() => (err.textContent = [...fail.value, ...errs.value].join('\n')));
+effect(() => (err.textContent = [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)].join('\n')));
 
 // Modified: the bus as drawn, with its valid edits, as a file to download; there is none until an edit
 effect(() => {

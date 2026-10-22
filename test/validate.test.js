@@ -1,14 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
 import { validate } from '../src/validate.js';
-import { clashes, dash, doorWidth, doors, grill, hints, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
+import { clashes, dash, doorWidth, doors, grill, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
+import { all, load } from './examples.js';
 
-const BUSNORDIC = new URL('../examples/busnordic/', import.meta.url), BUSNORDIC_ROWS = 17;
+const BUSNORDIC_ROWS = 17;
 
-const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
 const volvo = load('volvo-8900'), citaro = load('citaro-g');
 const sec = (inp, i, patch) => ({ ...inp, sections: inp.sections.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+/** A section's doors as hints, its absolute doors dropped. */
+const hint = (inp, i, hs, patch = {}) => sec(inp, i, { ...patch, doors: undefined, doors_hint: hs });
 
 const bad = {
   'a brand': { ...volvo, brand: 'Volvo' },
@@ -19,8 +20,8 @@ const bad = {
   'trailer without bellows': sec(citaro, 1, { bellows_ahead_mm: undefined }),
   'axles out of order': sec(volvo, 0, { axles_mm: [9099, 2769] }),
   'axle outside the section': sec(volvo, 0, { axles_mm: [2769, 12500] }),
-  'axle gap 1 on a two-axle section': sec(volvo, 0, { doors_hint: [{ zone: 'between_axles', axle_gap: 1, leaves: 2 }, { zone: 'front_overhang', leaves: 2 }] }),
-  'a door between the axles of a one-axle section': sec(citaro, 1, { doors_hint: [{ zone: 'between_axles', leaves: 2 }, { zone: 'rear_overhang', leaves: 2 }] }),
+  'axle gap 1 on a two-axle section': hint(volvo, 0, [{ zone: 'between_axles', axle_gap: 1, leaves: 2 }, { zone: 'front_overhang', leaves: 2 }]),
+  'a door between the axles of a one-axle section': hint(citaro, 1, [{ zone: 'between_axles', leaves: 2 }, { zone: 'rear_overhang', leaves: 2 }]),
   'missing tyre size and diameter': { ...volvo, tyre: { rear_twin: true } },
   'a band of 1.2 m above the doors and windows': { ...volvo, band_above_mm: 1200 },
   'a window band 200 mm high': { ...volvo, win_band_height_mm: 200 },
@@ -35,11 +36,11 @@ test('examples pass', () => {
 });
 
 test('the BusNordic set passes, one bus per row of the Bus Nordic tables', () => {
-  const set = readdirSync(BUSNORDIC).map((f) => JSON.parse(readFileSync(new URL(f, BUSNORDIC), 'utf8')));
+  const set = all().filter((b) => b.set === 'busnordic').map((b) => b.inp);
   assert.equal(set.length, BUSNORDIC_ROWS);
   set.forEach((inp) => assert.deepEqual(validate(inp), [], inp.front_display));
   assert.equal(new Set(set.map((inp) => inp.front_display)).size, set.length);
-  assert.deepEqual([...new Set(set.map((inp) => hints(inp).length))].sort(), [1, 2, 3, 4, 5]);
+  assert.deepEqual([...new Set(set.map((inp) => doors(inp).flat().length))].sort(), [1, 2, 3, 4, 5]);
 });
 
 Object.entries(bad).forEach(([name, inp]) =>
@@ -48,7 +49,7 @@ Object.entries(bad).forEach(([name, inp]) =>
 
 test('accepts a 19 m articulated bus and a 12.4 m bus with one door', () => {
   assert.deepEqual(validate(sec(citaro, 1, { length_mm: 8000 })), []);
-  assert.deepEqual(validate(sec(volvo, 0, { doors_hint: [{ zone: 'front_overhang', leaves: 2 }] })), []);
+  assert.deepEqual(validate(hint(volvo, 0, [{ zone: 'front_overhang', leaves: 2 }])), []);
 });
 
 test('accepts a band above the doors and windows and a window band height', () =>
@@ -99,9 +100,9 @@ test('derives spans and layout', () => {
 });
 
 const door = (x0, x1, leaves = 2, glazed = true) => ({ x0, x1, leaves, glazed });
-const hinted = (inp, i, ...hs) => doors(sec(inp, i, { doors_hint: hs }))[i];
+const hinted = (inp, i, ...hs) => doors(hint(inp, i, hs))[i];
 
-test('places the hinted doors of the examples', () => {
+test('places the doors of the examples', () => {
   assert.deepEqual(doors(volvo), [[door(385, 1635), door(6950, 8200)]]);
   assert.deepEqual(doors(citaro), [
     [door(368, 1618), door(5025, 6275)],
@@ -120,7 +121,7 @@ test('an unglazed door stays unglazed', () =>
 
 test('axle_gap picks the gap between three axles', () => {
   const gap = (g) => ({ zone: 'between_axles', axle_gap: g, leaves: 2 });
-  assert.deepEqual(doors(sec(volvo, 0, { axles_mm: [2000, 6000, 10000], doors_hint: [gap(0), gap(1)] }))[0], [door(3375, 4625), door(7375, 8625)]);
+  assert.deepEqual(doors(hint(volvo, 0, [gap(0), gap(1)], { axles_mm: [2000, 6000, 10000] }))[0], [door(3375, 4625), door(7375, 8625)]);
 });
 
 test('a door wider than its zone is centred on it, whatever the bias', () =>
@@ -161,7 +162,7 @@ test('wheel arches do not interrupt the panes, however far down the band reaches
 });
 
 test('a section without doors is glazed from end to end', () => {
-  const ws = windows(sec(volvo, 0, { doors_hint: undefined }))[0];
+  const ws = windows(hint(volvo, 0, undefined))[0];
   assert.equal(ws.length, 8);
   assert.deepEqual([ws[0].x0, ws.at(-1).x1], [200, 12196]);
 });
@@ -182,10 +183,10 @@ test('a count the section has no room for stops at panes 300 mm wide', () => {
 test('an empty windows hint draws the default panes', () => assert.deepEqual(glazed(volvo, 0, {}), windows(volvo)[0]));
 
 test('doors that fill a section, lie on each other or stick out leave no pane on them', () => {
-  const full = sec(citaro, 1, { length_mm: 2600, axles_mm: [1300], doors_hint: [{ ...fo, width_mm: 1600 }, { ...ro, width_mm: 1600 }], windows_hint: { count: 4 } });
+  const full = hint(citaro, 1, [{ ...fo, width_mm: 1600 }, { ...ro, width_mm: 1600 }], { length_mm: 2600, axles_mm: [1300], windows_hint: { count: 4 } });
   assert.deepEqual(windows(full)[1], []);
-  assert.deepEqual(windows(sec(volvo, 0, { doors_hint: [fo, fo, ba] })), windows(sec(volvo, 0, { doors_hint: [fo, ba] })));
-  assert.deepEqual(windows(sec(citaro, 1, { doors_hint: [{ ...ro, width_mm: 1600 }, fo] }))[1], [pane(200, 1288), pane(2698, 3973), pane(4053, 5327)]);
+  assert.deepEqual(windows(hint(volvo, 0, [fo, fo, ba])), windows(hint(volvo, 0, [fo, ba])));
+  assert.deepEqual(windows(hint(citaro, 1, [{ ...ro, width_mm: 1600 }, fo]))[1], [pane(200, 1288), pane(2698, 3973), pane(4053, 5327)]);
 });
 
 test('the left side has a pane for each pane and each door of the right side, in one run', () => {
@@ -194,16 +195,16 @@ test('the left side has a pane for each pane and each door of the right side, in
   assert.deepEqual(count(citaro), [7, 5]);
   assert.deepEqual(windowsLeft(citaro)[1], [pane(200, 1456), pane(1536, 2792), pane(2872, 4128), pane(4208, 5464), pane(5544, 6800)]);
   assert.deepEqual(count(sec(volvo, 0, { windows_hint: { count: 3 } })), [5]);
-  assert.deepEqual(count(sec(volvo, 0, { doors_hint: [{ ...fo, leaves: 1 }] })), [windows(sec(volvo, 0, { doors_hint: [{ ...fo, leaves: 1 }] }))[0].length + 1]);
+  assert.deepEqual(count(hint(volvo, 0, [{ ...fo, leaves: 1 }])), [windows(hint(volvo, 0, [{ ...fo, leaves: 1 }]))[0].length + 1]);
 });
 
 test('a left side without doors across from it has the panes of the right side', () => {
-  const bare = sec(volvo, 0, { doors_hint: undefined });
+  const bare = hint(volvo, 0, undefined);
   assert.deepEqual(windowsLeft(bare), windows(bare));
 });
 
 test('the left side takes no more panes than stay 300 mm wide', () => {
-  const short = sec(citaro, 1, { length_mm: 700, axles_mm: [350], doors_hint: [fo, ro] });
+  const short = hint(citaro, 1, [fo, ro], { length_mm: 700, axles_mm: [350] });
   assert.deepEqual(windowsLeft(short)[1], [pane(200, 500)]);
   assert.deepEqual(windowsLeft(sec(citaro, 1, { length_mm: 400, axles_mm: [200] }))[1], []);
 });
@@ -243,5 +244,5 @@ test('rule (5) gives one message per clash, after rules (1) and (4)', () => {
 
 test('hinted doors clash the same way', () => {
   const h = { zone: 'front_overhang', leaves: 2 };
-  assert.deepEqual(clashes(sec(volvo, 0, { doors_hint: [h, h] })), [{ section: 0, door: 1, other: 0 }]);
+  assert.deepEqual(clashes(hint(volvo, 0, [h, h])), [{ section: 0, door: 1, other: 0 }]);
 });

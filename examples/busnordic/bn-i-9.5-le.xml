@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PublicationDelivery xmlns="http://www.netex.org.uk/netex" version="2.0">
+  <PublicationTimestamp>2026-10-22T00:00:00</PublicationTimestamp>
+  <ParticipantRef>3dbus</ParticipantRef>
+  <dataObjects>
+    <ResourceFrame id="ITR:ResourceFrame:bn-i-9.5-le" version="1">
+      <vehicleTypes>
+        <VehicleType id="ITR:VehicleType:bn-i-9.5-le" version="1">
+          <keyList>
+            <KeyValue><Key>3dbus:tyre_size</Key><Value>275/70 R22.5</Value></KeyValue>
+            <KeyValue><Key>3dbus:base_color</Key><Value>#1F6FB2</Value></KeyValue>
+          </keyList>
+          <Name>I:9.5 LE</Name>
+          <DeckPlanRef ref="ITR:DeckPlan:bn-i-9.5-le" version="1"/>
+          <Length>9.5</Length>
+          <Width>2.55</Width>
+          <Height>3.1</Height>
+          <ClassifiedAsRef ref="ITR:VehicleModel:bn-i-9.5-le" version="1"/>
+        </VehicleType>
+      </vehicleTypes>
+      <vehicleModels>
+        <VehicleModel id="ITR:VehicleModel:bn-i-9.5-le" version="1">
+          <Name>I:9.5 LE</Name>
+          <Manufacturer>BusNordic</Manufacturer>
+        </VehicleModel>
+      </vehicleModels>
+      <deckPlans>
+        <DeckPlan id="ITR:DeckPlan:bn-i-9.5-le" version="1">
+          <decks>
+            <Deck id="ITR:Deck:bn-i-9.5-le-1" version="1">
+              <keyList>
+                <KeyValue><Key>3dbus:length_mm</Key><Value>9500</Value></KeyValue>
+                <KeyValue><Key>3dbus:axles_mm</Key><Value>2300,7000</Value></KeyValue>
+              </keyList>
+              <deckSpaces>
+                <PassengerSpace id="ITR:PassengerSpace:bn-i-9.5-le-1" version="1">
+                  <deckEntrances>
+                    <PassengerEntrance id="ITR:PassengerEntrance:bn-i-9.5-le-1" version="1">
+                      <keyList>
+                        <KeyValue><Key>3dbus:leaves</Key><Value>2</Value></KeyValue>
+                      </keyList>
+                      <Width>1.25</Width>
+                      <VehicleSide>rightSide</VehicleSide>
+                      <DistanceFromFront>0.167</DistanceFromFront>
+                    </PassengerEntrance>
+                    <PassengerEntrance id="ITR:PassengerEntrance:bn-i-9.5-le-2" version="1">
+                      <keyList>
+                        <KeyValue><Key>3dbus:leaves</Key><Value>2</Value></KeyValue>
+                      </keyList>
+                      <Width>1.25</Width>
+                      <VehicleSide>rightSide</VehicleSide>
+                      <DistanceFromFront>4.883</DistanceFromFront>
+                    </PassengerEntrance>
+                  </deckEntrances>
+                </PassengerSpace>
+              </deckSpaces>
+            </Deck>
+          </decks>
+        </DeckPlan>
+      </deckPlans>
+    </ResourceFrame>
+  </dataObjects>
+</PublicationDelivery>
