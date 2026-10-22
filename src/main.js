@@ -35,7 +35,7 @@ const route = signal('');  // the set whose cards page is open, '' for the viewe
 const DARK = matchMedia('(prefers-color-scheme: dark)');
 const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
 DARK.addEventListener('change', (e) => (dark.value = e.matches));
-const touched = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
+const touched = signal([]), fail = signal([]);  // keys edited since the bus was selected; errors of a bus that could not be selected
 /** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
 const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
 const nordic = signal(saved() !== FANTASY);  // Nordic-limited: the limits count as errors; false: a fantasy bus, the schema alone
@@ -49,11 +49,11 @@ const mapped = mapCard(maps);
 const edited = computed(() => !!ok.value && !same(ok.value, src.value));  // what is drawn differs from the file
 let aim = false, stop = null;
 
-/** Takes an edited draft: it is always kept, and drawn when valid. While it is invalid, every control edited stays marked. */
+/** Takes an edited draft: it is always kept, and drawn when it has no errors. While it has some, every control edited since the bus was selected is marked. */
 const commit = (next, key) =>
   batch(() => {
     draft.value = next;
-    touched.value = errs.value.length ? [...new Set([...touched.value, key])] : [];
+    touched.value = [...new Set([...touched.value, key])];
   });
 
 /** Shows the chosen bus as loaded, dropping any edits. Another bus re-aims the current view; the same one does not. */
