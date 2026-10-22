@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Boxy 3D bus rendered in three.js from one input JSON (`schema/bus-input.schema.json`, contract v3.0: only what is drawn), A. A NeTEx `VehicleType` file (B) is read into that input by `fromNetex`.
-This is v1: no ML branch (no VLM, no OpenCV). The schema's `photo` field is accepted and ignored.
+Boxy 3D bus rendered in three.js from one input JSON (`schema/bus-input.schema.json`, contract v3.0: only what is drawn) (A). A NeTEx `VehicleType` file (B) is read into that input by `fromNetex`.
+This is v1: no ML branch (no VLM, no OpenCV).
 `docs/flowchart.html` shows the full intended pipeline including the ML branch, for reference only.
 
 Plain ES modules, no TypeScript, no framework, no linter. Vite for the browser app, `node --test` for tests.
@@ -107,7 +107,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   to the badge than `SCREEN_GAP` (an end map starts `CORNER` below the body top), left out
   when there is no room for it; a root `front_display` text is shown on a destination display
   (`display`: dark quad, dark-gray outline) at the top of the windscreen's pane, when the pane is
-  high enough only from `front_display`); the badge (`front.badge_text` only)
+  high enough (from `front_display` only, no fallback); the badge (`front.badge_text` only, missing: no text)
   stands on `grill`, with a headlight on each side of it: one
   drawing of the left one (`src/headlight.svg`, imported as text and parsed, or
   `faces(inp, { headlight })`), placed again mirrored. `test/raw.js` lets node load that
