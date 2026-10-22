@@ -109,16 +109,20 @@ const entrances = (deck, prefix) =>
       return { at: e.DistanceFromFront, width: e.Width, vals: k.vals, errs: [...missing, ...k.errs] };
     });
 
-/** Step 4 for a DeckPlan: per Deck its keys and entrances. */
+/** A Deck with no DeckLevelRef is on the first level; one naming another level is not. */
+const onOther = (d, level) => d.DeckLevelRef?.ref !== undefined && d.DeckLevelRef.ref !== level;
+
+/** Step 4 for a DeckPlan: per Deck its keys and entrances. The first level is the first DeckLevel declared, else the first one referenced. */
 const readDecks = (deckPlan, prefix) => {
-  const decks = deckPlan.decks?.Deck ?? [], level = decks[0]?.DeckLevelRef?.ref;
+  const decks = deckPlan.decks?.Deck ?? [];
+  const level = deckPlan.deckLevels?.DeckLevel?.[0]?.id ?? decks.map((d) => d.DeckLevelRef?.ref).find((r) => r !== undefined);
   const read = decks.map((d, i) => {
     const label = named('Deck', d, i), k = keys(d, label, prefix, KEYS.deck, ['length_mm', 'axles_mm', ...(i ? ['bellows_ahead_mm'] : [])]);
     const ents = entrances(d, prefix);
     return {
       label, vals: k.vals, ents,
       errs: [
-        ...(d.DeckLevelRef?.ref !== level ? [`${label}: DeckLevel ${d.DeckLevelRef?.ref ?? '(none)'} is a second deck level, not supported`] : []),
+        ...(onOther(d, level) ? [`${label}: DeckLevel ${d.DeckLevelRef.ref} is not the first deck level; a second level is not supported`] : []),
         ...k.errs,
         ...(!i && k.has('bellows_ahead_mm') ? [`${label}: ${prefix}bellows_ahead_mm is for a Deck behind another`] : []),
         ...ents.flatMap((e) => e.errs),

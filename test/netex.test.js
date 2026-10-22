@@ -172,6 +172,33 @@ test('rejects a Deck on a second DeckLevel', () => {
   rejects(fromNetex(xml), '3dbus:Deck:trailer', 'not supported');
 });
 
+const LEAD_LEVEL = `<netex:DeckLevelRef ref="3dbus:DeckLevel:main" version="1"/>
+                  <netex:deckSpaces>
+                    <netex:PassengerSpace id="3dbus:PassengerSpace:lead"`;
+const TRAILER_LEVEL = `<netex:DeckLevelRef ref="3dbus:DeckLevel:main" version="1"/>
+                  <netex:deckSpaces>
+                    <netex:PassengerSpace id="3dbus:PassengerSpace:trailer"`;
+const unref = (at) => at.replace('<netex:DeckLevelRef ref="3dbus:DeckLevel:main" version="1"/>', '');
+
+test('a Deck with no DeckLevelRef is on the first level', () => {
+  [[LEAD_LEVEL, unref(LEAD_LEVEL)], [TRAILER_LEVEL, unref(TRAILER_LEVEL)]].forEach(([from, to]) => {
+    const res = fromNetex(patch(ARTIC, from, to));
+    assert.equal(res.ok, true, JSON.stringify(res));
+    assert.deepEqual(res.inp.sections, fromNetex(ARTIC).inp.sections);
+  });
+});
+
+test('the first level is the first DeckLevel declared, whichever Deck comes first', () => {
+  const xml = patch(patch(patch(ARTIC,
+    '<netex:DeckLevel id="3dbus:DeckLevel:main" version="1"/>',
+    '<netex:DeckLevel id="3dbus:DeckLevel:main" version="1"/><netex:DeckLevel id="3dbus:DeckLevel:upper" version="1"/>'),
+    LEAD_LEVEL, LEAD_LEVEL.replace('3dbus:DeckLevel:main', '3dbus:DeckLevel:upper')),
+    TRAILER_LEVEL, unref(TRAILER_LEVEL));
+  const res = fromNetex(xml);
+  rejects(res, '3dbus:Deck:lead', '3dbus:DeckLevel:upper', 'not supported');
+  assert.equal(res.errs.some((e) => e.includes('3dbus:Deck:trailer')), false, JSON.stringify(res.errs));
+});
+
 test('asks for an id when the file has two VehicleTypes', () => {
   const two = patch(RIGID, '</vehicleTypes>', `  <VehicleType id="3dbus:VehicleType:other" version="1">
             <keyList><KeyValue><Key>3dbus:tyre_size</Key><Value>275/70 R22.5</Value></KeyValue>
