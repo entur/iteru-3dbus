@@ -13,6 +13,7 @@
   "exports": {
     ".": "./dist-lib/index.js",
     "./core": "./dist-lib/core.js",
+    "./limits": "./dist-lib/limits.js",
     "./faces": "./dist-lib/faces.js"
   },
   "scripts": {

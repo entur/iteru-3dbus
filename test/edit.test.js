@@ -78,9 +78,9 @@ test('axles are added and removed inside the schema limits', () => {
 });
 
 test('spec reads limits and defaults from the schema', () => {
-  assert.equal(spec(['width_mm']).maximum, 2550);
+  assert.equal(spec(['width_mm']).maximum, 4000);
   assert.equal(spec(['tyre', 'rear_twin']).default, true);
-  assert.equal(spec(['sections', 0, 'length_mm']).minimum, 2000);
+  assert.equal(spec(['sections', 0, 'length_mm']).minimum, 1000);
   assert.equal(spec(['sections', 1, 'bellows_ahead_mm']).maximum, 1200);
   assert.equal(spec(['sections', 0, 'axles_mm', 1]).minimum, 0);
   assert.equal(spec(['sections', 0, 'doors_hint']).maxItems, 4);

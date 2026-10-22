@@ -20,14 +20,14 @@
     },
     "width_mm": {
       "type": "integer",
-      "minimum": 2000,
-      "maximum": 2550,
+      "minimum": 1500,
+      "maximum": 4000,
       "description": "Body width without mirrors."
     },
     "height_mm": {
       "type": "integer",
-      "minimum": 2400,
-      "maximum": 4400,
+      "minimum": 1500,
+      "maximum": 6000,
       "description": "Height including roof equipment."
     },
     "roof_equipment_mm": {
@@ -149,8 +149,8 @@
       "properties": {
         "length_mm": {
           "type": "integer",
-          "minimum": 2000,
-          "maximum": 15000,
+          "minimum": 1000,
+          "maximum": 30000,
           "description": "Section length, excluding bellows."
         },
         "axles_mm": {

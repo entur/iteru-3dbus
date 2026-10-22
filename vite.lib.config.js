@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-const ENTRIES = { index: 'index', core: 'core', faces: 'vector' };  // package entry: its src file
+const ENTRIES = { index: 'index', core: 'core', limits: 'limits', faces: 'vector' };  // package entry: its src file
 
 // Library build: one ES module per entry, shared code in chunks, three and ajv left to the host.
 export default defineConfig({
