@@ -49,10 +49,9 @@ h1 { font-weight: 600; font-size: clamp(22px, 3.2vw, 34px); line-height: 1.05; m
 .row.title { align-items: baseline; gap: 2px 16px; }
 #other { font-size: 16px; font-weight: 500; color: var(--ink); text-decoration: underline 2px var(--amber); text-underline-offset: 0.3em; border-radius: 2px; }
 #other:hover { text-decoration-thickness: 3px; }
-#json, #mode, #views, .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(8px); }
+#json, #views, .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; backdrop-filter: blur(8px); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 #json { display: inline-flex; align-items: center; gap: 2px; padding: 3px; font-size: 15px; white-space: nowrap; }
-#mode { display: inline-flex; align-items: center; gap: 2px; padding: 3px; }
 #json span { padding: 0 4px 0 7px; color: var(--steel); }
 #json a { padding: 1px 8px; border-radius: 7px; font-weight: 500; color: var(--ink); text-decoration: none; cursor: pointer; }
 #json a[aria-disabled="true"] { pointer-events: none; }
@@ -74,7 +73,10 @@ figure { margin: 0; }
 .faces.front, .faces.rear { width: 46%; }
 .face { display: block; min-width: 0; height: auto; }
 figcaption { color: var(--steel); font-size: 13px; margin-top: 4px; }
-.head { display: flex; align-items: center; justify-content: space-between; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.limits { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; }
+.limits span { padding: 0 4px 0 6px; color: var(--steel); font-size: 13px; }
+.head .limits button { padding: 1px 8px; font-size: 14px; border: 0; border-radius: 6px; }
 .head button, .axles button, .door-top button, .door button, dialog button { border: 1px solid var(--line); }
 .head button { padding: 1px 10px; font-size: 14px; }
 .input { padding-bottom: 10px; }

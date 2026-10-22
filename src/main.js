@@ -6,12 +6,12 @@ import { addAxle, addDoor, checks, rmAxle, rmDoor, same, set, toJson } from './e
 import { gallery } from './gallery.js';
 import { fromNetex } from './netex.js';
 import { LIST, href, parse } from './route.js';
-import { form, header, mapCard, modeBar, viewBar } from './ui.js';
+import { form, header, mapCard, viewBar } from './ui.js';
 import { faces } from './vector.js';
 
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
 
-const MODE_KEY = '3dbus.limits', FANTASY = 'fantasy';  // localStorage key of the limits switch, and its value for a fantasy bus
+const MODE_KEY = '3dbus.limits', FANTASY = 'fantasy';  // localStorage key of the limits switch, and its value for Free (kept from when it was named Fantasy bus)
 const BASE = import.meta.env.BASE_URL;  // the path the site is served from: '/' in dev, '/iteru-3dbus/' on Pages
 // the list's title, which is also the link to it; the start of the link back to the selected bus
 const LIST_PAGE = { title: 'All buses', sub: (n) => `${n} NeTEx files in examples/` }, BACK = 'Back to';
@@ -52,7 +52,7 @@ const touched = signal([]), fail = signal([]);  // keys edited since the bus was
 const warns = signal([]);  // what fromNetex warned of when it read the selected bus's file
 /** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
 const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
-const nordic = signal(saved() !== FANTASY);  // Nordic-limited: the limits count as errors; false: a fantasy bus, the schema alone
+const nordic = signal(saved() !== FANTASY);  // Nordic: the limits count as errors; false: Free, the schema alone
 /** The errors of an input: the schema and its rules, and the Nordic limits once those pass, while they are on. */
 const check = (inp) => checks(inp, nordic.value);
 const errs = computed(() => (draft.value ? check(draft.value) : []));
@@ -86,7 +86,7 @@ const select = (to) => {
     touched.value = [];
     warns.value = b.warns;
   });
-  const [card, end] = form({ draft, ok, marks, dirty }, on);
+  const [card, end] = form({ draft, ok, marks, dirty, nordic }, on);
   stop = end;
   info.replaceChildren(mapped, card);
   return [];
@@ -139,7 +139,6 @@ effect(() => {
   cards.hidden = !list;
   list && cards.replaceChildren((pages[dark.value] ??= gallery(listed, (to) => show({ page: 'bus', file: to }, 'push'))));
 });
-effect(() => (document.getElementById('mode').hidden = route.value.page === 'list'));
 // on the list, only why a bus could not be shown
 effect(() => (err.textContent = (route.value.page === 'list' ? fail.value : [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)]).join('\n')));
 
@@ -168,7 +167,6 @@ const shift = () => (bus.offsetX = wide.matches ? PANEL_SHIFT : 0);
 wide.addEventListener('change', shift);
 shift();
 viewBar(bus);
-modeBar(nordic);
 
 const toggle = document.getElementById('toggle');
 toggle.onclick = () => (toggle.ariaExpanded = String(info.classList.toggle('open')));

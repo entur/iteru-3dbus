@@ -10,6 +10,7 @@ const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES =
 export const NAMES = { zone: ZONE, bias: BIAS, leaves: LEAVES };
 const NOTE = 'Drawn from the input: body, wheel arches, wheels, bellows, roof pod, and the doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
+const LIMITS = 'Size limits', NORDIC = 'Nordic', FREE = 'Free';  // the limits switch in the input card's head
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
 const open = new Set(['Dimensions', 'Sections']);  // accordion groups that are open; survives edits and bus switches
@@ -84,16 +85,6 @@ export const header = (cur, page, other) => {
   document.title = `${title} · 3dbus`;
   document.getElementById('sub').textContent = page?.sub ?? brief(cur.inp);
 };
-
-/**
- * Fills the limits switch: Nordic-limited or fantasy bus, pressed as the signal says.
- * @param {{value: boolean}} nordic signal, true when the Nordic limits count as errors
- */
-export const modeBar = (nordic) =>
-  document.getElementById('mode').replaceChildren(
-    ...[[true, 'Nordic-limited'], [false, 'Fantasy bus']].map(([v, label]) =>
-      el('button', { onclick: () => (nordic.value = v), ariaPressed: () => String(nordic.value === v) }, label)),
-  );
 
 /**
  * Fills the camera-view bar: one button per named view of the 3D element.
@@ -271,12 +262,17 @@ const group = (st, on, g) =>
       ])
     : [rows(null, FIELDS.filter((f) => f.group === g).map((f) => row(st, on, f)))];
 
+/** The limits switch: Nordic, the limits count as errors, or Free, the schema alone; pressed as the signal says. */
+const limits = (nordic) =>
+  el('span', { className: 'limits', role: 'group', ariaLabel: LIMITS }, el('span', {}, LIMITS),
+    ...[[true, NORDIC], [false, FREE]].map(([v, label]) => el('button', { type: 'button', onclick: () => (nordic.value = v), ariaPressed: () => String(nordic.value === v) }, label)));
+
 /**
  * Builds the input card: one accordion group per part of the schema, every value in it, the
  * drawn ones editable. Built once per selected bus; the controls then follow the signals.
- * @param {{draft: object, ok: object, marks: object, dirty: object}} st signals: the edited
- *   input, its last valid state, the keys of the edits made since it was last valid, and whether
- *   the draft differs from the source
+ * @param {{draft: object, ok: object, marks: object, dirty: object, nordic: object}} st signals: the edited
+ *   input, its last valid state, the keys of the edits made since it was last valid, whether
+ *   the draft differs from the source, and whether the Nordic limits count as errors (the switch in the card's head)
  * @param {{set: (path: (string|number)[], v: unknown) => void, add: (i: number) => void,
  *   rm: (i: number) => void, addDoor: (i: number) => void, rmDoor: (i: number, j: number) => void,
  *   reset: () => void}} on edit callbacks: a value, an axle more or less on section i, a door
@@ -287,7 +283,7 @@ export const form = (st, on) =>
   scoped(() =>
     el(
       'section', { className: 'card input' },
-      el('div', { className: 'head' }, el('h2', {}, 'Input'), el('button', { type: 'button', hidden: () => !st.dirty.value, onclick: on.reset }, 'Reset')),
+      el('div', { className: 'head' }, el('h2', {}, 'Input'), limits(st.nordic), el('button', { type: 'button', hidden: () => !st.dirty.value, onclick: on.reset }, 'Reset')),
       ...GROUPS.map((g) =>
         el('details', { open: open.has(g), ontoggle: (e) => (e.target.open ? open.add(g) : open.delete(g)) }, title(st, g), ...group(st, on, g)),
       ),

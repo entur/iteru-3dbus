@@ -58,8 +58,9 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - **`limits.js`** — `limits(inp)`: the Nordic limits as `string[]` (width, height, total length by
   section and axle count, two doors over 9500 mm; a bus naming no doors is not checked for them).
   Core, package entry `./limits`. **The Bus Nordic 2.0 numbers in it were not checked against the
-  document.** The app runs it after `validate` passes (`checks` in `edit.js`: it needs a valid input), in the "Nordic-limited" mode and not in "Fantasy bus"
-  (`modeBar` in `ui.js`, remembered in `localStorage` under `3dbus.limits`, default Nordic-limited).
+  document.** The app runs it after `validate` passes (`checks` in `edit.js`: it needs a valid input), with the "Size limits" switch on Nordic and not on Free
+  (`limits` in `ui.js`, in the input card's head; remembered in `localStorage` under `3dbus.limits` as
+  `nordic` / `fantasy`, default Nordic).
   In Nordic mode a limit is an error like any other: the last legal bus stays on screen and the
   marks follow `errs`.
 - **`netex.js`** — `fromNetex(xml, { prefix, id })`, package entry `./netex` (also re-exported from
@@ -149,7 +150,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   `test/edit.test.js` fails when a schema value has no row, or
   when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card (tabs per side, clones of the face maps of the open side,
-  sections reversed on the right side) and the input card (`form`): one accordion group per
+  sections reversed on the right side) and the input card (`form`): the "Size limits" switch (Nordic | Free) in its head, then one accordion group per
   part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
