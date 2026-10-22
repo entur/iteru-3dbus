@@ -1,0 +1,243 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "VehicleType"
+  ],
+  "properties": {
+    "VehicleType": {
+      "$ref": "#/definitions/VehicleType"
+    },
+    "DeckPlan": {
+      "$ref": "#/definitions/DeckPlan"
+    },
+    "VehicleModel": {
+      "$ref": "#/definitions/VehicleModel"
+    }
+  },
+  "definitions": {
+    "VehicleType": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Name": {
+          "$ref": "#/definitions/MultilingualString"
+        },
+        "Length": {
+          "type": "number"
+        },
+        "Width": {
+          "type": "number"
+        },
+        "Height": {
+          "type": "number"
+        },
+        "keyList": {
+          "$ref": "#/definitions/keyList"
+        },
+        "DeckPlanRef": {
+          "$ref": "#/definitions/DeckPlanRef"
+        },
+        "ClassifiedAsRef": {
+          "$ref": "#/definitions/ClassifiedAsRef"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "DeckPlan": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "decks": {
+          "$ref": "#/definitions/decks"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "decks": {
+      "type": "object",
+      "properties": {
+        "Deck": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Deck"
+          }
+        }
+      }
+    },
+    "Deck": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "keyList": {
+          "$ref": "#/definitions/keyList"
+        },
+        "DeckLevelRef": {
+          "$ref": "#/definitions/DeckLevelRef"
+        },
+        "deckSpaces": {
+          "$ref": "#/definitions/deckSpaces"
+        }
+      }
+    },
+    "deckSpaces": {
+      "type": "object",
+      "properties": {
+        "PassengerSpace": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PassengerSpace"
+          }
+        }
+      }
+    },
+    "PassengerSpace": {
+      "type": "object",
+      "properties": {
+        "deckEntrances": {
+          "$ref": "#/definitions/deckEntrances"
+        }
+      }
+    },
+    "deckEntrances": {
+      "type": "object",
+      "properties": {
+        "PassengerEntrance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PassengerEntrance"
+          }
+        }
+      }
+    },
+    "PassengerEntrance": {
+      "type": "object",
+      "properties": {
+        "DistanceFromFront": {
+          "type": "number"
+        },
+        "Width": {
+          "type": "number"
+        },
+        "VehicleSide": {
+          "type": "string",
+          "enum": [
+            "leftSide",
+            "rightSide",
+            "frontEnd",
+            "backEnd",
+            "internal",
+            "above",
+            "below"
+          ]
+        },
+        "keyList": {
+          "$ref": "#/definitions/keyList"
+        }
+      }
+    },
+    "VehicleModel": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Name": {
+          "$ref": "#/definitions/MultilingualString"
+        },
+        "Manufacturer": {
+          "$ref": "#/definitions/MultilingualString"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "keyList": {
+      "type": "object",
+      "properties": {
+        "KeyValue": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/KeyValue"
+          }
+        }
+      }
+    },
+    "KeyValue": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "string"
+        }
+      }
+    },
+    "DeckPlanRef": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref"
+      ]
+    },
+    "DeckLevelRef": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "ClassifiedAsRef": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref"
+      ]
+    },
+    "MultilingualString": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lang": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
