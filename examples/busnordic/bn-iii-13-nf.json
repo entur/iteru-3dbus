@@ -1,18 +1,16 @@
 {
-  "schema_version": "2.0",
-  "brand": "BusNordic",
-  "model": "III:13 NF",
-  "body": "rigid",
-  "bus_class": "III",
-  "floor_type": "normal_floor",
+  "schema_version": "3.0",
   "width_mm": 2550,
   "height_mm": 3700,
+  "front_display": "III:13 NF",
   "tyre": {
     "size": "295/80 R22.5"
   },
   "base_color": {
-    "hex": "#3A4750",
-    "name": "graphite"
+    "hex": "#3A4750"
+  },
+  "front": {
+    "badge_text": "BusNordic"
   },
   "sections": [
     {

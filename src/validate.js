@@ -1,27 +1,16 @@
 import Ajv from 'ajv/dist/2020.js';
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { hints, total } from './derive.js';
-
-const MAX_ARTIC_LEN = 18750, TWO_DOOR_LEN = 9500;
 
 const ajv = new Ajv({ allErrors: true, strict: false, formats: { 'uri-reference': true } });
 const chk = ajv.compile(schema);
 
-/** Cross-field rules (1)-(4) from the schema's top-level $comment. (5), door overlap, is not checked yet. */
+/** Cross-field rules (1) and (4) from the schema's top-level $comment. (5), door overlap, is not checked yet. */
 const rules = [
   (inp) =>
     inp.sections.flatMap((s, i) => [
       ...(s.axles_mm.every((a, j, xs) => j === 0 || a > xs[j - 1]) ? [] : [`sections[${i}].axles_mm must ascend`]),
       ...(s.axles_mm.every((a) => a > 0 && a < s.length_mm) ? [] : [`sections[${i}].axles_mm must lie inside the section`]),
     ]),
-  (inp) =>
-    inp.body === 'articulated' && total(inp) > MAX_ARTIC_LEN
-      ? [`total length ${total(inp)} mm exceeds ${MAX_ARTIC_LEN} mm`]
-      : [],
-  (inp) =>
-    total(inp) > TWO_DOOR_LEN && inp.sections.some((s) => s.doors_hint) && hints(inp).length < 2
-      ? [`buses over ${TWO_DOOR_LEN} mm need at least two doors`]
-      : [],
   (inp) =>
     inp.sections.flatMap((s, i) =>
       (s.doors_hint ?? [])

@@ -1,18 +1,16 @@
 {
-  "schema_version": "2.0",
-  "brand": "BusNordic",
-  "model": "II:9.5 NF",
-  "body": "rigid",
-  "bus_class": "II",
-  "floor_type": "normal_floor",
+  "schema_version": "3.0",
   "width_mm": 2550,
   "height_mm": 3300,
+  "front_display": "II:9.5 NF",
   "tyre": {
     "size": "275/70 R22.5"
   },
   "base_color": {
-    "hex": "#3E8E5A",
-    "name": "green"
+    "hex": "#3E8E5A"
+  },
+  "front": {
+    "badge_text": "BusNordic"
   },
   "sections": [
     {

@@ -1,25 +1,18 @@
 {
-  "schema_version": "2.0",
-  "brand": "Volvo",
-  "model": "8900 LE 12.4 m",
-  "body": "rigid",
-  "bus_class": "II",
-  "floor_type": "low_entry",
+  "schema_version": "3.0",
   "width_mm": 2550,
   "height_mm": 3300,
+  "roof_equipment_mm": 0,
+  "front_display": "8900 LE 12.4 m",
   "tyre": {
     "size": "295/80 R22.5",
     "rear_twin": true
   },
   "base_color": {
-    "hex": "#E9ECEC",
-    "name": "white"
+    "hex": "#E9ECEC"
   },
   "front": {
-    "template": "intercity"
-  },
-  "photo": {
-    "uri": "photos/innlandstrafikk_8900_right.jpg"
+    "badge_text": "Volvo"
   },
   "sections": [
     {
@@ -40,9 +33,5 @@
         }
       ]
     }
-  ],
-  "meta": {
-    "operator": "Innlandstrafikk"
-  },
-  "roof_equipment_mm": 0
+  ]
 }

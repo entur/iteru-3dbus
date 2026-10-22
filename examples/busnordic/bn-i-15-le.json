@@ -1,18 +1,16 @@
 {
-  "schema_version": "2.0",
-  "brand": "BusNordic",
-  "model": "I:15 LE",
-  "body": "rigid",
-  "bus_class": "I",
-  "floor_type": "low_entry",
+  "schema_version": "3.0",
   "width_mm": 2550,
   "height_mm": 3100,
+  "front_display": "I:15 LE",
   "tyre": {
     "size": "275/70 R22.5"
   },
   "base_color": {
-    "hex": "#1F6FB2",
-    "name": "blue"
+    "hex": "#1F6FB2"
+  },
+  "front": {
+    "badge_text": "BusNordic"
   },
   "sections": [
     {

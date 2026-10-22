@@ -82,7 +82,7 @@ let parsed;
 const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).documentElement);
 
 /**
- * Front face: body colour, the brand badge that stands in for the grille standing on the grill
+ * Front face: body colour, the badge that stands in for the grille standing on the grill
  * line, a headlight on each side of it (a copy of the drawing fitted in, and the same mirrored;
  * the drawing itself stays untouched), and a windscreen from the lintel line down to the dash
  * line, stopping above the badge and left out where that leaves it no room. The lines are y on
@@ -134,7 +134,7 @@ export const faces = (inp, { headlight: light } = {}) => {
   return {
     right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), glass[i].map(flip(b.len)), band)),
     left: boxes.map((b, i) => side(b.len, top, fill, [], across[i], band)),
-    front: [front(w, h, fill, inp.front?.badge_text ?? inp.brand, lines, light ?? headlight(), inp.front_display)],
+    front: [front(w, h, fill, inp.front?.badge_text ?? '', lines, light ?? headlight(), inp.front_display)],
     rear: [face(w, h, plain(w, h, fill))],
   };
 };

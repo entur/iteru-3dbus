@@ -2,7 +2,7 @@ import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import '../guide/bus-3d.js';
 import { total } from './derive.js';
-import { addAxle, addDoor, rmAxle, rmDoor, same, set, signed, toJson } from './edit.js';
+import { addAxle, addDoor, rmAxle, rmDoor, same, set, toJson } from './edit.js';
 import { gallery } from './gallery.js';
 import { form, header, mapCard, viewBar } from './ui.js';
 import { validate } from './validate.js';
@@ -12,7 +12,7 @@ const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, c
 
 const VEHICLES = 'Concrete vehicles:', TYPE_SET = 'Type set:';  // captions of the two groups of buttons in the header
 // a page of cards per set: the route is the directory under examples/ that holds the set's buses; order: its cards by class, here as the Bus Nordic tables run
-const SETS = { busnordic: { title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions`, order: ['A', 'I', 'II', 'B', 'III'] } };
+const SETS = { busnordic: { title: 'BusNordic', sub: (n) => `Bus Nordic 2.0 · ${n} example bus types, generic dimensions`, order: ['a', 'i', 'ii', 'b', 'iii'] } };
 
 const srcs = import.meta.glob('../examples/**/*.json', { eager: true, query: '?url', import: 'default' });
 const buses = Object.entries(import.meta.glob('../examples/**/*.json', { eager: true, import: 'default' })).map(([p, inp]) => ({
@@ -36,7 +36,7 @@ DARK.addEventListener('change', (e) => (dark.value = e.matches));
 const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
 const errs = computed(() => (draft.value ? validate(draft.value) : []));
 const dirty = computed(() => !same(draft.value, src.value));
-const maps = computed(() => (ok.value ? faces(signed(ok.value)) : null));  // the face maps of what is drawn
+const maps = computed(() => (ok.value ? faces(ok.value) : null));  // the face maps of what is drawn
 const mapped = mapCard(maps);
 const edited = computed(() => !!ok.value && !same(ok.value, src.value));  // what is drawn differs from the file
 let aim = false, stop = null;
@@ -96,22 +96,19 @@ const follow = () => {
   route.value = routed();
   route.value || named() === id.value || select(named());
 };
-/** The buses of a set in the order of its cards: by class as the set lists them, then by length. */
+/** The buses of a set in the order of its cards: by class as the set lists them, the class being the second part of the id, then by length. */
 const inSet = (s) =>
-  buses.filter((b) => b.set === s).sort((a, b) => SETS[s].order.indexOf(a.inp.bus_class) - SETS[s].order.indexOf(b.inp.bus_class) || total(a.inp) - total(b.inp));
-/** A bus on its button: brand and the first word of the model; a bus of a set has its whole model, which is what tells it apart. */
-const name = ({ inp, set }) => `${inp.brand} ${set ? inp.model : inp.model.split(' ')[0]}`;
-
+  buses.filter((b) => b.set === s).sort((a, b) => SETS[s].order.indexOf(a.id.split('-')[1]) - SETS[s].order.indexOf(b.id.split('-')[1]) || total(a.inp) - total(b.inp));
 effect(() => {
   if (!ok.value) return;
   const r = route.value, sel = buses.find((b) => b.id === id.value);
   header(
     [
       // a selected bus of a set takes the last place among the vehicles, which is there for it alone
-      { caption: VEHICLES, btns: [...own, ...(sel.set ? [sel] : [])].map((b) => ({ label: name(b), on: !r && b === sel, go: () => view(b.id) })) },
+      { caption: VEHICLES, btns: [...own, ...(sel.set ? [sel] : [])].map((b) => ({ label: b.id, on: !r && b === sel, go: () => view(b.id) })) },
       { caption: TYPE_SET, btns: Object.entries(SETS).map(([s, { title }]) => ({ label: title, on: r === s, go: () => (location.hash = s) })) },
     ],
-    { inp: ok.value, src: sel.src },
+    { id: sel.id, inp: ok.value, src: sel.src },
     r ? { title: SETS[r].title, sub: SETS[r].sub(inSet(r).length) } : null,
   );
 });

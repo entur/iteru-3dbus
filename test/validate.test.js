@@ -11,17 +11,14 @@ const volvo = load('volvo-8900'), citaro = load('citaro-g');
 const sec = (inp, i, patch) => ({ ...inp, sections: inp.sections.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
 
 const bad = {
-  'rigid with two sections': { ...citaro, body: 'rigid' },
-  'articulated with one section': { ...volvo, body: 'articulated' },
-  'articulated class III': { ...citaro, bus_class: 'III' },
-  '12.4 m class A': { ...volvo, bus_class: 'A' },
-  '3.3 m double-decker': { ...volvo, floor_type: 'low_floor_lower_level' },
+  'a brand': { ...volvo, brand: 'Volvo' },
+  'a bus class': { ...volvo, bus_class: 'I' },
+  'a schema version of 2.0': { ...volvo, schema_version: '2.0' },
   'leftover market field': { ...volvo, market: 'NO' },
   'first section with bellows': sec(volvo, 0, { bellows_ahead_mm: 600 }),
   'trailer without bellows': sec(citaro, 1, { bellows_ahead_mm: undefined }),
   'axles out of order': sec(volvo, 0, { axles_mm: [9099, 2769] }),
   'axle outside the section': sec(volvo, 0, { axles_mm: [2769, 12500] }),
-  'over 18.75 m': sec(citaro, 1, { length_mm: 8000 }),
   'axle gap 1 on a two-axle section': sec(volvo, 0, { doors_hint: [{ zone: 'between_axles', axle_gap: 1, leaves: 2 }, { zone: 'front_overhang', leaves: 2 }] }),
   'a door between the axles of a one-axle section': sec(citaro, 1, { doors_hint: [{ zone: 'between_axles', leaves: 2 }, { zone: 'rear_overhang', leaves: 2 }] }),
   'missing tyre size and diameter': { ...volvo, tyre: { rear_twin: true } },
@@ -29,8 +26,6 @@ const bad = {
   'a window band 200 mm high': { ...volvo, win_band_height_mm: 200 },
   'a band of 1.5 m below the grille': { ...volvo, band_below_grill_mm: 1500 },
   'the band above as a percentage': { ...volvo, band_above_doors_and_windows_pct: 10 },
-  'one door on a 12.4 m bus': sec(volvo, 0, { doors_hint: [{ zone: 'front_overhang', leaves: 2 }] }),
-  'an empty door list on a 12.4 m bus': sec(volvo, 0, { doors_hint: [] }),
   'a window band hinted per section': sec(volvo, 0, { windows_hint: { band_mm: [1250, 2900] } }),
 };
 
@@ -42,14 +37,19 @@ test('examples pass', () => {
 test('the BusNordic set passes, one bus per row of the Bus Nordic tables', () => {
   const set = readdirSync(BUSNORDIC).map((f) => JSON.parse(readFileSync(new URL(f, BUSNORDIC), 'utf8')));
   assert.equal(set.length, BUSNORDIC_ROWS);
-  set.forEach((inp) => assert.deepEqual(validate(inp), [], inp.model));
-  assert.equal(new Set(set.map((inp) => inp.model)).size, set.length);
+  set.forEach((inp) => assert.deepEqual(validate(inp), [], inp.front_display));
+  assert.equal(new Set(set.map((inp) => inp.front_display)).size, set.length);
   assert.deepEqual([...new Set(set.map((inp) => hints(inp).length))].sort(), [1, 2, 3, 4, 5]);
 });
 
 Object.entries(bad).forEach(([name, inp]) =>
   test(`rejects ${name}`, () => assert.notEqual(validate(JSON.parse(JSON.stringify(inp))).length, 0)),
 );
+
+test('accepts a 19 m articulated bus and a 12.4 m bus with one door', () => {
+  assert.deepEqual(validate(sec(citaro, 1, { length_mm: 8000 })), []);
+  assert.deepEqual(validate(sec(volvo, 0, { doors_hint: [{ zone: 'front_overhang', leaves: 2 }] })), []);
+});
 
 test('accepts a band above the doors and windows and a window band height', () =>
   assert.deepEqual(validate({ ...volvo, band_above_mm: 300, win_band_height_mm: 1200 }), []));

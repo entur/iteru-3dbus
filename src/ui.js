@@ -1,15 +1,13 @@
 import { computed, effect, signal } from '@preact/signals-core';
+import { hints, total } from './derive.js';
 import { DOOR, FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec, typed } from './edit.js';
 import { VIEWS } from './views.js';
 
 const FACES = { right: 'Right', left: 'Left', front: 'Front', rear: 'Rear' };  // sides of the bus boxes a face map exists for
-const BODY = { rigid: 'rigid', articulated: 'articulated', bi_articulated: 'bi-articulated' };
-const CLASS = { A: 'A · small, standing', B: 'B · small, seated', I: 'I · city', II: 'II · regional', III: 'III · coach' };
-const FLOOR = { low_floor: 'Low floor', low_entry: 'Low entry', normal_floor: 'Normal floor', low_floor_lower_level: 'Double deck, low lower deck' };
 const ZONE = { front_overhang: 'Front overhang', between_axles: 'Between axles', rear_overhang: 'Rear overhang' };
 const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES = { 1: '1 leaf', 2: '2 leaves' };
 /** Display names of the schema's enum values, by the key that holds them. */
-export const NAMES = { body: BODY, bus_class: CLASS, floor_type: FLOOR, zone: ZONE, bias: BIAS, leaves: LEAVES };
+export const NAMES = { zone: ZONE, bias: BIAS, leaves: LEAVES };
 const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and the hinted doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
@@ -57,17 +55,27 @@ export const el = (tag, props = {}, ...kids) => {
   return e;
 };
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * The main figures of a bus on one line.
+ * @param {object} inp bus input
+ * @returns {string} e.g. '12.396 m · 2 axles · 2 doors'
+ */
+export const brief = (inp) =>
+  [`${total(inp) / 1000} m`, plural(inp.sections.flatMap((s) => s.axles_mm).length, 'axle'), plural(hints(inp).length, 'door')].join(' · ');
+
 /**
  * Fills the header: the captioned groups of buttons, then the title with the link to the shown
- * bus's input JSON as loaded beside it, fleet-number plate and operator line. A page takes the
+ * bus's input JSON as loaded beside it and a line of its main figures. A page takes the
  * bus's place in the title and the line below it, and has no JSON links.
  * @param {{caption: string, btns: {label: string, on: boolean, go: () => void}[]}[]} groups on: shown as pressed
- * @param {{inp: object, src: string}} cur the selected bus: its input with the valid edits applied, and the JSON url
+ * @param {{id: string, inp: object, src: string}} cur the selected bus: its id, its input with the valid edits applied, and the JSON url
  * @param {?{title: string, sub: string}} page the page shown in place of the bus
  */
 export const header = (groups, cur, page) => {
-  const { inp, src } = cur;
-  const title = page?.title ?? `${inp.brand} ${inp.model}`;
+  const { id, inp, src } = cur;
+  const title = page?.title ?? id;
   Object.assign(document.getElementById('src'), { href: src, title: `Input JSON of ${title} as loaded` });
   document.getElementById('json').hidden = !!page;
   document.getElementById('models').replaceChildren(
@@ -76,10 +84,7 @@ export const header = (groups, cur, page) => {
   );
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;
-  const plate = document.getElementById('plate');
-  plate.textContent = inp.meta?.fleet_number ?? '';
-  plate.hidden = !!page || !inp.meta?.fleet_number;
-  document.getElementById('sub').textContent = page?.sub ?? [inp.meta?.operator, `${BODY[inp.body]}, class ${inp.bus_class}`].filter(Boolean).join(' · ');
+  document.getElementById('sub').textContent = page?.sub ?? brief(inp);
 };
 
 /**
