@@ -3,7 +3,7 @@
   "$id": "urn:bus-model:input:3.0",
   "title": "Bus model input",
   "description": "The input to the bus renderer: dimensions per body section, tyres, colour, front text and optional door/window hints. Everything in it is drawn; dimension names follow NeTEx VehicleType (Width, Height) in snake_case with explicit mm units.",
-  "$comment": "Rules JSON Schema cannot express, checked in code: (1) each section's axles_mm ascending and inside 0..length_mm; (4) axle_gap < number of axles - 1; (5) door hints in the same zone and gap must not overlap once placed. Regulation rules (2) total length and (3) door count moved to src/limits.js.",
+  "$comment": "Rules JSON Schema cannot express, checked in code: (1) each section's axles_mm ascending and inside 0..length_mm; (4) axle_gap < number of axles - 1; (5) placed doors (doors or doors_hint) must not overlap each other or an arch, nor reach past the section's end. Regulation rules (2) total length and (3) door count moved to src/limits.js.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -169,6 +169,14 @@
           "maxItems": 4,
           "description": "Door hints for this section. A section without the list has no doors. An empty list is the same."
         },
+        "doors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/door_at"
+          },
+          "maxItems": 4,
+          "description": "Doors at fixed places: each door's front edge x_mm from the front of this section, and its width. A section takes doors or doors_hint, not both."
+        },
         "windows_hint": {
           "$ref": "#/$defs/windows_hint"
         }
@@ -176,7 +184,13 @@
       "required": [
         "length_mm",
         "axles_mm"
-      ]
+      ],
+      "not": {
+        "required": [
+          "doors",
+          "doors_hint"
+        ]
+      }
     },
     "lead_section": {
       "allOf": [
@@ -258,6 +272,38 @@
           "minimum": 600,
           "maximum": 1600,
           "description": "Overrides the width implied by leaves."
+        },
+        "glazed": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "door_at": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x_mm",
+        "width_mm",
+        "leaves"
+      ],
+      "description": "A door at a fixed place, in mm from the front of its section.",
+      "properties": {
+        "x_mm": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Front edge of the door."
+        },
+        "width_mm": {
+          "type": "integer",
+          "minimum": 600,
+          "maximum": 1600
+        },
+        "leaves": {
+          "enum": [
+            1,
+            2
+          ]
         },
         "glazed": {
           "type": "boolean",

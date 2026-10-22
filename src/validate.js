@@ -1,10 +1,11 @@
 import Ajv from 'ajv/dist/2020.js';
+import { clashes } from './derive.js';
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
 
 const ajv = new Ajv({ allErrors: true, strict: false, formats: { 'uri-reference': true } });
 const chk = ajv.compile(schema);
 
-/** Cross-field rules (1) and (4) from the schema's top-level $comment. (5), door overlap, is not checked yet. */
+/** Cross-field rules (1) and (4) from the schema's top-level $comment. (5) is door clashes. */
 const rules = [
   (inp) =>
     inp.sections.flatMap((s, i) => [
@@ -19,12 +20,20 @@ const rules = [
     ),
 ];
 
+/** Rule (5), after (1) and (4): one message per clash of a placed door. */
+const doorClashes = (inp) =>
+  clashes(inp).map(({ section, door, other, axle }) =>
+    other !== undefined ? `sections[${section}] door ${door + 1} lies on door ${other + 1}`
+    : axle !== undefined ? `sections[${section}] door ${door + 1} lies on axle ${axle + 1}`
+    : `sections[${section}] door ${door + 1} reaches past the rear end`);
+
 /**
  * Validates a bus input against the schema, then the cross-field rules.
  * @param {unknown} inp parsed JSON
  * @returns {string[]} error messages, empty when valid
  */
-export const validate = (inp) =>
-  chk(inp)
-    ? rules.flatMap((r) => r(inp))
-    : chk.errors.map((e) => `${e.instancePath || '/'} ${e.message}`);
+export const validate = (inp) => {
+  if (!chk(inp)) return chk.errors.map((e) => `${e.instancePath || '/'} ${e.keyword === 'not' ? 'takes doors or doors_hint, not both' : e.message}`);
+  const errs = rules.flatMap((r) => r(inp));
+  return errs.length ? errs : doorClashes(inp);
+};

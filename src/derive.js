@@ -103,20 +103,47 @@ const zone = (s, dx, { zone: z, axle_gap: g = 0 }) => {
 };
 
 /**
- * Places every hinted door: the zone gives a span, the bias a position in it. A door wider than
- * its span is centred on it.
+ * Which list of doors a section carries.
+ * @param {object} s section
+ * @returns {'doors'|'doors_hint'} 'doors' when the section has absolute doors
+ */
+export const doorKey = (s) => (s.doors ? 'doors' : 'doors_hint');
+
+/**
+ * Places every door: absolute doors as given; hints by the zone, which gives a span, and the
+ * bias, a position in it. A hinted door wider than its span is centred on it.
  * @param {object} inp validated bus input
  * @returns {{x0: number, x1: number, leaves: number, glazed: boolean}[][]} per section its doors
- *   in hint order, as spans in mm from the section's own front
+ *   in list order, as spans in mm from the section's own front
  */
 export const doors = (inp) => {
   const { dx } = arch(tyreDia(inp.tyre) / 2);
   return inp.sections.map((s) =>
-    (s.doors_hint ?? []).map((d) => {
-      const [lo, hi] = zone(s, dx, d), w = doorWidth(d), slack = hi - lo - w;
-      const x0 = Math.round(lo + slack * BIAS[slack < 0 ? 'middle' : d.bias ?? 'middle']);
-      return { x0, x1: x0 + w, leaves: d.leaves, glazed: d.glazed ?? true };
-    }),
+    doorKey(s) === 'doors'
+      ? s.doors.map((d) => ({ x0: d.x_mm, x1: d.x_mm + d.width_mm, leaves: d.leaves, glazed: d.glazed ?? true }))
+      : (s.doors_hint ?? []).map((d) => {
+          const [lo, hi] = zone(s, dx, d), w = doorWidth(d), slack = hi - lo - w;
+          const x0 = Math.round(lo + slack * BIAS[slack < 0 ? 'middle' : d.bias ?? 'middle']);
+          return { x0, x1: x0 + w, leaves: d.leaves, glazed: d.glazed ?? true };
+        }),
+  );
+};
+
+/**
+ * The places where a placed door lies on another door, on a wheel arch or past a section end.
+ * Doors that only touch do not clash.
+ * @param {object} inp validated bus input
+ * @returns {{section: number, door: number, other?: number, axle?: number, end?: 'rear'}[]} per
+ *   door its clashes: earlier doors, then axles, then the end
+ */
+export const clashes = (inp) => {
+  const { R } = arch(tyreDia(inp.tyre) / 2), placed = doors(inp);
+  return inp.sections.flatMap((s, section) =>
+    placed[section].flatMap((d, door) => [
+      ...placed[section].slice(0, door).flatMap((o, other) => (d.x0 < o.x1 && o.x0 < d.x1 ? [{ section, door, other }] : [])),
+      ...s.axles_mm.flatMap((a, axle) => (d.x0 < a + R && a - R < d.x1 ? [{ section, door, axle }] : [])),
+      ...(d.x1 > s.length_mm ? [{ section, door, end: 'rear' }] : []),
+    ]),
   );
 };
 

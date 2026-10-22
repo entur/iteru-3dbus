@@ -18,7 +18,8 @@ const paths = (fs) => fs.filter((f) => f.path).map((f) => f.path.join('.'));
 test('every schema value has a row', () => {
   const { sections, schema_version, ...top } = schema.properties;
   assert.deepEqual(paths(FIELDS).sort(), leaves(top).sort());
-  const { windows_hint: _, ...common } = schema.$defs.section_common.properties;
+  // absolute doors have no editor rows yet
+  const { windows_hint: _, doors: __, ...common } = schema.$defs.section_common.properties;
   assert.deepEqual(paths(SECTION).sort(), [...Object.keys(common), ...leaves({ windows_hint: schema.$defs.windows_hint }), 'bellows_ahead_mm'].sort());
   assert.deepEqual(paths(DOOR).sort(), Object.keys(schema.$defs.door_hint.properties).sort());
   assert.deepEqual([...new Set(FIELDS.map((f) => f.group))].filter((g) => !GROUPS.includes(g)), []);
@@ -72,7 +73,7 @@ test('axles are added and removed inside the schema limits', () => {
   assert.deepEqual(more.sections[0].axles_mm, [2769, 9099, 10748]);
   assert.deepEqual(validate(more), []);
   assert.deepEqual(trail.sections[1].axles_mm, [4700, 5850]);
-  assert.deepEqual(validate(trail), []);
+  assert.deepEqual(validate(trail), ['sections[1] door 2 lies on axle 2', 'sections[1] door 2 reaches past the rear end']);  // rule (5): the hinted rear door has no room left
   assert.deepEqual(rmAxle(more, 0), volvo);
   assert.deepEqual(rmAxle(trail, 1), citaro);
 });
@@ -102,7 +103,7 @@ test('a door is added with two leaves, in the zone that holds the fewest', () =>
 test('a door is never added between the axles of a one-axle section', () => {
   const full = [0, 1, 2].reduce((inp) => addDoor(inp, 1), set(citaro, ['sections', 1, 'doors_hint'], undefined));
   assert.deepEqual(full.sections[1].doors_hint.map((d) => d.zone), ['front_overhang', 'rear_overhang', 'front_overhang']);
-  assert.deepEqual(validate(full), []);
+  assert.deepEqual(validate(full), ['sections[1] door 3 lies on door 1']);  // rule (5): the third door shares the front zone
 });
 
 test('a door is removed by its index, and the list with its last door', () => {

@@ -20,7 +20,7 @@ const maxLen = (inp) => {
  */
 export const limits = (inp) => {
   const len = total(inp), max = maxLen(inp);
-  const named = inp.sections.some((s) => s.doors_hint);
+  const named = inp.sections.some((s) => s.doors_hint || s.doors);
   const n = doors(inp).flat().length;
   return [
     ...over('width', inp.width_mm, MAX_W),

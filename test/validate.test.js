@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { validate } from '../src/validate.js';
-import { dash, doorWidth, doors, grill, hints, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
+import { clashes, dash, doorWidth, doors, grill, hints, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
 
 const BUSNORDIC = new URL('../examples/busnordic/', import.meta.url), BUSNORDIC_ROWS = 17;
 
@@ -206,4 +206,42 @@ test('the left side takes no more panes than stay 300 mm wide', () => {
   const short = sec(citaro, 1, { length_mm: 700, axles_mm: [350], doors_hint: [fo, ro] });
   assert.deepEqual(windowsLeft(short)[1], [pane(200, 500)]);
   assert.deepEqual(windowsLeft(sec(citaro, 1, { length_mm: 400, axles_mm: [200] }))[1], []);
+});
+
+const abs = sec(volvo, 0, { doors_hint: undefined, doors: [{ x_mm: 600, width_mm: 1250, leaves: 2 }, { x_mm: 6000, width_mm: 1250, leaves: 2 }] });
+const absAt = (...xs) => sec(volvo, 0, { doors_hint: undefined, doors: xs.map((x_mm) => ({ x_mm, width_mm: 1250, leaves: 2 })) });
+
+test('absolute doors are drawn where they are given', () => {
+  assert.deepEqual(doors(abs)[0], [{ x0: 600, x1: 1850, leaves: 2, glazed: true }, { x0: 6000, x1: 7250, leaves: 2, glazed: true }]);
+  assert.deepEqual(validate(abs), []);
+});
+
+test('a section takes doors or doors_hint, not both', () => {
+  const errs = validate(sec(abs, 0, { doors_hint: [] }));
+  assert.ok(errs.length > 0);
+  assert.match(errs[0], /sections\/0/);
+});
+
+test('doors that only touch do not clash', () => {
+  // volvo's arch radius is 632 mm (tyreDia 1044), so axles move out of the way of the touching doors
+  assert.deepEqual(clashes(sec(absAt(600, 1850), 0, { axles_mm: [5000, 9099] })), []);
+});
+
+test('a door on a door, on an arch or past an end clashes', () => {
+  assert.deepEqual(clashes(absAt(600, 800)), [{ section: 0, door: 1, other: 0 }]);
+  assert.deepEqual(clashes(absAt(2000)), [{ section: 0, door: 0, axle: 0 }]);
+  assert.ok(validate(absAt(-10)).length > 0);
+  assert.deepEqual(clashes(absAt(11500)), [{ section: 0, door: 0, end: 'rear' }]);
+});
+
+test('rule (5) gives one message per clash, after rules (1) and (4)', () => {
+  assert.deepEqual(validate(sec(absAt(600, 800), 0, {})), ['sections[0] door 2 lies on door 1']);
+  assert.deepEqual(validate(absAt(2000)), ['sections[0] door 1 lies on axle 1']);
+  assert.deepEqual(validate(absAt(11500)), ['sections[0] door 1 reaches past the rear end']);
+  assert.deepEqual(validate(sec(absAt(600, 800), 0, { axles_mm: [9099, 2769] })), ['sections[0].axles_mm must ascend']);
+});
+
+test('hinted doors clash the same way', () => {
+  const h = { zone: 'front_overhang', leaves: 2 };
+  assert.deepEqual(clashes(sec(volvo, 0, { doors_hint: [h, h] })), [{ section: 0, door: 1, other: 0 }]);
 });

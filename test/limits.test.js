@@ -49,6 +49,12 @@ test('over 9500 mm a bus with doors needs two', () => {
   assert.deepEqual(limits({ ...volvo, sections: [bare] }), []);
 });
 
+test('over 9500 mm absolute doors count too', () => {
+  const one = { x_mm: 600, width_mm: 1250, leaves: 2 }, two = { x_mm: 6000, width_mm: 1250, leaves: 2 };
+  assert.equal(limits(sec(volvo, 0, { doors_hint: undefined, doors: [one] })).length, 1);
+  assert.deepEqual(limits(sec(volvo, 0, { doors_hint: undefined, doors: [one, two] })), []);
+});
+
 test('a fantasy bus passes validate but not limits', () => {
   const fantasy = { ...volvo, width_mm: 3500, height_mm: 5000 };
   assert.deepEqual(validate(fantasy), []);
