@@ -2,7 +2,7 @@ import { mkBus } from './bus.js';
 import { total } from './derive.js';
 import { MM } from './dims.js';
 import { bgOf, mkStageShot } from './scene.js';
-import { brief, el } from './ui.js';
+import { brief, el, inPlace } from './ui.js';
 import { faces } from './vector.js';
 import { mkViews } from './views.js';
 
@@ -51,7 +51,7 @@ const card = ({ id, file, inp, errs, src, href }, img, pick) =>
     el(
       'footer', { className: 'bar' },
       el('a', { href: src, target: '_blank', rel: 'noopener' }, SHOW),
-      inp ? el('a', { href, onclick: (e) => (e.preventDefault(), pick(file)) }, OPEN) : el('a', { ariaDisabled: 'true' }, OPEN),
+      inp ? el('a', { href, onclick: inPlace(() => pick(file)) }, OPEN) : el('a', { ariaDisabled: 'true' }, OPEN),
     ),
   );
 

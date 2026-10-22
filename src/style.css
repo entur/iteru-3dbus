@@ -33,6 +33,9 @@ body[data-page] header { position: static; max-width: none; margin: 16px 20px 0;
 /* faded by its text alone: opacity would fade the divider too */
 .bar a[aria-disabled="true"] { color: color-mix(in srgb, var(--ink) 35%, transparent); pointer-events: none; }
 #err { position: fixed; left: 20px; bottom: 80px; margin: 0; color: var(--warn); white-space: pre; }
+/* on the list, why a bus could not be shown: under the header, wrapped */
+body[data-page] #err { position: static; margin: 8px 20px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 15px; }
+body[data-page] #err:empty { display: none; }
 
 button { font: inherit; font-size: 15px; color: var(--ink); background: transparent; border: 0; border-radius: 7px; padding: 7px 12px; cursor: pointer; }
 button:hover, #json a:hover { background: rgba(110, 124, 134, 0.14); }
@@ -73,13 +76,14 @@ figure { margin: 0; }
 .faces.front, .faces.rear { width: 46%; }
 .face { display: block; min-width: 0; height: auto; }
 figcaption { color: var(--steel); font-size: 13px; margin-top: 4px; }
-.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+/* Input and Reset on the first line, the switch under them: Reset appearing moves nothing */
+.head { display: grid; grid-template-columns: 1fr auto; grid-template-rows: minmax(24px, auto); align-items: center; gap: 6px; }
+.head .limits { grid-row: 2; grid-column: 1 / -1; justify-self: start; }
 .limits { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; }
 .limits span { padding: 0 4px 0 6px; color: var(--steel); font-size: 13px; }
 .head .limits button { padding: 1px 8px; font-size: 14px; border: 0; border-radius: 6px; }
 .head button, .axles button, .door-top button, .door button, dialog button { border: 1px solid var(--line); }
 .head button { padding: 1px 10px; font-size: 14px; }
-.head > button { margin-left: auto; }  /* Reset keeps the right edge, also when the head wraps */
 .input { padding-bottom: 10px; }
 .input h2 { margin: 0; }
 details { border-top: 1px solid var(--line); }

@@ -56,6 +56,14 @@ export const el = (tag, props = {}, ...kids) => {
   return e;
 };
 
+/**
+ * Click handler for a link the app follows itself: a plain click runs `go` in place, and a click
+ * with a modifier key or another button is left to the browser (a new tab or window).
+ * @param {() => void} go what a plain click does
+ * @returns {(e: MouseEvent) => void} the handler
+ */
+export const inPlace = (go) => (e) => e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || (e.preventDefault(), go());
+
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
@@ -79,7 +87,7 @@ export const header = (cur, page, other) => {
   const title = page?.title ?? cur.id, src = document.getElementById('src'), link = document.getElementById('other');
   cur ? Object.assign(src, { href: cur.src, title: `NeTEx XML of ${cur.id} as loaded` }) : src.removeAttribute('href');
   document.getElementById('json').hidden = !!page;
-  Object.assign(link, { hidden: !other, textContent: other?.label ?? '', onclick: other && ((e) => (e.preventDefault(), other.go())) });
+  Object.assign(link, { hidden: !other, textContent: other?.label ?? '', onclick: other && inPlace(other.go) });
   other ? (link.href = other.href) : link.removeAttribute('href');
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;

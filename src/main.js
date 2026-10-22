@@ -25,7 +25,7 @@ const buses = Object.entries(import.meta.glob('../examples/**/*.xml', { eager: t
   return {
     id: p.match(/([^/]+)\.xml$/)[1],
     file,  // the path under examples/, which names the bus in /bus?file=
-    set: file.match(/^(?:([^/]+)\/)?[^/]+$/)[1],  // the directory it is in, undefined directly in examples/
+    set: file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : undefined,  // the directory it is in, undefined directly in examples/
     inp, errs, warns,
     src: srcs[p],
     href: href({ page: 'bus', file }, BASE),
