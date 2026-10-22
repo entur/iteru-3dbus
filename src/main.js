@@ -35,13 +35,14 @@ const route = signal('');  // the set whose cards page is open, '' for the viewe
 const DARK = matchMedia('(prefers-color-scheme: dark)');
 const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
 DARK.addEventListener('change', (e) => (dark.value = e.matches));
-const marks = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
+const touched = signal([]), fail = signal([]);  // keys edited since the draft was last valid; errors of a bus that could not be selected
 /** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
 const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
 const nordic = signal(saved() !== FANTASY);  // Nordic-limited: the limits count as errors; false: a fantasy bus, the schema alone
 /** The errors of an input: the schema and its rules, and the Nordic limits while they are on. */
 const check = (inp) => [...validate(inp), ...(nordic.value ? limits(inp) : [])];
 const errs = computed(() => (draft.value ? check(draft.value) : []));
+const marks = computed(() => (errs.value.length ? touched.value : []));  // what the controls show as invalid: only while the draft has errors, in either mode
 const dirty = computed(() => !same(draft.value, src.value));
 const maps = computed(() => (ok.value ? faces(ok.value) : null));  // the face maps of what is drawn
 const mapped = mapCard(maps);
@@ -52,7 +53,7 @@ let aim = false, stop = null;
 const commit = (next, key) =>
   batch(() => {
     draft.value = next;
-    marks.value = errs.value.length ? [...new Set([...marks.value, key])] : [];
+    touched.value = errs.value.length ? [...new Set([...touched.value, key])] : [];
   });
 
 /** Shows the chosen bus as loaded, dropping any edits. Another bus re-aims the current view; the same one does not. */
@@ -65,7 +66,7 @@ const select = (to) => {
   batch(() => {
     id.value = to;
     src.value = draft.value = ok.value = inp;
-    marks.value = [];
+    touched.value = [];
   });
   const [card, end] = form({ draft, ok, marks, dirty }, on);
   stop = end;
@@ -129,6 +130,7 @@ effect(() => {
   cards.hidden = !r;
   r && cards.replaceChildren((pages[`${r}:${dark.value}`] ??= gallery(inSet(r), view)));
 });
+effect(() => (document.getElementById('mode').hidden = !!route.value));
 effect(() => (err.textContent = [...fail.value, ...errs.value].join('\n')));
 
 // Modified: the bus as drawn, with its valid edits, as a file to download; there is none until an edit
