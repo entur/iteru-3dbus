@@ -9,6 +9,7 @@ import { mkViews } from './views.js';
 const SHOT_W = 640, SHOT_H = 360, VIEW = 'quarter';  // every card's picture, in css px
 const CLOSER = 0.3;  // share of the way from the view's eye to its target: a card has no chrome to keep clear of
 const DETAIL = 0.35;  // texture density for a card's picture, 1280 px wide at most: a third of the viewer's; shooting #busnordic went from 17 long tasks to 1
+const SHOW = 'Show XML', OPEN = 'Open';  // the card's bar
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 /**
@@ -39,26 +40,32 @@ const shoot = (shots) => {
   return shots.reduce((p, s) => p.then(() => each(s)), Promise.resolve()).finally(() => stage.dispose());
 };
 
-const card = (b, img, pick) => {
-  const { inp } = b;
-  return el(
-    'a',
-    { className: 'card bus', href: b.href, onclick: (e) => (e.preventDefault(), pick(b.file)) },
-    img,
-    el('h2', {}, b.id),
-    el('p', {}, brief(inp)),
+/** A card: the picture, id and main figures of a bus, or the errors of a file fromNetex rejected; a bar to its XML and, when valid, the viewer. */
+const card = ({ id, file, inp, errs, src, href }, img, pick) =>
+  el(
+    'article',
+    { className: inp ? 'card bus' : 'card bus bad' },
+    ...(inp ? [img] : []),
+    el('h2', {}, id),
+    inp ? el('p', {}, brief(inp)) : el('ul', { className: 'errs' }, ...errs.map((e) => el('li', {}, e))),
+    el(
+      'footer', { className: 'bar' },
+      el('a', { href: src, target: '_blank', rel: 'noopener' }, SHOW),
+      inp ? el('a', { href, onclick: (e) => (e.preventDefault(), pick(file)) }, OPEN) : el('a', { ariaDisabled: 'true' }, OPEN),
+    ),
   );
-};
 
 /**
- * A page of cards, one per bus: its 3D picture, id and main figures. The pictures are taken
- * once and come in one by one. A card opens its bus in the viewer.
- * @param {{id: string, file: string, inp: object, href: string}[]} buses valid buses to show, in the order of their cards
- * @param {(file: string) => void} pick called with the file of the card chosen
+ * A page of cards, one per file: the bus's 3D picture, id and main figures, or for a file that
+ * fromNetex rejected its errors and no picture; each with a bar that opens the XML in a new tab
+ * and the bus in the viewer. The pictures are taken once and come in one by one.
+ * @param {{id: string, file: string, inp?: object, errs: string[], src: string, href: string}[]} buses
+ *   the files to show, in the order of their cards; src: the XML's url, href: the bus's route
+ * @param {(file: string) => void} pick called with the file of the card opened
  * @returns {HTMLElement} the page
  */
 export const gallery = (buses, pick) => {
-  const shots = buses.map(({ id, inp }) => ({ id, inp, img: el('img', { src: BLANK, alt: `${id} in 3D`, width: SHOT_W, height: SHOT_H }) }));
-  shots.length && queueMicrotask(() => shoot(shots));
-  return el('div', { className: 'gallery' }, ...buses.map((b, i) => card(b, shots[i].img, pick)));
+  const imgs = new Map(buses.filter((b) => b.inp).map((b) => [b, el('img', { src: BLANK, alt: `${b.id} in 3D`, width: SHOT_W, height: SHOT_H })]));
+  imgs.size && queueMicrotask(() => shoot([...imgs].map(([{ id, inp }, img]) => ({ id, inp, img }))));
+  return el('div', { className: 'gallery' }, ...buses.map((b) => card(b, imgs.get(b), pick)));
 };

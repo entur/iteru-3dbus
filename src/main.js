@@ -18,7 +18,7 @@ const LIST_PAGE = { title: 'All buses', sub: (n) => `${n} NeTEx files in example
 // the cards of a directory under examples/ by class, the second part of the id, as the Bus Nordic tables run; then by length
 const ORDER = { busnordic: ['a', 'i', 'ii', 'b', 'iii'] };
 
-// every example twice: its url, for the Original link, and its text, read through fromNetex; a file it rejects keeps its errors, shown when it is opened
+// every example twice: its url, for the Original link, and its text, read through fromNetex; a file it rejects keeps its errors, shown on its card
 const srcs = import.meta.glob('../examples/**/*.xml', { eager: true, query: '?url', import: 'default' });
 const buses = Object.entries(import.meta.glob('../examples/**/*.xml', { eager: true, query: '?raw', import: 'default' })).map(([p, xml]) => {
   const { inp, errs = [], warns = [] } = fromNetex(xml), file = p.replace('../examples/', '');
@@ -137,7 +137,7 @@ effect(() => {
   const list = route.value.page === 'list';
   document.body.toggleAttribute('data-page', list);
   cards.hidden = !list;
-  list && cards.replaceChildren((pages[dark.value] ??= gallery(listed.filter((b) => b.inp), (to) => show({ page: 'bus', file: to }, 'push'))));
+  list && cards.replaceChildren((pages[dark.value] ??= gallery(listed, (to) => show({ page: 'bus', file: to }, 'push'))));
 });
 effect(() => (document.getElementById('mode').hidden = route.value.page === 'list'));
 // on the list, only why a bus could not be shown

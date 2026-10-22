@@ -154,14 +154,15 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
   door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
-- **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per bus in the order given, no edit chrome. Every
+- **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per file in the order given, no edit chrome; a file `fromNetex`
+  rejected gets its errors and no picture. Every
   picture is taken on one `mkStageShot` stage, on the colour behind the cards (`bgOf`), at `DETAIL` texture density
   (a card needs a third of the viewer's; rasterising the SVG maps was most of the cost of shooting), one bus after the other: a
-  `<bus-3d>` per card would run past the browser's WebGL context limit. A card opens its bus in
-  the viewer.
+  `<bus-3d>` per card would run past the browser's WebGL context limit. A bar on each card's lower edge,
+  Show XML | Open: the file in a new tab, and the bus in the viewer (disabled for a rejected file).
 - **`main.js`** — loads every `examples/**/*.xml` through `import.meta.glob` (`?raw` for `fromNetex`, `?url` for
   Original), so any file dropped in `examples/` becomes a selectable bus; a file `fromNetex` rejects
-  keeps its errors, shown when it is opened, and has no card. A section's door row is rebuilt when
+  keeps its errors, shown on its card and when it is opened. A section's door row is rebuilt when
   its `doorKey` changes. Two routes (`route.js`, under `import.meta.env.BASE_URL`): `/list`, a page of cards
   of every file, directly in `examples/` first, then each directory (`ORDER`: `busnordic` by class, then length),
   and `/bus?file=<path under examples/>`, the viewer. The app starts in `/list`; the old `?bus=<id>` and
