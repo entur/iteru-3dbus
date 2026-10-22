@@ -26,7 +26,7 @@ jobs:
       - name: Tag is the package version
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
       - run: npm test
-      - run: npm run validate -- examples/*.json examples/busnordic/*.json
+      - run: npm run validate -- examples/*.xml examples/busnordic/*.xml
       # the tarball npm publish sends; the versionless copy serves releases/latest/download/
       - run: |
           npm run build:lib

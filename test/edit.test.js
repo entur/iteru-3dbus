@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, DOOR_AT, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec, toJson, typed } from '../src/edit.js';
+import { DOOR, DOOR_AT, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, checks, get, rmAxle, rmDoor, same, set, shifted, spec, toJson, typed } from '../src/edit.js';
 import { doors, total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 import { load } from './examples.js';
@@ -196,4 +196,15 @@ test('a section whose last absolute door is removed takes hints again', () => {
   assert.equal('doors' in none.sections[0], false);
   assert.deepEqual(out.sections[0].doors_hint, [{ zone: 'front_overhang', leaves: 2 }]);
   assert.equal('doors' in out.sections[0], false);
+});
+
+test('checks runs the limits only on a draft the schema passes, and only while they are on', () => {
+  const bad = set(volvo, ['tyre', 'size'], '295/80');
+  [true, false].forEach((nordic) => assert.deepEqual(checks(bad, nordic), validate(bad), `nordic ${nordic}`));
+  assert.ok(checks(bad, true).some((e) => e.startsWith('/tyre/size')));
+  const wide = set(volvo, ['width_mm'], 2600);
+  assert.deepEqual(validate(wide), []);
+  assert.deepEqual(checks(wide, true), ['width 2600 mm exceeds 2550 mm']);
+  assert.deepEqual(checks(wide, false), []);
+  assert.deepEqual(checks(volvo, true), []);
 });

@@ -2,12 +2,10 @@ import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import '../guide/bus-3d.js';
 import { doorKey, total } from './derive.js';
-import { addAxle, addDoor, rmAxle, rmDoor, same, set, toJson } from './edit.js';
+import { addAxle, addDoor, checks, rmAxle, rmDoor, same, set, toJson } from './edit.js';
 import { gallery } from './gallery.js';
-import { limits } from './limits.js';
 import { fromNetex } from './netex.js';
 import { form, header, mapCard, modeBar, viewBar } from './ui.js';
-import { validate } from './validate.js';
 import { faces } from './vector.js';
 
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
@@ -45,8 +43,8 @@ const warns = signal([]);  // what fromNetex warned of when it read the selected
 /** The saved limits switch; storage may be missing or blocked, and then the default (Nordic-limited) holds. */
 const saved = () => { try { return localStorage.getItem(MODE_KEY); } catch { return null; } };
 const nordic = signal(saved() !== FANTASY);  // Nordic-limited: the limits count as errors; false: a fantasy bus, the schema alone
-/** The errors of an input: the schema and its rules, and the Nordic limits while they are on. */
-const check = (inp) => [...validate(inp), ...(nordic.value ? limits(inp) : [])];
+/** The errors of an input: the schema and its rules, and the Nordic limits once those pass, while they are on. */
+const check = (inp) => checks(inp, nordic.value);
 const errs = computed(() => (draft.value ? check(draft.value) : []));
 const marks = computed(() => (errs.value.length ? touched.value : []));  // what the controls show as invalid: only while the draft has errors, in either mode
 const dirty = computed(() => !same(draft.value, src.value));

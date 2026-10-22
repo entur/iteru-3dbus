@@ -222,3 +222,31 @@ test('every example reads through fromNetex with no errors or warnings', () => {
   assert.equal(buses.length, 19);
   buses.forEach(({ id, warns }) => assert.deepEqual(warns, [], id));
 });
+
+test('rejects what is not a string, with an error', () => {
+  [undefined, null, 5, {}].forEach((x) => {
+    const res = fromNetex(x);
+    assert.equal(res.ok, false);
+    assert.deepEqual(res.errs, ['xml: expected a string']);
+  });
+});
+
+const VT = 'VehicleType 3dbus:VehicleType:8900-12.4';
+
+test('an error on a root value of the input names the KeyValue it was read from', () => {
+  rejects(fromNetex(patch(RIGID, '<Value>#E9ECEC</Value>', '<Value>#E9ECE</Value>')), `${VT}: 3dbus:base_color: /base_color/hex`);
+  rejects(fromNetex(patch(RIGID, '<Value>295/80 R22.5</Value>', '<Value>295/80</Value>')), `${VT}: 3dbus:tyre_size: /tyre/size`);
+  rejects(fromNetex(patch(RIGID, '<Value>250</Value>', '<Value>2000</Value>')), `${VT}: 3dbus:band_above_mm: /band_above_mm`);
+});
+
+test('an error on a root value of the input names the element it was read from', () => {
+  rejects(fromNetex(patch(RIGID, '<Height>3.3</Height>', '<Height>7</Height>')), `${VT}: Height: /height_mm`);
+  rejects(fromNetex(patch(RIGID, '<Width>2.55</Width>', '<Width>1</Width>')), `${VT}: Width: /width_mm`);
+});
+
+test('an error on the number of sections names the DeckPlan', () => {
+  const four = ARTIC.replace(/<netex:Deck id="3dbus:Deck:trailer"[\s\S]*?<\/netex:Deck>/, (d) =>
+    [d, ...[1, 2].map((n) => d.replace('3dbus:Deck:trailer', `3dbus:Deck:extra${n}`))].join(''));
+  assert.notEqual(four, ARTIC);
+  rejects(fromNetex(four), 'DeckPlan 3dbus:DeckPlan:citaro-g: /sections');
+});

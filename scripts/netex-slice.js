@@ -12,9 +12,9 @@ const READ = {
   DeckPlan: { src: 'DeckPlan', keep: ['id', 'decks'] },
   decks: { src: 'decks_RelStructure', keep: ['Deck'] },
   Deck: { src: 'Deck', keep: ['id', 'keyList', 'DeckLevelRef', 'deckSpaces'] },
-  deckSpaces: { src: 'deckSpaces_RelStructure', keep: ['DeckSpace_Dummy'] },
+  deckSpaces: { src: 'deckSpaces_RelStructure', keep: ['DeckSpace_Dummy', 'PassengerSpace'] },
   PassengerSpace: { src: 'PassengerSpace', keep: ['deckEntrances'] },
-  deckEntrances: { src: 'deckEntrances_RelStructure', keep: ['DeckEntrance_Dummy'] },
+  deckEntrances: { src: 'deckEntrances_RelStructure', keep: ['DeckEntrance_Dummy', 'PassengerEntrance'] },
   PassengerEntrance: { src: 'PassengerEntrance', keep: ['DistanceFromFront', 'Width', 'VehicleSide', 'keyList'] },
   VehicleModel: { src: 'VehicleModel', keep: ['id', 'Name', 'Manufacturer'] },
   keyList: { src: 'KeyListStructure', keep: ['KeyValue'] },
@@ -24,6 +24,9 @@ const READ = {
   ClassifiedAsRef: { src: 'VehicleModelRefStructure', keep: ['ref', 'version'] },
   MultilingualString: { src: 'MultilingualString', keep: ['lang'] },
 };
+
+/** Per relation list B reads: [list definition, the upstream placeholder member (#16), the concrete member B reads]. */
+const MEMBERS = [['deckSpaces', 'DeckSpace_Dummy', 'PassengerSpace'], ['deckEntrances', 'DeckEntrance_Dummy', 'PassengerEntrance']];
 
 const refName = (r) => r.slice('#/definitions/'.length);
 const ref = (n) => ({ $ref: `#/definitions/${n}` });
@@ -65,18 +68,32 @@ export function slice(base) {
   };
 }
 
-/** netex-typescript-model#52: a repeated xsd:choice is collapsed to a scalar, so the relation lists hold one entry. The members B reads become arrays. */
-const fix52Arrays = (d) => ({
+/** A definition with every property passed through `f`, as [key, property] -> [key, property]. */
+const remap = (def, f) => ({ ...def, properties: Object.fromEntries(Object.entries(def.properties ?? {}).map(f)) });
+
+/**
+ * netex-typescript-model#52: a repeated xsd:choice is collapsed to a scalar, so the relation lists
+ * hold one entry. Every member of the lists B reads becomes an array, whatever its key.
+ * @param {object} d the slice's definitions
+ * @returns {object} the definitions with the list members as arrays
+ */
+export const fix52Arrays = (d) => ({
   ...d,
-  deckSpaces: { ...d.deckSpaces, properties: { DeckSpace_Dummy: { type: 'array', items: d.deckSpaces.properties.DeckSpace_Dummy } } },
-  deckEntrances: { ...d.deckEntrances, properties: { DeckEntrance_Dummy: { type: 'array', items: d.deckEntrances.properties.DeckEntrance_Dummy } } },
+  ...Object.fromEntries(MEMBERS.map(([list]) =>
+    [list, remap(d[list], ([k, p]) => [k, p.type === 'array' ? p : { type: 'array', items: p }])])),
 });
 
-/** netex-typescript-model#16: substitution-group members are not named, so the lists name DeckSpace_Dummy / DeckEntrance_Dummy. They get PassengerSpace / PassengerEntrance as properties. */
-const fix16Members = (d) => ({
+/**
+ * netex-typescript-model#16: substitution-group members are not named, so the lists name
+ * DeckSpace_Dummy / DeckEntrance_Dummy. The placeholder is renamed to PassengerSpace /
+ * PassengerEntrance and points at it, as an array when it is one (#52) and a single entry when not.
+ * @param {object} d the slice's definitions
+ * @returns {object} the definitions with the concrete members named
+ */
+export const fix16Members = (d) => ({
   ...d,
-  deckSpaces: { ...d.deckSpaces, properties: { PassengerSpace: { type: 'array', items: ref('PassengerSpace') } } },
-  deckEntrances: { ...d.deckEntrances, properties: { PassengerEntrance: { type: 'array', items: ref('PassengerEntrance') } } },
+  ...Object.fromEntries(MEMBERS.map(([list, dummy, member]) =>
+    [list, remap(d[list], ([k, p]) => (k !== dummy ? [k, p] : [member, p.type === 'array' ? { ...p, items: ref(member) } : ref(member)]))])),
 });
 
 /** netex-typescript-model#19: mixed content is not modelled; a MultilingualString is an object only. It may be plain text too. */

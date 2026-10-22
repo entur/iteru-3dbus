@@ -147,10 +147,27 @@ const deckSections = (read) => {
   });
 };
 
-/** Puts the Deck (or the VehicleType) behind a section ahead of A's error on it. */
-const blame = (labels) => (e) => {
-  const [, a, b] = e.match(/sections\[(\d+)\]|\/sections\/(\d+)/) ?? [];
-  return a ?? b ? `${labels[Number(a ?? b)]}: ${e}` : e;
+/**
+ * Puts the element or KeyValue a value of the input was read from ahead of A's error on it: a
+ * section's Deck (or the VehicleType), else the element or key behind a root value.
+ */
+const blame = ({ decks, label, plan, model, prefix }) => {
+  const from = [
+    [/^(?:sections\[|\/sections\/)(\d+)/, (m) => decks[Number(m[1])]],
+    [/^\/sections\b/, () => plan ?? label],
+    [/^\/(width|height)_mm\b/, (m) => `${label}: ${m[1] === 'width' ? 'Width' : 'Height'}`],
+    [/^\/front_display\b/, () => `${label}: Name`],
+    [/^\/front\b/, () => `${model}: Manufacturer`],
+    [/^\/base_color\b/, () => `${label}: ${prefix}base_color`],
+    [/^\/tyre\/(size|diameter_mm|rear_twin)\b/, (m) => `${label}: ${prefix}tyre_${m[1]}`],
+    [/^\/tyre\b/, () => `${label}: ${prefix}tyre_size or ${prefix}tyre_diameter_mm`],
+    [new RegExp(`^/(${ROOT.join('|')})\\b`), (m) => `${label}: ${prefix}${m[1]}`],
+    [/^/, () => label],
+  ];
+  return (e) => {
+    const [re, at] = from.find(([r]) => r.test(e));
+    return `${at(e.match(re))}: ${e}`;
+  };
 };
 
 /**
@@ -165,6 +182,7 @@ const blame = (labels) => (e) => {
  */
 export const fromNetex = (xml, { prefix = PREFIX, id } = {}) => {
   const fail = (errs) => ({ ok: false, errs });
+  if (typeof xml !== 'string') return fail(['xml: expected a string']);
   const wf = XMLValidator.validate(xml);
   if (wf !== true) return fail([`not XML: ${wf.err.msg} (line ${wf.err.line})`]);
   const doc = tidy(parser.parse(xml));
@@ -198,7 +216,10 @@ export const fromNetex = (xml, { prefix = PREFIX, id } = {}) => {
       ? deckSections(decks.read)
       : [defined({ length_mm: mm(vt.Length), axles_mm: vals.axles_mm, windows_hint: vals.windows_count === undefined ? undefined : { count: vals.windows_count } })],
   };
-  const errs = validate(inp).map(blame(plan ? decks.read.map((d) => d.label) : [label]));
+  const errs = validate(inp).map(blame({
+    decks: plan ? decks.read.map((d) => d.label) : [label], label, prefix,
+    plan: plan && named('DeckPlan', plan, 0), model: model && named('VehicleModel', model, 0),
+  }));
   if (errs.length) return fail(errs);
 
   const len = vt.Length === undefined ? undefined : mm(vt.Length), sum = total(inp);

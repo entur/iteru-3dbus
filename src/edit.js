@@ -1,5 +1,7 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
 import { arch, dashDefault, doorKey, doorWidth, doors, spans, total, tyreDia, windows, zone } from './derive.js';
+import { limits } from './limits.js';
+import { validate } from './validate.js';
 
 const DEFS = schema.$defs;
 const ZONES = DEFS.door_hint.properties.zone.enum;
@@ -222,3 +224,16 @@ export const toJson = (inp) => `${JSON.stringify(inp, null, 2)}\n`;
  * @returns {string|number|undefined}
  */
 export const typed = (f, text) => (text === '' ? (f.blank ? '' : undefined) : f.kind === 'int' ? Number(text) : text);
+
+/**
+ * The errors of a draft: the schema and its rules, then, once those pass and while the Nordic
+ * limits are on, the limits. The limits need a valid input, so a draft the schema fails is never
+ * checked against them.
+ * @param {object} inp bus input, valid or not
+ * @param {boolean} nordic whether the Nordic limits count as errors (false: a fantasy bus)
+ * @returns {string[]} error messages, empty when the draft may be drawn
+ */
+export const checks = (inp, nordic) => {
+  const errs = validate(inp);
+  return errs.length || !nordic ? errs : limits(inp);
+};

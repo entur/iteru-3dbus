@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import Ajv from 'ajv';
+import { fix16Members, fix52Arrays } from '../scripts/netex-slice.js';
 
 const SLICE = new URL('../schema/netex/vehicle-type.schema.json', import.meta.url);
 const SCRIPT = new URL('../scripts/netex-slice.js', import.meta.url);
@@ -25,6 +26,18 @@ test('post-fix #52+#16: a deck lists its spaces, a space its entrances, by their
   assert.equal(defs.deckSpaces.properties.PassengerSpace.type, 'array');
   assert.equal(defs.deckEntrances.properties.PassengerEntrance.type, 'array');
   assert.equal(defs.deckSpaces.properties.DeckSpace_Dummy, undefined);
+});
+
+test('#52 and #16 each stand alone: either one can be dropped once its issue lands', () => {
+  const dummy = { deckSpaces: { type: 'object', properties: { DeckSpace_Dummy: {} } }, deckEntrances: { type: 'object', properties: { DeckEntrance_Dummy: {} } } };
+  const named = { deckSpaces: { type: 'object', properties: { PassengerSpace: { $ref: '#/definitions/PassengerSpace' } } },
+    deckEntrances: { type: 'object', properties: { PassengerEntrance: { $ref: '#/definitions/PassengerEntrance' } } } };
+  assert.deepEqual(fix52Arrays(dummy).deckSpaces.properties, { DeckSpace_Dummy: { type: 'array', items: {} } });
+  assert.deepEqual(fix52Arrays(named).deckEntrances.properties, { PassengerEntrance: { type: 'array', items: { $ref: '#/definitions/PassengerEntrance' } } });
+  assert.deepEqual(fix16Members(dummy).deckSpaces.properties, { PassengerSpace: { $ref: '#/definitions/PassengerSpace' } });
+  assert.deepEqual(fix16Members(fix52Arrays(dummy)), fix52Arrays(named));
+  assert.deepEqual(fix16Members(named), named);
+  assert.deepEqual(fix16Members(fix52Arrays(dummy)).deckSpaces, defs.deckSpaces);
 });
 
 test('post-fix #19: a MultilingualString may be plain text', () => {
