@@ -1,7 +1,8 @@
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
-import { dashDefault, doorWidth, spans, total, tyreDia, windows } from './derive.js';
+import { arch, dashDefault, doorKey, doorWidth, doors, spans, total, tyreDia, windows, zone } from './derive.js';
 
 const DEFS = schema.$defs;
+const ZONES = DEFS.door_hint.properties.zone.enum;
 
 /** Accordion groups of the input card, in order. Sections is filled from SECTION, once per section. */
 export const GROUPS = ['Dimensions', 'Tyre', 'Colour', 'Front', 'Sections'];
@@ -47,6 +48,7 @@ export const SECTION = [
   { label: 'Wheelbase', of: (s) => spans(s).wheelbases, unit: 'mm' },
   { label: 'Rear overhang', of: (s) => spans(s).rear, unit: 'mm' },
   { label: 'Doors', path: ['doors_hint'], kind: 'doors', edit: true },
+  { label: 'Doors', path: ['doors'], kind: 'doors', edit: true },
   { label: 'Windows', path: ['windows_hint', 'count'], kind: 'int', edit: true, hint: (inp, i) => windows(inp)[i].length },
 ];
 
@@ -61,6 +63,14 @@ export const DOOR = [
   { label: 'Width', path: ['width_mm'], kind: 'int', edit: true, hint: (d) => doorWidth({ leaves: d.leaves }) },
   { label: 'Glazed', path: ['glazed'], kind: 'bool', edit: true },
   { label: 'Axle gap', path: ['axle_gap'], kind: 'int', edit: true, hint: () => DEFS.door_hint.properties.axle_gap.default },
+];
+
+/** Rows of one absolute door, as DOOR: every value is drawn, so every one is editable. */
+export const DOOR_AT = [
+  { label: 'X', path: ['x_mm'], kind: 'int', edit: true },
+  { label: 'Width', path: ['width_mm'], kind: 'int', edit: true },
+  { label: 'Leaves', path: ['leaves'], kind: 'enum', edit: true },
+  { label: 'Glazed', path: ['glazed'], kind: 'bool', edit: true },
 ];
 
 const bare = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
@@ -161,30 +171,39 @@ export const addAxle = (inp, i) => {
 export const rmAxle = (inp, i) => set(inp, ['sections', i, 'axles_mm'], inp.sections[i].axles_mm.slice(0, -1));
 
 /**
- * Appends a door hint to section i: two leaves, in the zone that holds the fewest doors so far.
- * A section with one axle has no zone between axles.
+ * Appends a door to section i: two leaves, in the zone that holds the fewest doors so far. A
+ * section with absolute doors gets an absolute one, at the place the hint would take; a section
+ * with one axle has no zone between axles.
  * @param {object} inp bus input
  * @param {number} i section index
  * @returns {object} the edited copy
  */
 export const addDoor = (inp, i) => {
-  const s = inp.sections[i], ds = s.doors_hint ?? [], n = (z) => ds.filter((d) => d.zone === z).length;
-  const zone = DEFS.door_hint.properties.zone.enum
-    .filter((z) => z !== 'between_axles' || s.axles_mm.length > 1)
-    .reduce((a, z) => (n(z) < n(a) ? z : a));
-  return set(inp, ['sections', i, 'doors_hint'], [...ds, { zone, leaves: 2 }]);
+  const s = inp.sections[i], key = doorKey(s), ds = s[key] ?? [], { dx } = arch(tyreDia(inp.tyre) / 2);
+  const open = ZONES.filter((z) => z !== 'between_axles' || s.axles_mm.length > 1);
+  const zoneOf = (d) => {
+    if (key === 'doors_hint') return d.zone;
+    const c = d.x_mm + d.width_mm / 2;
+    return open.find((z) => { const [lo, hi] = zone(s, dx, { zone: z }); return lo <= c && c <= hi; });
+  };
+  const n = (z) => ds.filter((d) => zoneOf(d) === z).length;
+  const pick = open.reduce((a, z) => (n(z) < n(a) ? z : a));
+  const hint = { zone: pick, leaves: 2 };
+  if (key === 'doors_hint') return set(inp, ['sections', i, key], [...ds, hint]);
+  const [{ x0, x1 }] = doors({ ...inp, sections: [{ ...s, doors: undefined, doors_hint: [hint] }] })[0];
+  return set(inp, ['sections', i, key], [...ds, { x_mm: x0, width_mm: x1 - x0, leaves: 2 }]);
 };
 
 /**
- * Removes door hint j of section i, and the list with its last one.
+ * Removes door j of section i, and the list with its last one.
  * @param {object} inp bus input
  * @param {number} i section index
- * @param {number} j index of the hint
+ * @param {number} j index of the door
  * @returns {object} the edited copy
  */
 export const rmDoor = (inp, i, j) => {
-  const ds = inp.sections[i].doors_hint.filter((_, k) => k !== j);
-  return set(inp, ['sections', i, 'doors_hint'], ds.length ? ds : undefined);
+  const key = doorKey(inp.sections[i]), ds = inp.sections[i][key].filter((_, k) => k !== j);
+  return set(inp, ['sections', i, key], ds.length ? ds : undefined);
 };
 
 /**

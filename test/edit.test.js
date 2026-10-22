@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOOR, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec, toJson, typed } from '../src/edit.js';
-import { total } from '../src/derive.js';
+import { DOOR, DOOR_AT, FIELDS, GROUPS, SECTION, addAxle, addDoor, axleLim, get, rmAxle, rmDoor, same, set, shifted, spec, toJson, typed } from '../src/edit.js';
+import { doors, total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 
 const EDITABLE = ['width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
-const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'windows_hint.count'];
+const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'doors', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
 const load = (n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), 'utf8'));
@@ -18,10 +18,10 @@ const paths = (fs) => fs.filter((f) => f.path).map((f) => f.path.join('.'));
 test('every schema value has a row', () => {
   const { sections, schema_version, ...top } = schema.properties;
   assert.deepEqual(paths(FIELDS).sort(), leaves(top).sort());
-  // absolute doors have no editor rows yet
-  const { windows_hint: _, doors: __, ...common } = schema.$defs.section_common.properties;
+  const { windows_hint: _, ...common } = schema.$defs.section_common.properties;
   assert.deepEqual(paths(SECTION).sort(), [...Object.keys(common), ...leaves({ windows_hint: schema.$defs.windows_hint }), 'bellows_ahead_mm'].sort());
   assert.deepEqual(paths(DOOR).sort(), Object.keys(schema.$defs.door_hint.properties).sort());
+  assert.deepEqual(paths(DOOR_AT).sort(), Object.keys(schema.$defs.door_at.properties).sort());
   assert.deepEqual([...new Set(FIELDS.map((f) => f.group))].filter((g) => !GROUPS.includes(g)), []);
 });
 
@@ -30,6 +30,7 @@ test('the editable set is the drawn fields', () => {
   assert.deepEqual(paths(FIELDS.filter((f) => f.edit)), EDITABLE);
   assert.deepEqual(paths(SECTION.filter((f) => f.edit)), SEC_EDITABLE);
   assert.deepEqual(DOOR.filter((f) => !f.edit), []);
+  assert.deepEqual(DOOR_AT.filter((f) => !f.edit), []);
   assert.deepEqual(FIELDS.filter((f) => f.of && f.edit).map((f) => [f.label, f.to.join('.')]), [['Length', 'sections.0.length_mm']]);
 });
 
@@ -153,4 +154,32 @@ test('an emptied control takes its value out, but the display keeps an empty tex
   assert.equal(typed(row('height_mm'), ''), undefined);
   const off = set(volvo, ['front_display'], typed(row('front_display'), ''));
   assert.deepEqual([validate(off), off.front_display], [[], '']);
+});
+
+const omit = (o, k) => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
+const abs = { ...volvo, sections: volvo.sections.map((s, i) => (i ? s : { ...omit(s, 'doors_hint'), doors: [{ x_mm: 600, width_mm: 1250, leaves: 2 }, { x_mm: 6000, width_mm: 1250, leaves: 2 }] })) };
+
+test('a door added to a section with absolute doors is absolute, two leaves, where the hint would go', () => {
+  const hinted = { ...abs, sections: [{ ...abs.sections[0], doors: undefined, doors_hint: [{ zone: 'rear_overhang', leaves: 2 }] }, ...abs.sections.slice(1)] };
+  const [{ x0, x1 }] = doors(hinted)[0], out = addDoor(abs, 0);
+  assert.deepEqual(out.sections[0].doors.at(-1), { x_mm: x0, width_mm: x1 - x0, leaves: 2 });
+  assert.equal('doors_hint' in out.sections[0], false);
+  assert.equal(abs.sections[0].doors.length, 2);
+});
+
+test('rmDoor removes an absolute door, and the list with its last one', () => {
+  assert.deepEqual(rmDoor(abs, 0, 0).sections[0].doors, [abs.sections[0].doors[1]]);
+  assert.equal('doors' in rmDoor(rmDoor(abs, 0, 0), 0, 0).sections[0], false);
+});
+
+test('the limits of an absolute door come from the schema', () => {
+  assert.equal(spec(['sections', 0, 'doors']).maxItems, 4);
+  assert.equal(spec(['sections', 0, 'doors', 1, 'width_mm']).maximum, 1600);
+  assert.equal(spec(['sections', 0, 'doors', 1, 'glazed']).default, true);
+});
+
+test('the header counts absolute doors and hinted ones alike', async () => {
+  const { brief } = await import('../src/ui.js');
+  assert.match(brief(abs), /2 doors$/);
+  assert.match(brief(volvo), /2 doors$/);
 });

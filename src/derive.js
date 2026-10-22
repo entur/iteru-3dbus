@@ -93,7 +93,7 @@ export const hints = (inp) => inp.sections.flatMap((s) => s.doors_hint ?? []);
 export const doorWidth = (d) => d.width_mm ?? DOOR_W[d.leaves];
 
 /** The span a door hint's zone leaves for a door: clear of the body ends and of the arches, dx wide each side. */
-const zone = (s, dx, { zone: z, axle_gap: g = 0 }) => {
+export const zone = (s, dx, { zone: z, axle_gap: g = 0 }) => {
   const a = s.axles_mm, after = (x) => x + dx + DOOR_ARCH, before = (x) => x - dx - DOOR_ARCH;
   return {
     front_overhang: [DOOR_END, before(a[0])],

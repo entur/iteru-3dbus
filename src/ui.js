@@ -1,6 +1,6 @@
 import { computed, effect, signal } from '@preact/signals-core';
-import { hints, total } from './derive.js';
-import { DOOR, FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec, typed } from './edit.js';
+import { doorKey, doors, total } from './derive.js';
+import { DOOR, DOOR_AT, FIELDS, GROUPS, SECTION, SUMS, axleLim, get, shifted, spec, typed } from './edit.js';
 import { VIEWS } from './views.js';
 
 const FACES = { right: 'Right', left: 'Left', front: 'Front', rear: 'Rear' };  // sides of the bus boxes a face map exists for
@@ -63,7 +63,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
  * @returns {string} e.g. '12.396 m · 2 axles · 2 doors'
  */
 export const brief = (inp) =>
-  [`${total(inp) / 1000} m`, plural(inp.sections.flatMap((s) => s.axles_mm).length, 'axle'), plural(hints(inp).length, 'door')].join(' · ');
+  [`${total(inp) / 1000} m`, plural(inp.sections.flatMap((s) => s.axles_mm).length, 'axle'), plural(doors(inp).flat().length, 'door')].join(' · ');
 
 /**
  * Fills the header: the captioned groups of buttons, then the title with the link to the shown
@@ -201,30 +201,32 @@ const axles = (st, on, f) => {
   );
 };
 
-/** One door hint of section i: zone, bias and remove on a line, below it leaves, width, glazing and, between three axles, the gap. */
-const door = (st, on, i, j, rm) => {
-  const at = ['sections', i, 'doors_hint', j], tag = `Section ${i + 1} door ${j + 1}`;
+/** One door of section i's list `key`. A hint: zone, bias and remove on a line, below it leaves, width, glazing and, between three axles, the gap. An absolute door: x and width, remove, and below leaves and glazing. */
+const door = (st, on, i, j, rm, key) => {
+  const at = ['sections', i, key, j], tag = `Section ${i + 1} door ${j + 1}`, rows = key === 'doors' ? DOOR_AT : DOOR;
   const ctl = (f) => input(st, on, { ...f, path: [...at, ...f.path], hint: f.hint && ((inp) => f.hint(get(inp, at) ?? {})) }, { ariaLabel: `${tag} ${f.label.toLowerCase()}` });
-  const c = Object.fromEntries(DOOR.map((f) => [f.path[0], ctl(f)]));
+  const c = Object.fromEntries(rows.map((f) => [f.path[0], ctl(f)]));
   const gapless = () => get(st.draft.value, at)?.zone !== 'between_axles' || get(st.draft.value, ['sections', i, 'axles_mm']).length < 3;
-  return el(
-    'div', { className: 'door' },
-    el('span', { className: 'n' }, String(j + 1)), c.zone, c.bias,
-    el('button', { type: 'button', ariaLabel: `Remove ${tag.toLowerCase()}`, onclick: rm }, '−'),
-    el('span', { className: 'more' }, c.leaves, el('span', {}, c.width_mm, el('small', {}, ' mm')), el('label', {}, c.glazed, ' glazed'), el('label', { hidden: gapless }, 'gap ', c.axle_gap)),
-  );
+  const x = (f) => el('span', {}, f, el('small', {}, ' mm')), rmBtn = el('button', { type: 'button', ariaLabel: `Remove ${tag.toLowerCase()}`, onclick: rm }, '−');
+  return key === 'doors'
+    ? el('div', { className: 'door' }, el('span', { className: 'n' }, String(j + 1)), x(c.x_mm), x(c.width_mm), rmBtn, el('span', { className: 'more' }, c.leaves, el('label', {}, c.glazed, ' glazed')))
+    : el(
+        'div', { className: 'door' },
+        el('span', { className: 'n' }, String(j + 1)), c.zone, c.bias, rmBtn,
+        el('span', { className: 'more' }, c.leaves, x(c.width_mm), el('label', {}, c.glazed, ' glazed'), el('label', { hidden: gapless }, 'gap ', c.axle_gap)),
+      );
 };
 
-/** One full-width row: the door hints of section i, each with its remove, and add. Only the list is rebuilt, and only when the count changes. */
+/** One full-width row: the doors of section i (its hints or its absolute doors, per the row's path), each with its remove, and add. Only the list is rebuilt, and only when the count changes. */
 const doorList = (st, on, f) => {
-  const i = f.path[1], path = ['sections', i, 'doors_hint'], max = spec(path).maxItems, sec = `section ${i + 1}`;
+  const i = f.path[1], key = f.path[2], path = ['sections', i, key], max = spec(path).maxItems, sec = `section ${i + 1}`;
   const n = computed(() => get(st.draft.value, path)?.length ?? 0);
   const list = el('div', { className: 'doors' });
   // a control that goes away or hits its limit hands focus on: add to the new door, remove to its neighbour or back to add
-  const add = el('button', { type: 'button', ariaLabel: `Add a door to ${sec}`, disabled: () => n.value >= max, onclick: (e) => (on.addDoor(i), e.target.disabled && list.lastChild.querySelector('select').focus()) }, '+');
+  const add = el('button', { type: 'button', ariaLabel: `Add a door to ${sec}`, disabled: () => n.value >= max, onclick: (e) => (on.addDoor(i), e.target.disabled && list.lastChild.querySelector('select, input').focus()) }, '+');
   const rm = (j) => () => (on.rmDoor(i, j), ((list.children[j] ?? list.lastChild)?.querySelector('button') ?? add).focus());
   bind(() => {
-    const [kids, stop] = scoped(() => Array.from({ length: n.value }, (_, j) => door(st, on, i, j, rm(j))));
+    const [kids, stop] = scoped(() => Array.from({ length: n.value }, (_, j) => door(st, on, i, j, rm(j), key)));
     list.replaceChildren(...kids);
     return stop;
   });
@@ -254,7 +256,7 @@ const group = (st, on, g) =>
   g === 'Sections'
     ? st.ok.peek().sections.flatMap((_, i) => [
         el('h3', {}, `Section ${i + 1}`),
-        rows(null, SECTION.filter((f) => !f.trailer || i).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path], hint: f.hint && (() => f.hint(st.ok.value, i)) } : f, (inp) => inp.sections[i]))),
+        rows(null, SECTION.filter((f) => (!f.trailer || i) && (f.kind !== 'doors' || f.path[0] === doorKey(st.draft.peek().sections[i]))).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path], hint: f.hint && (() => f.hint(st.ok.value, i)) } : f, (inp) => inp.sections[i]))),
       ])
     : [rows(null, FIELDS.filter((f) => f.group === g).map((f) => row(st, on, f)))];
 

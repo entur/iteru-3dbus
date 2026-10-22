@@ -1,7 +1,7 @@
 import './style.css';
 import { batch, computed, effect, signal } from '@preact/signals-core';
 import '../guide/bus-3d.js';
-import { total } from './derive.js';
+import { doorKey, total } from './derive.js';
 import { addAxle, addDoor, rmAxle, rmDoor, same, set, toJson } from './edit.js';
 import { gallery } from './gallery.js';
 import { limits } from './limits.js';
@@ -81,8 +81,8 @@ const on = {
   set: (path, v) => commit(set(draft.value, path, v), path.join('.')),
   add: (i) => commit(addAxle(draft.value, i), `sections.${i}.axles_mm`),
   rm: (i) => commit(rmAxle(draft.value, i), `sections.${i}.axles_mm`),
-  addDoor: (i) => commit(addDoor(draft.value, i), `sections.${i}.doors_hint`),
-  rmDoor: (i, j) => commit(rmDoor(draft.value, i, j), `sections.${i}.doors_hint`),
+  addDoor: (i) => commit(addDoor(draft.value, i), `sections.${i}.${doorKey(draft.value.sections[i])}`),
+  rmDoor: (i, j) => commit(rmDoor(draft.value, i, j), `sections.${i}.${doorKey(draft.value.sections[i])}`),
   reset: () => select(id.value),
 };
 
