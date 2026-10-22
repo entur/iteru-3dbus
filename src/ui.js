@@ -233,7 +233,18 @@ const doorList = (st, on, f) => {
   return el('div', {}, el('div', { className: 'door-top' }, name(f), add), list);
 };
 
-const LISTS = { axles, doors: doorList };
+/** The doors row of section i: the list its section carries now, rebuilt when the section changes from one list to the other. */
+const doorSwitch = (st, on, f) => {
+  const i = f.path[1], key = computed(() => doorKey(st.draft.value.sections[i])), box = el('div', {});
+  bind(() => {
+    const [kid, stop] = scoped(() => doorList(st, on, { ...f, path: ['sections', i, key.value] }));
+    box.replaceChildren(kid);
+    return stop;
+  });
+  return box;
+};
+
+const LISTS = { axles, doors: doorSwitch };
 /** Read-only value: the label for an enum, the schema default when absent. */
 const fixed = (inp, path) => {
   const v = get(inp, path) ?? spec(path).default;
@@ -256,7 +267,7 @@ const group = (st, on, g) =>
   g === 'Sections'
     ? st.ok.peek().sections.flatMap((_, i) => [
         el('h3', {}, `Section ${i + 1}`),
-        rows(null, SECTION.filter((f) => (!f.trailer || i) && (f.kind !== 'doors' || f.path[0] === doorKey(st.draft.peek().sections[i]))).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path], hint: f.hint && (() => f.hint(st.ok.value, i)) } : f, (inp) => inp.sections[i]))),
+        rows(null, SECTION.filter((f) => (!f.trailer || i) && (f.kind !== 'doors' || f.path[0] === 'doors_hint')).map((f) => row(st, on, f.path ? { ...f, path: ['sections', i, ...f.path], hint: f.hint && (() => f.hint(st.ok.value, i)) } : f, (inp) => inp.sections[i]))),
       ])
     : [rows(null, FIELDS.filter((f) => f.group === g).map((f) => row(st, on, f)))];
 

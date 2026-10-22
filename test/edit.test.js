@@ -183,3 +183,10 @@ test('the header counts absolute doors and hinted ones alike', async () => {
   assert.match(brief(abs), /2 doors$/);
   assert.match(brief(volvo), /2 doors$/);
 });
+
+test('a section whose last absolute door is removed takes hints again', () => {
+  const none = rmDoor(rmDoor(abs, 0, 1), 0, 0), out = addDoor(none, 0);
+  assert.equal('doors' in none.sections[0], false);
+  assert.deepEqual(out.sections[0].doors_hint, [{ zone: 'front_overhang', leaves: 2 }]);
+  assert.equal('doors' in out.sections[0], false);
+});
