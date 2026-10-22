@@ -8,7 +8,7 @@ const ZONE = { front_overhang: 'Front overhang', between_axles: 'Between axles',
 const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES = { 1: '1 leaf', 2: '2 leaves' };
 /** Display names of the schema's enum values, by the key that holds them. */
 export const NAMES = { zone: ZONE, bias: BIAS, leaves: LEAVES };
-const NOTE = 'Drawn from the input JSON only: body, wheel arches, wheels, bellows, roof pod, and the hinted doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
+const NOTE = 'Drawn from the input: body, wheel arches, wheels, bellows, roof pod, and the doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
