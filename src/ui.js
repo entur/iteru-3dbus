@@ -10,6 +10,8 @@ const BIAS = { front: 'to front', middle: 'centred', rear: 'to rear' }, LEAVES =
 export const NAMES = { zone: ZONE, bias: BIAS, leaves: LEAVES };
 const NOTE = 'Drawn from the input: body, wheel arches, wheels, bellows, roof pod, and the doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
+const LIMITS = 'Size limits', NORDIC = 'Nordic', FREE = 'Free';  // the limits switch in the input card's head
+const ORIGINAL = 'Original XML', MEMORY = 'In memory JSON';  // the input card's bar
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
 const open = new Set(['Dimensions', 'Sections']);  // accordion groups that are open; survives edits and bus switches
@@ -55,6 +57,14 @@ export const el = (tag, props = {}, ...kids) => {
   return e;
 };
 
+/**
+ * Click handler for a link the app follows itself: a plain click runs `go` in place, and a click
+ * with a modifier key or another button is left to the browser (a new tab or window).
+ * @param {() => void} go what a plain click does
+ * @returns {(e: MouseEvent) => void} the handler
+ */
+export const inPlace = (go) => (e) => e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || (e.preventDefault(), go());
+
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
@@ -66,36 +76,21 @@ export const brief = (inp) =>
   [`${total(inp) / 1000} m`, plural(inp.sections.flatMap((s) => s.axles_mm).length, 'axle'), plural(doors(inp).flat().length, 'door')].join(' · ');
 
 /**
- * Fills the header: the captioned groups of buttons, then the title with the link to the shown
- * bus's input file as loaded beside it and a line of its main figures. A page takes the
- * bus's place in the title and the line below it, and has no JSON links.
- * @param {{caption: string, btns: {label: string, on: boolean, go: () => void}[]}[]} groups on: shown as pressed
- * @param {{id: string, inp: object, src: string}} cur the selected bus: its id, its input with the valid edits applied, and the url of its file
+ * Fills the header: the title with the link to the other route beside it, then a line of the
+ * shown bus's main figures. A page takes the bus's place in the title and the line below it.
+ * @param {?{id: string, inp: object}} cur the selected bus: its id and its input with the
+ *   valid edits applied; null before any bus is opened
  * @param {?{title: string, sub: string}} page the page shown in place of the bus
+ * @param {?{label: string, href: string, go: () => void}} other the link to the other route, null for none
  */
-export const header = (groups, cur, page) => {
-  const { id, inp, src } = cur;
-  const title = page?.title ?? id;
-  Object.assign(document.getElementById('src'), { href: src, title: `NeTEx XML of ${title} as loaded` });
-  document.getElementById('json').hidden = !!page;
-  document.getElementById('models').replaceChildren(
-    ...groups.map(({ caption, btns }) =>
-      el('div', { className: 'pick', role: 'group', ariaLabel: caption }, el('span', {}, caption), ...btns.map((b) => el('button', { onclick: b.go, ariaPressed: String(b.on) }, b.label)))),
-  );
+export const header = (cur, page, other) => {
+  const title = page?.title ?? cur.id, link = document.getElementById('other');
+  Object.assign(link, { hidden: !other, textContent: other?.label ?? '', onclick: other && inPlace(other.go) });
+  other ? (link.href = other.href) : link.removeAttribute('href');
   document.getElementById('title').textContent = title;
   document.title = `${title} · 3dbus`;
-  document.getElementById('sub').textContent = page?.sub ?? brief(inp);
+  document.getElementById('sub').textContent = page?.sub ?? brief(cur.inp);
 };
-
-/**
- * Fills the limits switch: Nordic-limited or fantasy bus, pressed as the signal says.
- * @param {{value: boolean}} nordic signal, true when the Nordic limits count as errors
- */
-export const modeBar = (nordic) =>
-  document.getElementById('mode').replaceChildren(
-    ...[[true, 'Nordic-limited'], [false, 'Fantasy bus']].map(([v, label]) =>
-      el('button', { onclick: () => (nordic.value = v), ariaPressed: () => String(nordic.value === v) }, label)),
-  );
 
 /**
  * Fills the camera-view bar: one button per named view of the 3D element.
@@ -273,26 +268,43 @@ const group = (st, on, g) =>
       ])
     : [rows(null, FIELDS.filter((f) => f.group === g).map((f) => row(st, on, f)))];
 
+/** The limits switch: Nordic, the limits count as errors, or Free, the schema alone; pressed as the signal says. */
+const limits = (nordic) =>
+  el('span', { className: 'limits', role: 'group', ariaLabel: LIMITS }, el('span', {}, LIMITS),
+    ...[[true, NORDIC], [false, FREE]].map(([v, label]) => el('button', { type: 'button', onclick: () => (nordic.value = v), ariaPressed: () => String(nordic.value === v) }, label)));
+
+/**
+ * The input card's bar, built once: the file as loaded, and the input as drawn, as JSON. Each
+ * input card takes it; the host sets the links' targets.
+ * @returns {[HTMLElement, HTMLAnchorElement, HTMLAnchorElement]} the bar and its two links
+ */
+export const fileBar = () => {
+  const xml = el('a', { target: '_blank', rel: 'noopener' }, ORIGINAL), json = el('a', {}, MEMORY);
+  return [el('footer', { className: 'bar' }, xml, json), xml, json];
+};
+
 /**
  * Builds the input card: one accordion group per part of the schema, every value in it, the
- * drawn ones editable. Built once per selected bus; the controls then follow the signals.
- * @param {{draft: object, ok: object, marks: object, dirty: object}} st signals: the edited
- *   input, its last valid state, the keys of the edits made since it was last valid, and whether
- *   the draft differs from the source
+ * drawn ones editable, and the file bar at its lower edge. Built once per selected bus; the controls then follow the signals.
+ * @param {{draft: object, ok: object, marks: object, dirty: object, nordic: object}} st signals: the edited
+ *   input, its last valid state, the keys of the edits made since it was last valid, whether
+ *   the draft differs from the source, and whether the Nordic limits count as errors (the switch in the card's head)
  * @param {{set: (path: (string|number)[], v: unknown) => void, add: (i: number) => void,
  *   rm: (i: number) => void, addDoor: (i: number) => void, rmDoor: (i: number, j: number) => void,
  *   reset: () => void}} on edit callbacks: a value, an axle more or less on section i, a door
  *   more on it or its door j less, drop all edits
+ * @param {HTMLElement} bar the bar of `fileBar`, moved here from the card before
  * @returns {[HTMLElement, () => void]} the card and the function that disposes its effects
  */
-export const form = (st, on) =>
+export const form = (st, on, bar) =>
   scoped(() =>
     el(
       'section', { className: 'card input' },
-      el('div', { className: 'head' }, el('h2', {}, 'Input'), el('button', { type: 'button', hidden: () => !st.dirty.value, onclick: on.reset }, 'Reset')),
+      el('div', { className: 'head' }, el('h2', {}, 'Input'), limits(st.nordic), el('button', { type: 'button', hidden: () => !st.dirty.value, onclick: on.reset }, 'Reset')),
       ...GROUPS.map((g) =>
         el('details', { open: open.has(g), ontoggle: (e) => (e.target.open ? open.add(g) : open.delete(g)) }, title(st, g), ...group(st, on, g)),
       ),
       el('p', { className: 'note' }, NOTE),
+      bar,
     ),
   );

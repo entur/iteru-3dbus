@@ -5,9 +5,9 @@
 
 A boxy 3D bus in three.js, drawn from one JSON input (A), which can be read from a NeTEx `VehicleType` file (B): sections, axles, bellows, doors, windows, colour and front.
 
-**Live:** <https://entur.github.io/iteru-3dbus/>, with two concrete buses
-([`?bus=volvo-8900`](https://entur.github.io/iteru-3dbus/?bus=volvo-8900)) and the Bus Nordic 2.0 bus types as cards
-([`#busnordic`](https://entur.github.io/iteru-3dbus/#busnordic)).
+**Live:** <https://entur.github.io/iteru-3dbus/>: every example as a card
+([`list`](https://entur.github.io/iteru-3dbus/list)), two concrete buses and the Bus Nordic 2.0 bus types, each one
+in the viewer ([`bus?file=volvo-8900.xml`](https://entur.github.io/iteru-3dbus/bus?file=volvo-8900.xml)).
 
 ## Install
 
@@ -106,7 +106,7 @@ Remaining work: [issues](https://github.com/entur/iteru-3dbus/issues).
 
 ```sh
 npm i
-npm run dev                              # the demo app; ?bus=volvo-8900 picks an example
+npm run dev                              # the demo app: /list, /bus?file=volvo-8900.xml
 npm test
 npm run validate -- examples/*.xml examples/busnordic/*.xml   # .xml through fromNetex, else input JSON
 npm run build:lib                        # the package, in dist-lib/

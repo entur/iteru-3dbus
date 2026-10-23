@@ -17,7 +17,7 @@ app in `main.js` / `ui.js` uses that element.
 
 ```sh
 npm i
-npm run dev                                   # vite; ?bus=<id> picks an example (id = file name without .xml)
+npm run dev                                   # vite; /list, /bus?file=<path under examples/> opens one
 npm run build
 npm run build:lib                             # the library as ES modules in dist-lib/, three and ajv external
 npm test                                      # node --test, picks up test/*.test.js
@@ -40,7 +40,7 @@ core   validate.js  derive.js  dims.js  limits.js  netex.js   pure, no DOM, no t
 2D     vector.js                                        core only: no three
 3D     bus.js  scene.js  views.js                       core + three: no vector.js
 guide  guide/bus-3d.js  <bus-3d>                        the package entry (index.js) only
-app    main.js  ui.js  edit.js  gallery.js  index.html  style.css   imports the library and the guide, never the reverse
+app    main.js  ui.js  edit.js  route.js  gallery.js  index.html  style.css   imports the library and the guide, never the reverse
 ```
 
 The host connects the two sides: `const maps = faces(inp); mkBus(inp, maps)`. The 3D side takes
@@ -58,8 +58,9 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - **`limits.js`** — `limits(inp)`: the Nordic limits as `string[]` (width, height, total length by
   section and axle count, two doors over 9500 mm; a bus naming no doors is not checked for them).
   Core, package entry `./limits`. **The Bus Nordic 2.0 numbers in it were not checked against the
-  document.** The app runs it after `validate` passes (`checks` in `edit.js`: it needs a valid input), in the "Nordic-limited" mode and not in "Fantasy bus"
-  (`modeBar` in `ui.js`, remembered in `localStorage` under `3dbus.limits`, default Nordic-limited).
+  document.** The app runs it after `validate` passes (`checks` in `edit.js`: it needs a valid input), with the "Size limits" switch on Nordic and not on Free
+  (`limits` in `ui.js`, in the input card's head; remembered in `localStorage` under `3dbus.limits` as
+  `nordic` / `fantasy`, default Nordic).
   In Nordic mode a limit is an error like any other: the last legal bus stays on screen and the
   marks follow `errs`.
 - **`netex.js`** — `fromNetex(xml, { prefix, id })`, package entry `./netex` (also re-exported from
@@ -149,37 +150,40 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   `test/edit.test.js` fails when a schema value has no row, or
   when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card (tabs per side, clones of the face maps of the open side,
-  sections reversed on the right side) and the input card (`form`): one accordion group per
-  part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
+  sections reversed on the right side) and the input card (`form`): the "Size limits" switch (Nordic | Free) in its head, then one accordion group per
+  part of the schema, and the file bar (Original XML | In memory JSON) on its lower edge. `el()` binds a function prop or child as a signal effect; `scoped` collects
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
   door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
-- **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per bus in the order given, no edit chrome. Every
+- **`gallery.js`** — `gallery(buses, pick)`: a page of cards, one per file in the order given, no edit chrome; a file `fromNetex`
+  rejected gets its errors and no picture. Every
   picture is taken on one `mkStageShot` stage, on the colour behind the cards (`bgOf`), at `DETAIL` texture density
   (a card needs a third of the viewer's; rasterising the SVG maps was most of the cost of shooting), one bus after the other: a
-  `<bus-3d>` per card would run past the browser's WebGL context limit. A card opens its bus in
-  the viewer.
+  `<bus-3d>` per card would run past the browser's WebGL context limit. A bar on each card's lower edge,
+  Show XML | Open: the file in a new tab, and the bus in the viewer (disabled for a rejected file).
 - **`main.js`** — loads every `examples/**/*.xml` through `import.meta.glob` (`?raw` for `fromNetex`, `?url` for
   Original), so any file dropped in `examples/` becomes a selectable bus; a file `fromNetex` rejects
-  keeps its errors, shown when it is selected, and has no card. A section's door row is rebuilt when
-  its `doorKey` changes. A bus in a directory under `examples/` belongs to that set:
-  no header button of its own, but a card on the set's page, which is the route `#<set>` and one
-  header button (`SETS`; `busnordic` is the only one). A set's cards page is cached per colour scheme: the pictures take the page's colours, so a scheme switch shoots them again once. Without `?bus=` the app opens on the first bus directly in `examples/`, which is the first
-  header button. Opening a bus from a button or a card pushes a history entry naming it in `?bus=`;
-  `follow` selects the address bar's bus and route after a step in the history. A selected bus of a set gets the last button among the
-  concrete vehicles, pressed while the viewer shows it; the set's own button is pressed on its
-  cards page only. The header has two captioned groups:
-  "Concrete vehicles:" for the buses directly in `examples/`, "Type set:" for the sets. On a cards page `body[data-page]` hides the
-  viewer and all edit chrome. Selecting validates first and shows errors in `#err`. Owns
+  keeps its errors, shown on its card and when it is opened. A section's door row is rebuilt when
+  its `doorKey` changes. Two routes (`route.js`, under `import.meta.env.BASE_URL`): `/list`, a page of cards
+  of every file, directly in `examples/` first, then each directory (`ORDER`: `busnordic` by class, then length),
+  and `/bus?file=<path under examples/>`, the viewer. The app starts in `/list`; the old `?bus=<id>` and
+  `#busnordic` links land on the bus or the list. `show(r, how)` is the one way to change route: a bus route
+  to another file selects it (another bus re-aims the camera), the selected one keeps its edits, and a file
+  that cannot be shown (unknown, rejected, failing the checks) gives the list with the reason in `#err`.
+  `popstate` follows the address bar. Each route has a title with a link to the other beside it: the bus id
+  and "All buses", or "All buses" and "Back to <id>" (none before a bus is opened). The list is cached per
+  colour scheme: the pictures take the page's colours, so a scheme switch shoots them again once. On the list
+  `body[data-page]` hides the viewer and all edit chrome, and `#err` shows only why a bus could not be shown.
+  The build copies `index.html` to `404.html` (`vite.config.js`), so a deep link boots the app on Pages. Owns
   what is app layout: the view offset that keeps the bus clear of the details panel.
   State is `@preact/signals-core` (app only, banned from the library by `test/lib.test.js`):
   `src` the example as loaded, `draft` with every edit, `ok` the last valid draft, `maps` the
   face maps of `ok`. Everything
   drawn (model, maps, header, derived rows) reads `ok`; the controls read `draft`, so an invalid
-  edit stays in its field, marked, while the last valid bus stays on screen. Only another bus
-  re-aims the camera. Beside the title, `#json` holds two links: Original, the XML file as loaded, which warns
-  through `<dialog id="drift">` once `draft` differs from `src`, and Modified, a download of
-  `toJson(ok)` (`edit.js`), there once `ok` differs from `src`.
+  edit stays in its field, marked, while the last valid bus stays on screen. The input card's bar
+  (`fileBar` in `ui.js`, built once and moved into each new card) holds two links: Original XML, the file as loaded, which warns
+  through `<dialog id="drift">` once `draft` differs from `src`, and In memory JSON, a download of
+  `toJson(ok)` (`edit.js`), the bus as drawn, with or without edits.
 
 ### Coordinate conventions
 
@@ -201,7 +205,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   band, floor type and door count come from the standard; the input keeps none of them.
   `test/validate.test.js` checks the set.
 - The schema is strict (`additionalProperties: false`, `unevaluatedProperties: false` on sections).
-- `vite.config.js` sets `assetsInlineLimit: 0` on purpose: the header's source link must point at a
+- `vite.config.js` sets `assetsInlineLimit: 0` on purpose: the input card's Original XML link must point at a
   real file, not a `data:` URL.
 
 ## Not done yet (v1)

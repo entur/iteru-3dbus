@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import './raw.js';  // vector.js imports an .svg as text
 
 const SRC = new URL('../src/', import.meta.url), GUIDE = new URL('../guide/bus-3d.js', import.meta.url);
-const LIB = ['core.js', 'limits.js', 'netex.js', 'vector.js', 'index.js'], APP = ['./main.js', './ui.js', './edit.js', /^@preact/, /guide\//];
+const LIB = ['core.js', 'limits.js', 'netex.js', 'vector.js', 'index.js'], APP = ['./main.js', './ui.js', './edit.js', './route.js', /^@preact/, /guide\//];
 const D3 = ['./bus.js', './scene.js', './views.js'], D2 = ['./vector.js'];
 const IMPORT = /(?:import|export)\s[^'";]*?from\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]/g;
 
