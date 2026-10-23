@@ -25,6 +25,7 @@ test('old links', () => {
   assert.deepEqual(at('/index.html?bus=bn-i-15-le'), BUS('busnordic/bn-i-15-le.xml'));
   assert.deepEqual(at('/?bus=nope'), LIST);
   assert.deepEqual(at('/#busnordic'), LIST);
+  assert.deepEqual(at('/?bus=volvo-8900#busnordic'), LIST);  // the Type set button changed the hash alone
 });
 
 test('href', () => {

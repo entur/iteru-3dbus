@@ -44,7 +44,7 @@ const [bar, link, mod] = fileBar(), drift = document.getElementById('drift');
 // src: the example as loaded; draft: src with every edit, valid or not; ok: the last valid draft, which is what is drawn
 const file = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
 const sel = computed(() => buses.find((b) => b.file === file.value));  // the selected bus, undefined before one is opened
-const route = signal(LIST);
+const route = signal(null);  // null until the address is read at startup: a deep link to a bus builds no list
 const DARK = matchMedia('(prefers-color-scheme: dark)');
 const dark = signal(DARK.matches);  // the pictures take their colours from the page: one cards page per scheme
 DARK.addEventListener('change', (e) => (dark.value = e.matches));
@@ -126,6 +126,7 @@ const show = (r, how) => {
 };
 const toList = { label: LIST_PAGE.title, href: href(LIST, BASE), go: () => show(LIST, 'push') };
 effect(() => {
+  if (!route.value) return;
   const list = route.value.page === 'list', b = sel.value;
   header(
     b && ok.value ? { id: b.id, inp: ok.value } : null,
@@ -135,13 +136,13 @@ effect(() => {
 });
 // the list is built, and its buses drawn, the first time it is opened in a colour scheme
 effect(() => {
-  const list = route.value.page === 'list';
+  const list = route.value?.page === 'list';
   document.body.toggleAttribute('data-page', list);
   cards.hidden = !list;
   list && cards.replaceChildren((pages[dark.value] ??= gallery(listed, (to) => show({ page: 'bus', file: to }, 'push'))));
 });
 // on the list, only why a bus could not be shown
-effect(() => (err.textContent = (route.value.page === 'list' ? fail.value : [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)]).join('\n')));
+effect(() => (err.textContent = (route.value?.page === 'list' ? fail.value : [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)]).join('\n')));
 
 // In memory JSON: the bus as drawn, with its valid edits if any, as a file to download
 effect(() => {
