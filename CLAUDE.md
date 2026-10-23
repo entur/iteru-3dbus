@@ -151,7 +151,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   when the editable set changes: making a field editable is deliberate.
 - **`ui.js`** — header, view bar, map card (tabs per side, clones of the face maps of the open side,
   sections reversed on the right side) and the input card (`form`): the "Size limits" switch (Nordic | Free) in its head, then one accordion group per
-  part of the schema. `el()` binds a function prop or child as a signal effect; `scoped` collects
+  part of the schema, and the file bar (Original XML | In memory JSON) on its lower edge. `el()` binds a function prop or child as a signal effect; `scoped` collects
   those effects so a form is disposed as one. The form is built once per selected bus and its
   controls follow the signals, so focus survives an edit; only a section's axle inputs and its
   door blocks are rebuilt, when their count changes. Enum values are `<select>`s (`kind: 'enum'`).
@@ -180,10 +180,10 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   `src` the example as loaded, `draft` with every edit, `ok` the last valid draft, `maps` the
   face maps of `ok`. Everything
   drawn (model, maps, header, derived rows) reads `ok`; the controls read `draft`, so an invalid
-  edit stays in its field, marked, while the last valid bus stays on screen. Beside the bus's figures,
-  `#json` holds two links: Original, the XML file as loaded, which warns
-  through `<dialog id="drift">` once `draft` differs from `src`, and Modified, a download of
-  `toJson(ok)` (`edit.js`), there once `ok` differs from `src`.
+  edit stays in its field, marked, while the last valid bus stays on screen. The input card's bar
+  (`fileBar` in `ui.js`, built once and moved into each new card) holds two links: Original XML, the file as loaded, which warns
+  through `<dialog id="drift">` once `draft` differs from `src`, and In memory JSON, a download of
+  `toJson(ok)` (`edit.js`), the bus as drawn, with or without edits.
 
 ### Coordinate conventions
 
@@ -205,7 +205,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   band, floor type and door count come from the standard; the input keeps none of them.
   `test/validate.test.js` checks the set.
 - The schema is strict (`additionalProperties: false`, `unevaluatedProperties: false` on sections).
-- `vite.config.js` sets `assetsInlineLimit: 0` on purpose: the header's source link must point at a
+- `vite.config.js` sets `assetsInlineLimit: 0` on purpose: the input card's Original XML link must point at a
   real file, not a `data:` URL.
 
 ## Not done yet (v1)

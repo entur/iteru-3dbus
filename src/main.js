@@ -6,7 +6,7 @@ import { addAxle, addDoor, checks, rmAxle, rmDoor, same, set, toJson } from './e
 import { gallery } from './gallery.js';
 import { fromNetex } from './netex.js';
 import { LIST, href, parse } from './route.js';
-import { form, header, mapCard, viewBar } from './ui.js';
+import { fileBar, form, header, mapCard, viewBar } from './ui.js';
 import { faces } from './vector.js';
 
 const WIDE = 720, PANEL_SHIFT = 175;  // on wide screens the view shifts left, clear of the details panel
@@ -39,7 +39,7 @@ const listed = [...buses].sort((a, b) =>
 const cards = document.getElementById('cards'), pages = {};
 const bus = document.querySelector('bus-3d');
 const info = document.getElementById('info'), err = document.getElementById('err');
-const link = document.getElementById('src'), mod = document.getElementById('mod'), drift = document.getElementById('drift');
+const [bar, link, mod] = fileBar(), drift = document.getElementById('drift');
 
 // src: the example as loaded; draft: src with every edit, valid or not; ok: the last valid draft, which is what is drawn
 const file = signal(null), src = signal(null), draft = signal(null), ok = signal(null);
@@ -86,7 +86,8 @@ const select = (to) => {
     touched.value = [];
     warns.value = b.warns;
   });
-  const [card, end] = form({ draft, ok, marks, dirty, nordic }, on);
+  Object.assign(link, { href: b.src, title: `The NeTEx XML of ${b.id} as loaded` });
+  const [card, end] = form({ draft, ok, marks, dirty, nordic }, on, bar);
   stop = end;
   info.replaceChildren(mapped, card);
   return [];
@@ -127,7 +128,7 @@ const toList = { label: LIST_PAGE.title, href: href(LIST, BASE), go: () => show(
 effect(() => {
   const list = route.value.page === 'list', b = sel.value;
   header(
-    b && ok.value ? { id: b.id, inp: ok.value, src: b.src } : null,
+    b && ok.value ? { id: b.id, inp: ok.value } : null,
     list ? { title: LIST_PAGE.title, sub: LIST_PAGE.sub(buses.length) } : null,
     !list ? toList : b ? { label: `${BACK} ${b.id}`, href: b.href, go: () => show({ page: 'bus', file: b.file }, 'push') } : null,
   );
@@ -142,12 +143,12 @@ effect(() => {
 // on the list, only why a bus could not be shown
 effect(() => (err.textContent = (route.value.page === 'list' ? fail.value : [...fail.value, ...errs.value, ...warns.value.map((w) => `warning: ${w}`)]).join('\n')));
 
-// Modified: the bus as drawn, with its valid edits, as a file to download; there is none until an edit
+// In memory JSON: the bus as drawn, with its valid edits if any, as a file to download
 effect(() => {
   const was = mod.href;
-  edited.value ? (mod.href = URL.createObjectURL(new Blob([toJson(ok.value)], { type: 'application/json' }))) : mod.removeAttribute('href');
+  ok.value ? (mod.href = URL.createObjectURL(new Blob([toJson(ok.value)], { type: 'application/json' }))) : mod.removeAttribute('href');
   was && URL.revokeObjectURL(was);
-  Object.assign(mod, { download: `${sel.value?.id}.json`, ariaDisabled: String(!edited.value), title: edited.value ? 'Download the input JSON with your edits' : 'No edits yet' });
+  Object.assign(mod, { download: `${sel.value?.id}.json`, title: edited.value ? 'Download the input as drawn, with your edits, as JSON' : 'Download the input read from the XML, as JSON' });
 });
 
 bus.addEventListener('busrender', () => aim && ((aim = false), bus.go()));

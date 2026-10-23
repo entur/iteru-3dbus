@@ -11,6 +11,7 @@ export const NAMES = { zone: ZONE, bias: BIAS, leaves: LEAVES };
 const NOTE = 'Drawn from the input: body, wheel arches, wheels, bellows, roof pod, and the doors on the right side and the windows on both. The left side has no doors of its own, and the front and rear templates are not drawn yet.';
 const NONE = '–', BLACK = '#000000';
 const LIMITS = 'Size limits', NORDIC = 'Nordic', FREE = 'Free';  // the limits switch in the input card's head
+const ORIGINAL = 'Original XML', MEMORY = 'In memory JSON';  // the input card's bar
 const TYPE = { int: 'number', text: 'text', bool: 'checkbox', color: 'color' };
 
 const open = new Set(['Dimensions', 'Sections']);  // accordion groups that are open; survives edits and bus switches
@@ -76,17 +77,14 @@ export const brief = (inp) =>
 
 /**
  * Fills the header: the title with the link to the other route beside it, then a line of the
- * shown bus's main figures with the links to its input file. A page takes the bus's place in the
- * title and the line below it, and has no file links.
- * @param {?{id: string, inp: object, src: string}} cur the selected bus: its id, its input with the
- *   valid edits applied, and the url of its file; null before any bus is opened
+ * shown bus's main figures. A page takes the bus's place in the title and the line below it.
+ * @param {?{id: string, inp: object}} cur the selected bus: its id and its input with the
+ *   valid edits applied; null before any bus is opened
  * @param {?{title: string, sub: string}} page the page shown in place of the bus
  * @param {?{label: string, href: string, go: () => void}} other the link to the other route, null for none
  */
 export const header = (cur, page, other) => {
-  const title = page?.title ?? cur.id, src = document.getElementById('src'), link = document.getElementById('other');
-  cur ? Object.assign(src, { href: cur.src, title: `NeTEx XML of ${cur.id} as loaded` }) : src.removeAttribute('href');
-  document.getElementById('json').hidden = !!page;
+  const title = page?.title ?? cur.id, link = document.getElementById('other');
   Object.assign(link, { hidden: !other, textContent: other?.label ?? '', onclick: other && inPlace(other.go) });
   other ? (link.href = other.href) : link.removeAttribute('href');
   document.getElementById('title').textContent = title;
@@ -276,8 +274,18 @@ const limits = (nordic) =>
     ...[[true, NORDIC], [false, FREE]].map(([v, label]) => el('button', { type: 'button', onclick: () => (nordic.value = v), ariaPressed: () => String(nordic.value === v) }, label)));
 
 /**
+ * The input card's bar, built once: the file as loaded, and the input as drawn, as JSON. Each
+ * input card takes it; the host sets the links' targets.
+ * @returns {[HTMLElement, HTMLAnchorElement, HTMLAnchorElement]} the bar and its two links
+ */
+export const fileBar = () => {
+  const xml = el('a', { target: '_blank', rel: 'noopener' }, ORIGINAL), json = el('a', {}, MEMORY);
+  return [el('footer', { className: 'bar' }, xml, json), xml, json];
+};
+
+/**
  * Builds the input card: one accordion group per part of the schema, every value in it, the
- * drawn ones editable. Built once per selected bus; the controls then follow the signals.
+ * drawn ones editable, and the file bar at its lower edge. Built once per selected bus; the controls then follow the signals.
  * @param {{draft: object, ok: object, marks: object, dirty: object, nordic: object}} st signals: the edited
  *   input, its last valid state, the keys of the edits made since it was last valid, whether
  *   the draft differs from the source, and whether the Nordic limits count as errors (the switch in the card's head)
@@ -285,9 +293,10 @@ const limits = (nordic) =>
  *   rm: (i: number) => void, addDoor: (i: number) => void, rmDoor: (i: number, j: number) => void,
  *   reset: () => void}} on edit callbacks: a value, an axle more or less on section i, a door
  *   more on it or its door j less, drop all edits
+ * @param {HTMLElement} bar the bar of `fileBar`, moved here from the card before
  * @returns {[HTMLElement, () => void]} the card and the function that disposes its effects
  */
-export const form = (st, on) =>
+export const form = (st, on, bar) =>
   scoped(() =>
     el(
       'section', { className: 'card input' },
@@ -296,5 +305,6 @@ export const form = (st, on) =>
         el('details', { open: open.has(g), ontoggle: (e) => (e.target.open ? open.add(g) : open.delete(g)) }, title(st, g), ...group(st, on, g)),
       ),
       el('p', { className: 'note' }, NOTE),
+      bar,
     ),
   );
