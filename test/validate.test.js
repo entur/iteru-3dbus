@@ -72,7 +72,10 @@ test('two decks: the upper band hangs from the band above, the doors and lower w
   assert.equal(lintel({ ...dd, band_between_decks_mm: undefined }), 2650);
   assert.equal(lintel({ ...dd, band_between_decks_mm: 600, upper_win_band_height_mm: 1000 }), 2350);
   assert.equal(upper(volvo), undefined);
-  assert.equal(lintel({ ...volvo, band_between_decks_mm: 600 }), 3050);
+});
+
+test('band_between_decks_mm only with upper_win_band_height_mm', () => {
+  assert.deepEqual(validate({ ...volvo, band_between_decks_mm: 600 }), ['/ must have property upper_win_band_height_mm when property band_between_decks_mm is present']);
 });
 
 test('rule (6): the bands above the lower windows leave room for them above the skirt', () => {
