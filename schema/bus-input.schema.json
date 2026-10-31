@@ -55,7 +55,7 @@
       "minimum": 0,
       "maximum": 1000,
       "default": 400,
-      "description": "Band of body between the upper windows and the lower windows and doors, which are drawn up to its lower edge. The destination display sits in it, on the front. Read only with upper_win_band_height_mm."
+      "description": "Band of body between the upper windows and the lower windows and doors, which are drawn up to its lower edge. Read only with upper_win_band_height_mm."
     },
     "win_band_height_mm": {
       "type": "integer",
@@ -79,7 +79,7 @@
     },
     "front_display": {
       "type": "string",
-      "description": "Text on the destination display, e.g. a line number and destination. A dark display at the top of the windshield, or on two decks in the band between them, showing this text, set smaller when it is long. Empty or missing: no display."
+      "description": "Text on the destination display, e.g. a line number and destination. A dark display at the top of the windshield, on two decks the lower one, showing this text, set smaller when it is long. Empty or missing: no display."
     },
     "tyre": {
       "type": "object",

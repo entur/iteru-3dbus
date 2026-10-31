@@ -110,7 +110,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   both in the same frame (`framed`: one colour, width and corner radius). The left side takes
   the panes of `windowsLeft` unflipped, in the same band and frame, and no doors. On two decks
   both sides take the panes of `windowsLeft` again in the `upper` band, and the front an upper
-  windscreen across it, the display moving into the band between the decks.
+  windscreen across it; the display stays in the lower windscreen, above the driver.
   The front map has a windscreen in that frame, from `lintel` down to `dash` but never closer
   to the badge than `SCREEN_GAP` (an end map starts `CORNER` below the body top), left out
   when there is no room for it; a root `front_display` text is shown on a destination display

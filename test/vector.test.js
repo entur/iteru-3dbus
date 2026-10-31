@@ -191,11 +191,10 @@ test('two decks: an upper band of panes on both sides, one over each lower pane 
   assert.deepEqual(Object.keys(Object.groupBy(glass(faces(volvo).right[0]), (g) => down(g).join())), ['250,1650']);
 });
 
-test('two decks: an upper windscreen across the upper band, the display in the band between above the lower one', () => {
+test('two decks: an upper windscreen across the upper band, the display at the top of the lower one', () => {
   const dd = { ...load('busnordic/bn-ii-15-dd'), front_display: '21 Tjuvholmen' }, [f] = faces(dd).front;
   assert.deepEqual(part(f, 'windscreen').map((s) => down(s.kids[0].attrs)[0]), [160, 1460]);
   assert.deepEqual(down(part(f, 'windscreen')[0].kids[0].attrs), [160, 1060]);
-  const [{ kids: [quad] }] = part(f, 'display');
-  assert.deepEqual([quad.attrs.y, quad.attrs.height], [1100, 300]);
-  assert.deepEqual(part(faces({ ...dd, band_between_decks_mm: 150 }).front[0], 'display'), []);
+  const [{ kids: [quad] }] = part(f, 'display'), { pane } = glazing(f, 'windscreen')[1];
+  assert.deepEqual([quad.attrs.y - pane.y, quad.attrs.height], [40, 300]);
 });

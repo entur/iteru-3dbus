@@ -63,7 +63,7 @@ const label = (text, x, y, size, track, fill) =>
   svg('text', { x, y, fill, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text);
 
 /**
- * The destination display at the top of a box at x, y, w by h: the windscreen's pane, or the band between the decks.
+ * The destination display at the top of the windscreen's pane, which lies at x, y and is w by h:
  * a dark quad with an outline, the text centred in it and set smaller when it is long. Nothing
  * where the pane is too low for it.
  */
@@ -88,8 +88,8 @@ const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).d
  * line, stopping above the badge and left out where that leaves it no room. The lines are y on
  * the map. A long badge text is set smaller, its letter spacing with it, so it stays inside the
  * badge and clear of the headlights however long it is. A sign text is shown on a destination
- * display at the top of the windscreen, when there is one. On two decks the upper lines [y, y1]
- * hold an upper windscreen, and the display moves down into the band between it and the lower one.
+ * display at the top of the windscreen, when there is one: on two decks the lower one, above the
+ * driver. The upper lines [y, y1] hold an upper windscreen.
  */
 const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, light, sign) => {
   const by = y1 - BADGE_H, cy = y1 - BADGE_H / 2, bx = (w * (1 - BADGE_W)) / 2, ys = Math.min(y2, by - SCREEN_GAP);
@@ -100,7 +100,7 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, l
     w, h,
     plain(w, h, fill),
     ...[u, screen && [y, ys]].filter(Boolean).map(([a, b]) => framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, a, b, 1, GLASS)),
-    ...(!sign ? [] : u ? display(sign, edge, u[1], w - 2 * edge, y - u[1]) : screen ? display(sign, edge, y + FRAME_W, w - 2 * edge, ys - y - 2 * FRAME_W) : []),
+    ...(screen && sign ? display(sign, edge, y + FRAME_W, w - 2 * edge, ys - y - 2 * FRAME_W) : []),
     left,
     svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
     svg('rect', { class: 'badge', x: bx, y: by, width: w * BADGE_W, height: BADGE_H, rx: BADGE_R, fill: BADGE }),
@@ -120,7 +120,7 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, l
  * up to the same line as those and down to the line band_below_windshield_mm gives, and the
  * badge with a headlight on each side standing on the line band_below_grill_mm gives. A
  * front_display text is shown on a destination display at the top of the windscreen, on two
- * decks in the band between them.
+ * decks the lower one.
  * @param {object} inp validated bus input
  * @param {object} [opts]
  * @param {SVGSVGElement} [opts.headlight] drawing of the left headlight as the front map shows
