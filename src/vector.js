@@ -99,7 +99,7 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, l
   return face(
     w, h,
     plain(w, h, fill),
-    ...[...(u ? [u] : []), ...(screen ? [[y, ys]] : [])].map(([a, b]) => framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, a, b, 1, GLASS)),
+    ...[u, screen && [y, ys]].filter(Boolean).map(([a, b]) => framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, a, b, 1, GLASS)),
     ...(!sign ? [] : u ? display(sign, edge, u[1], w - 2 * edge, y - u[1]) : screen ? display(sign, edge, y + FRAME_W, w - 2 * edge, ys - y - 2 * FRAME_W) : []),
     left,
     svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
@@ -136,7 +136,10 @@ export const faces = (inp, { headlight: light } = {}) => {
   const deck = upper(inp), high = (ws) => (deck ? [[ws, deck]] : []);
   const lines = { lintel: Math.max(up(band[1]), 0), grill: up(grill(inp)), dash: up(dash(inp)), upper: deck && [up(deck[1]), up(deck[0])] };
   return {
-    right: boxes.map((b, i) => side(b.len, top, fill, placed[i].map(flip(b.len)), [[glass[i].map(flip(b.len)), band], ...high(across[i].map(flip(b.len)))])),
+    right: boxes.map((b, i) => {
+      const f = flip(b.len);
+      return side(b.len, top, fill, placed[i].map(f), [[glass[i].map(f), band], ...high(across[i].map(f))]);
+    }),
     left: boxes.map((b, i) => side(b.len, top, fill, [], [[across[i], band], ...high(across[i])])),
     front: [front(w, h, fill, inp.front?.badge_text ?? '', lines, light ?? headlight(), inp.front_display)],
     rear: [face(w, h, plain(w, h, fill))],

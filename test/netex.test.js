@@ -164,12 +164,13 @@ test('rejects an entrance on the wheel arch, as the render input does', () =>
   rejects(fromNetex(patch(ARTIC, '<netex:DistanceFromFront>4.8</netex:DistanceFromFront>', '<netex:DistanceFromFront>2.0</netex:DistanceFromFront>')),
     'Deck 3dbus:Deck:lead: sections[0]', 'axle 1'));
 
-const LEVELS = '<netex:DeckLevel id="3dbus:DeckLevel:main" version="1"/>';
+const LEVELS = '<netex:DeckLevel id="3dbus:DeckLevel:main" version="1"/>', BASE = '<netex:KeyValue><netex:Key>3dbus:base_color';
+/** xml with the VehicleType KeyValues `kvs` added. */
+const withKvs = (xml, kvs) => patch(xml, BASE, `${kvs}${BASE}`);
 /** ARTIC with an upper DeckLevel and one Deck on it, and the VehicleType KeyValues `kvs`. */
-const upper = (kvs = '') => patch(patch(patch(ARTIC,
+const upper = (kvs = '') => withKvs(patch(patch(ARTIC,
   LEVELS, `${LEVELS}<netex:DeckLevel id="3dbus:DeckLevel:upper" version="1"/>`),
-  '</netex:decks>', '<netex:Deck id="3dbus:Deck:upper" version="1"><netex:DeckLevelRef ref="3dbus:DeckLevel:upper" version="1"/></netex:Deck></netex:decks>'),
-  '<netex:KeyValue><netex:Key>3dbus:base_color', `${kvs}<netex:KeyValue><netex:Key>3dbus:base_color`);
+  '</netex:decks>', '<netex:Deck id="3dbus:Deck:upper" version="1"><netex:DeckLevelRef ref="3dbus:DeckLevel:upper" version="1"/></netex:Deck></netex:decks>'), kvs);
 const kv = (k, v) => `<netex:KeyValue><netex:Key>3dbus:${k}</netex:Key><netex:Value>${v}</netex:Value></netex:KeyValue>`;
 
 test('a Deck on a second DeckLevel adds no section; the upper band comes from the VehicleType', () => {
@@ -185,7 +186,7 @@ test('warns when a second DeckLevel has no upper band, and when an upper band ha
   assert.equal(lone.inp.upper_win_band_height_mm, undefined);
   assert.equal(lone.warns.length, 1);
   assert.match(lone.warns[0], /3dbus:Deck:upper.*3dbus:upper_win_band_height_mm/);
-  const band = fromNetex(patch(ARTIC, '<netex:KeyValue><netex:Key>3dbus:base_color', `${kv('upper_win_band_height_mm', 900)}<netex:KeyValue><netex:Key>3dbus:base_color`));
+  const band = fromNetex(withKvs(ARTIC, kv('upper_win_band_height_mm', 900)));
   assert.equal(band.ok, true, JSON.stringify(band));
   assert.equal(band.inp.upper_win_band_height_mm, 900);
   assert.equal(band.warns.length, 1);

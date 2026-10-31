@@ -40,15 +40,16 @@ export const bodyTop = (inp) => inp.height_mm - (inp.roof_equipment_mm ?? 0);
  */
 export const endH = (inp) => bodyTop(inp) - CORNER - END_EDGE;
 
+/** The body top less the band above the topmost side windows. */
+const roofline = (inp) => bodyTop(inp) - (inp.band_above_mm ?? BAND_ABOVE);
+
 /**
  * The upper deck's window band, on a bus with two decks: it hangs from the body top less the band above.
  * @param {object} inp validated bus input
  * @returns {[number, number] | undefined} its lower and upper edge, mm above ground; undefined on one deck
  */
-export const upper = (inp) => {
-  const hi = bodyTop(inp) - (inp.band_above_mm ?? BAND_ABOVE);
-  return inp.upper_win_band_height_mm === undefined ? undefined : [hi - inp.upper_win_band_height_mm, hi];
-};
+export const upper = (inp) =>
+  inp.upper_win_band_height_mm === undefined ? undefined : [roofline(inp) - inp.upper_win_band_height_mm, roofline(inp)];
 
 /**
  * The line the doors and side windows reach up to: the body top less the band above them, on two
@@ -58,7 +59,7 @@ export const upper = (inp) => {
  */
 export const lintel = (inp) => {
   const up = upper(inp);
-  return up ? up[0] - (inp.band_between_decks_mm ?? BETWEEN) : bodyTop(inp) - (inp.band_above_mm ?? BAND_ABOVE);
+  return up ? up[0] - (inp.band_between_decks_mm ?? BETWEEN) : roofline(inp);
 };
 
 /**

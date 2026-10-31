@@ -7,19 +7,17 @@ import slice from '../schema/netex/vehicle-type.schema.json' with { type: 'json'
 
 /** Default prefix of the KeyValues B reads. */
 export const PREFIX = '3dbus:';
+const DECKLESS = ['axles_mm', 'windows_count'];  // VehicleType keys read only when there is no DeckPlan
+const ROOT = ['roof_equipment_mm', 'band_above_mm', 'upper_win_band_height_mm', 'band_between_decks_mm', 'win_band_height_mm', 'band_below_grill_mm',
+  'band_below_windshield_mm'];
 /** The KeyValue suffixes B reads, per element. */
 export const KEYS = {
-  vehicleType: ['tyre_size', 'tyre_diameter_mm', 'tyre_rear_twin', 'base_color', 'roof_equipment_mm', 'band_above_mm',
-    'upper_win_band_height_mm', 'band_between_decks_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm',
-    'axles_mm', 'windows_count'],
+  vehicleType: ['tyre_size', 'tyre_diameter_mm', 'tyre_rear_twin', 'base_color', ...ROOT, ...DECKLESS],
   deck: ['length_mm', 'axles_mm', 'bellows_ahead_mm', 'windows_count'],
   entrance: ['leaves', 'glazed'],
 };
 
 const MM_PER_M = 1000, LENGTH_TOL = 10;  // NeTEx LengthType is metres; the Length check's slack, mm
-const DECKLESS = ['axles_mm', 'windows_count'];  // VehicleType keys read only when there is no DeckPlan
-const ROOT = ['roof_equipment_mm', 'band_above_mm', 'upper_win_band_height_mm', 'band_between_decks_mm', 'win_band_height_mm', 'band_below_grill_mm',
-  'band_below_windshield_mm'];
 const RIGHT = new Set(['rightSide', undefined]);  // entrance sides that are doors on the drawn side
 const LISTS = new Set(['VehicleType', 'DeckPlan', 'VehicleModel', 'Deck', 'DeckLevel', 'PassengerSpace', 'PassengerEntrance', 'KeyValue']);
 /** Elements the slice types as numbers: the only tag values parsed as such. */
@@ -119,9 +117,10 @@ const entrances = (deck, prefix) =>
 const readDecks = (deckPlan, prefix) => {
   const ds = deckPlan.decks?.Deck ?? [], ref = (d) => d.DeckLevelRef?.ref;
   const levels = [...new Set([...(deckPlan.deckLevels?.DeckLevel ?? []).map((l) => l.id), ...ds.map(ref).filter((r) => r !== undefined)])];
-  const level = (d) => (ref(d) === undefined ? 0 : levels.indexOf(ref(d)));
-  const decks = ds.filter((d) => level(d) === 0);
-  const over = ds.filter((d) => level(d) > 1).map((d) => `${named('Deck', d, ds.indexOf(d))}: DeckLevel ${ref(d)} is a third deck level, which is not supported`);
+  const at = ds.map((d, i) => ({ d, i, level: ref(d) === undefined ? 0 : levels.indexOf(ref(d)) }));
+  const on = (pick) => at.filter(({ level }) => pick(level));
+  const decks = on((l) => l === 0).map(({ d }) => d);
+  const over = on((l) => l > 1).map(({ d, i }) => `${named('Deck', d, i)}: DeckLevel ${ref(d)} is a third deck level, which is not supported`);
   const read = decks.map((d, i) => {
     const label = named('Deck', d, i), k = keys(d, label, prefix, KEYS.deck, ['length_mm', 'axles_mm', ...(i ? ['bellows_ahead_mm'] : [])]);
     const ents = entrances(d, prefix);
@@ -134,7 +133,7 @@ const readDecks = (deckPlan, prefix) => {
       ],
     };
   });
-  const upper = ds.filter((d) => level(d) === 1).map((d) => named('Deck', d, ds.indexOf(d)));
+  const upper = on((l) => l === 1).map(({ d, i }) => named('Deck', d, i));
   return { read, upper, errs: [...(decks.length ? [] : [`DeckPlan ${deckPlan.id}: no Deck on the first DeckLevel`]), ...over, ...read.flatMap((d) => d.errs)] };
 };
 
@@ -200,7 +199,7 @@ export const fromNetex = (xml, { prefix = PREFIX, id } = {}) => {
 
   const { VehicleType: vt, DeckPlan: plan, VehicleModel: model } = picked, label = `VehicleType ${vt.id}`;
   const k = keys(vt, label, prefix, KEYS.vehicleType.filter((s) => !plan || !DECKLESS.includes(s)), ['base_color', ...(plan ? [] : ['axles_mm'])]);
-  const decks = plan ? readDecks(plan, prefix) : { read: [], upper: [], errs: [] };
+  const decks = plan ? readDecks(plan, prefix) : { read: [], errs: [] };
   const readErrs = [
     ...['Width', 'Height', ...(plan ? [] : ['Length'])].filter((n) => vt[n] === undefined).map((n) => `${label}: ${n} is required`),
     ...(k.has('tyre_size') || k.has('tyre_diameter_mm') ? [] : [`${label}: ${prefix}tyre_size or ${prefix}tyre_diameter_mm is required`]),
