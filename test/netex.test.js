@@ -286,3 +286,10 @@ test('an error on the number of sections names the DeckPlan', () => {
   assert.notEqual(four, ARTIC);
   rejects(fromNetex(four), 'DeckPlan 3dbus:DeckPlan:citaro-g: /sections');
 });
+
+test('a DeckLevel with no id does not count as a level, and labels keep the Deck\'s place in the file', () => {
+  const res = fromNetex(patch(upper(kv('upper_win_band_height_mm', 900)), LEVELS, `<netex:DeckLevel version="1"/>${LEVELS}`));
+  assert.deepEqual([res.ok, res.warns], [true, []], JSON.stringify(res));
+  const lone = fromNetex(patch(upper(), '<netex:Deck id="3dbus:Deck:upper"', '<netex:Deck'));
+  assert.match(lone.warns[0], /^Deck #3: on a second DeckLevel/);
+});

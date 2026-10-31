@@ -20,10 +20,12 @@ const rules = [
         .filter((d) => (d.axle_gap ?? 0) >= Math.max(s.axles_mm.length - 1, d.zone === 'between_axles' ? 0 : 1))
         .map((d) => `sections[${i}] has no axle gap ${d.axle_gap ?? 0}`),
     ),
-  (inp) =>
-    upper(inp) && lintel(inp) < LOW
-      ? [`/upper_win_band_height_mm with the bands above the lower windows leaves their top at ${lintel(inp)} mm, under the ${LOW} mm they need (skirt plus win_band_height_mm's minimum)`]
-      : [],
+  (inp) => {
+    const top = upper(inp) ? lintel(inp) : LOW;
+    return top < LOW
+      ? [`/upper_win_band_height_mm with the bands above the lower windows leaves their top at ${top} mm, under the ${LOW} mm they need (skirt plus win_band_height_mm's minimum)`]
+      : [];
+  },
 ];
 
 /** Rule (5), after (1) and (4): one message per clash of a placed door. */

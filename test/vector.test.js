@@ -198,3 +198,11 @@ test('two decks: an upper windscreen across the upper band, the display at the t
   const [{ kids: [quad] }] = part(f, 'display'), { pane } = glazing(f, 'windscreen')[1];
   assert.deepEqual([quad.attrs.y - pane.y, quad.attrs.height], [40, 300]);
 });
+
+test('two decks: the upper windscreen stays inside the front map and clear of the badge', () => {
+  const dd = load('busnordic/bn-ii-15-dd'), frames = (inp) => glazing(faces(inp).front[0], 'windscreen').map((g) => down(g.frame));
+  assert.equal(frames({ ...dd, band_above_mm: 0 })[0][0], 0);
+  const [badge] = part(faces({ ...dd, band_below_grill_mm: 1200 }).front[0], 'badge');
+  const low = frames({ ...dd, upper_win_band_height_mm: 2500, band_between_decks_mm: 800, band_below_grill_mm: 1200 });
+  assert.ok(low.every(([, y1]) => y1 <= badge.attrs.y - 180), JSON.stringify(low));
+});

@@ -89,17 +89,18 @@ const headlight = () => (parsed ??= new DOMParser().parseFromString(LAMP, SVG).d
  * the map. A long badge text is set smaller, its letter spacing with it, so it stays inside the
  * badge and clear of the headlights however long it is. A sign text is shown on a destination
  * display at the top of the windscreen, when there is one: on two decks the lower one, above the
- * driver. The upper lines [y, y1] hold an upper windscreen.
+ * driver. The upper lines [y, y1] hold an upper windscreen, kept clear of the badge the same way.
  */
 const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, light, sign) => {
-  const by = y1 - BADGE_H, cy = y1 - BADGE_H / 2, bx = (w * (1 - BADGE_W)) / 2, ys = Math.min(y2, by - SCREEN_GAP);
+  const by = y1 - BADGE_H, cy = y1 - BADGE_H / 2, bx = (w * (1 - BADGE_W)) / 2, gap = by - SCREEN_GAP, ys = Math.min(y2, gap);
+  const room = ([a, b]) => b - a > 2 * FRAME_W, screen = room([y, ys]);
   const name = text.toUpperCase(), track = BADGE_SPACING / BADGE_FONT;  // letter spacing per font size
-  const size = fit(name, w * BADGE_W - 2 * BADGE_PAD, BADGE_FONT, track), screen = ys - y > 2 * FRAME_W, edge = SCREEN_SIDE + FRAME_W;
+  const size = fit(name, w * BADGE_W - 2 * BADGE_PAD, BADGE_FONT, track), edge = SCREEN_SIDE + FRAME_W;
   const left = attr(light.cloneNode(true), { class: 'headlight', x: LAMP_SIDE, y: by, width: bx - LAMP_GAP - LAMP_SIDE, height: BADGE_H });
   return face(
     w, h,
     plain(w, h, fill),
-    ...[u, screen && [y, ys]].filter(Boolean).map(([a, b]) => framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, a, b, 1, GLASS)),
+    ...[...(u ? [[u[0], Math.min(u[1], gap)]] : []), [y, ys]].filter(room).map(([a, b]) => framed('windscreen', { x0: SCREEN_SIDE, x1: w - SCREEN_SIDE }, a, b, 1, GLASS)),
     ...(screen && sign ? display(sign, edge, y + FRAME_W, w - 2 * edge, ys - y - 2 * FRAME_W) : []),
     left,
     svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
@@ -134,7 +135,7 @@ export const faces = (inp, { headlight: light } = {}) => {
   const up = (mm) => top - CORNER - mm;  // mm above ground as y on an end map, which starts CORNER below the body top
   const w = inp.width_mm, h = endH(inp);
   const deck = upper(inp), high = (ws) => (deck ? [[ws, deck]] : []);
-  const lines = { lintel: Math.max(up(band[1]), 0), grill: up(grill(inp)), dash: up(dash(inp)), upper: deck && [up(deck[1]), up(deck[0])] };
+  const lines = { lintel: Math.max(up(band[1]), 0), grill: up(grill(inp)), dash: up(dash(inp)), upper: deck && [Math.max(up(deck[1]), 0), up(deck[0])] };
   return {
     right: boxes.map((b, i) => {
       const f = flip(b.len);

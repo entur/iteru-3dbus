@@ -116,13 +116,13 @@ const entrances = (deck, prefix) =>
  */
 const readDecks = (deckPlan, prefix) => {
   const ds = deckPlan.decks?.Deck ?? [], ref = (d) => d.DeckLevelRef?.ref;
-  const levels = [...new Set([...(deckPlan.deckLevels?.DeckLevel ?? []).map((l) => l.id), ...ds.map(ref).filter((r) => r !== undefined)])];
-  const at = ds.map((d, i) => ({ d, i, level: ref(d) === undefined ? 0 : levels.indexOf(ref(d)) }));
-  const on = (pick) => at.filter(({ level }) => pick(level));
-  const decks = on((l) => l === 0).map(({ d }) => d);
-  const over = on((l) => l > 1).map(({ d, i }) => `${named('Deck', d, i)}: DeckLevel ${ref(d)} is a third deck level, which is not supported`);
-  const read = decks.map((d, i) => {
-    const label = named('Deck', d, i), k = keys(d, label, prefix, KEYS.deck, ['length_mm', 'axles_mm', ...(i ? ['bellows_ahead_mm'] : [])]);
+  const levels = [...new Set([...(deckPlan.deckLevels?.DeckLevel ?? []).map((l) => l.id), ...ds.map(ref)].filter((r) => r !== undefined))];
+  const at = ds.map((d, n) => ({ d, n, level: ref(d) === undefined ? 0 : levels.indexOf(ref(d)) }));
+  const on = (is) => at.filter(({ level }) => is(level));
+  const decks = on((l) => l === 0);
+  const over = on((l) => l > 1).map(({ d, n }) => `${named('Deck', d, n)}: DeckLevel ${ref(d)} is a third deck level, which is not supported`);
+  const read = decks.map(({ d, n }, i) => {
+    const label = named('Deck', d, n), k = keys(d, label, prefix, KEYS.deck, ['length_mm', 'axles_mm', ...(i ? ['bellows_ahead_mm'] : [])]);
     const ents = entrances(d, prefix);
     return {
       label, vals: k.vals, ents,
@@ -133,8 +133,8 @@ const readDecks = (deckPlan, prefix) => {
       ],
     };
   });
-  const upper = on((l) => l === 1).map(({ d, i }) => named('Deck', d, i));
-  return { read, upper, errs: [...(decks.length ? [] : [`DeckPlan ${deckPlan.id}: no Deck on the first DeckLevel`]), ...over, ...read.flatMap((d) => d.errs)] };
+  const upper = on((l) => l === 1).map(({ d, n }) => named('Deck', d, n));
+  return { read, upper, errs: [...(decks.length ? [] : [`DeckPlan ${deckPlan.id}: no Deck${ds.length ? ' on the first DeckLevel' : ''}`]), ...over, ...read.flatMap((d) => d.errs)] };
 };
 
 /** Sections of a DeckPlan, doors placed from the front of their own section. */
