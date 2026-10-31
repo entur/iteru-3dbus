@@ -100,7 +100,7 @@ flowchart LR
 - No ML branch yet (full pipeline: [`docs/flowchart.html`](docs/flowchart.html)).
 - One generic front; rear templates are not drawn.
 - Doors on the right side only.
-- One deck: a second DeckLevel is rejected (double deck as A bands: #9).
+- At most two decks: a third DeckLevel is rejected. The upper deck is a window band (`upper_win_band_height_mm`), drawn the same along the whole bus.
 
 Remaining work: [issues](https://github.com/entur/iteru-3dbus/issues).
 

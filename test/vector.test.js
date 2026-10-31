@@ -180,3 +180,29 @@ test('a front_display text is shown on a display at the top of the windscreen, s
   const low = shown('21', { band_below_windshield_mm: 2360 });  // a windscreen too low for a display
   assert.deepEqual([low.pane.height, low.sign], [190, []]);
 });
+
+test('two decks: an upper band of panes on both sides, one over each lower pane and door, the doors under the band between', () => {
+  const dd = load('busnordic/bn-ii-15-dd'), { right, left } = faces(dd);
+  const rows = (f) => Object.groupBy(glass(f), (g) => down(g).join());
+  assert.deepEqual(Object.keys(rows(right[0])), ['1550,2950', '250,1150']);
+  assert.deepEqual([rows(right[0])['250,1150'].length, rows(right[0])['1550,2950'].length, drawn(right[0]).length], [10, 8, 2]);
+  assert.deepEqual(rows(left[0])['250,1150'].map(across), rows(left[0])['1550,2950'].map(across));
+  assert.deepEqual(down(drawn(right[0])[0].frame)[0], 1550);
+  assert.deepEqual(Object.keys(Object.groupBy(glass(faces(volvo).right[0]), (g) => down(g).join())), ['250,1650']);
+});
+
+test('two decks: an upper windscreen across the upper band, the display at the top of the lower one', () => {
+  const dd = { ...load('busnordic/bn-ii-15-dd'), front_display: '21 Tjuvholmen' }, [f] = faces(dd).front;
+  assert.deepEqual(part(f, 'windscreen').map((s) => down(s.kids[0].attrs)[0]), [160, 1460]);
+  assert.deepEqual(down(part(f, 'windscreen')[0].kids[0].attrs), [160, 1060]);
+  const [{ kids: [quad] }] = part(f, 'display'), { pane } = glazing(f, 'windscreen')[1];
+  assert.deepEqual([quad.attrs.y - pane.y, quad.attrs.height], [40, 300]);
+});
+
+test('two decks: the upper windscreen stays inside the front map and clear of the badge', () => {
+  const dd = load('busnordic/bn-ii-15-dd'), frames = (inp) => glazing(faces(inp).front[0], 'windscreen').map((g) => down(g.frame));
+  assert.equal(frames({ ...dd, band_above_mm: 0 })[0][0], 0);
+  const [badge] = part(faces({ ...dd, band_below_grill_mm: 1200 }).front[0], 'badge');
+  const low = frames({ ...dd, upper_win_band_height_mm: 2500, band_between_decks_mm: 800, band_below_grill_mm: 1200 });
+  assert.ok(low.every(([, y1]) => y1 <= badge.attrs.y - 180), JSON.stringify(low));
+});

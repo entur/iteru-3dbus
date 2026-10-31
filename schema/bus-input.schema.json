@@ -3,9 +3,10 @@
   "$id": "urn:bus-model:input:3.0",
   "title": "Bus model input",
   "description": "The input to the bus renderer: dimensions per body section, tyres, colour, front text and optional door/window hints. Everything in it is drawn; dimension names follow NeTEx VehicleType (Width, Height) in snake_case with explicit mm units.",
-  "$comment": "Rules JSON Schema cannot express, checked in code: (1) each section's axles_mm ascending and inside 0..length_mm; (4) axle_gap < number of axles - 1; (5) placed doors (doors or doors_hint) must not overlap each other or an arch, nor reach past the section's end. Regulation rules (2) total length and (3) door count moved to src/limits.js.",
+  "$comment": "Rules JSON Schema cannot express, checked in code: (1) each section's axles_mm ascending and inside 0..length_mm; (4) axle_gap < number of axles - 1; (5) placed doors (doors or doors_hint) must not overlap each other or an arch, nor reach past the section's end; (6) with two decks, the bands above the lower windows must leave their top at least win_band_height_mm's minimum above the skirt. Regulation rules (2) total length and (3) door count moved to src/limits.js.",
   "type": "object",
   "additionalProperties": false,
+  "dependentRequired": { "band_between_decks_mm": ["upper_win_band_height_mm"] },
   "required": [
     "schema_version",
     "width_mm",
@@ -42,14 +43,27 @@
       "minimum": 0,
       "maximum": 1000,
       "default": 250,
-      "description": "Band of body between the top of the doors and side windows and the top of the body (height_mm minus roof_equipment_mm). Doors and side windows are drawn up to this line."
+      "description": "Band of body between the top of the topmost side windows and the top of the body (height_mm minus roof_equipment_mm). On one deck the doors and side windows are drawn up to this line; on two decks the upper windows."
+    },
+    "upper_win_band_height_mm": {
+      "type": "integer",
+      "minimum": 300,
+      "maximum": 2500,
+      "description": "Height of the upper deck's window band, measured down from the line band_above_mm gives. Present: the bus has two decks, the upper band drawn on both sides and across the front. Missing: one deck."
+    },
+    "band_between_decks_mm": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000,
+      "default": 400,
+      "description": "Band of body between the upper windows and the lower windows and doors, which are drawn up to its lower edge. Only with upper_win_band_height_mm."
     },
     "win_band_height_mm": {
       "type": "integer",
       "minimum": 300,
       "maximum": 2500,
       "default": 1400,
-      "description": "Height of the side window band, measured down from the line band_above_mm gives. Side windows are this high, stopping at the skirt on a body too low for it."
+      "description": "Height of the side window band, measured down from the line the doors reach up to: band_above_mm below the body top, on two decks also the upper band and the band between. Side windows are this high, stopping at the skirt on a body too low for it."
     },
     "band_below_grill_mm": {
       "type": "integer",
@@ -62,11 +76,11 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 2500,
-      "description": "Band of body below the windshield, down to the lower edge of the flat front, like band_below_grill_mm. When missing: the windshield ends 200 mm below the lower edge of the side windows, that is band_above_mm + win_band_height_mm + 200 below the top of the body. The windshield is drawn down to this line, stopping above the grille."
+      "description": "Band of body below the windshield, down to the lower edge of the flat front, like band_below_grill_mm. When missing: the windshield ends 200 mm below the lower edge of the side windows. The windshield is drawn down to this line, stopping above the grille."
     },
     "front_display": {
       "type": "string",
-      "description": "Text on the destination display, e.g. a line number and destination. A dark display at the top of the windshield showing this text, set smaller when it is long. Empty or missing: no display."
+      "description": "Text on the destination display, e.g. a line number and destination. A dark display at the top of the windshield, on two decks the lower one, showing this text, set smaller when it is long. Empty or missing: no display."
     },
     "tyre": {
       "type": "object",

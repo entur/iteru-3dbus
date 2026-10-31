@@ -9,6 +9,8 @@
           <keyList>
             <KeyValue><Key>3dbus:tyre_size</Key><Value>275/70 R22.5</Value></KeyValue>
             <KeyValue><Key>3dbus:base_color</Key><Value>#1F6FB2</Value></KeyValue>
+            <KeyValue><Key>3dbus:upper_win_band_height_mm</Key><Value>900</Value></KeyValue>
+            <KeyValue><Key>3dbus:band_between_decks_mm</Key><Value>400</Value></KeyValue>
           </keyList>
           <Name>I:15 DD</Name>
           <DeckPlanRef ref="ITR:DeckPlan:bn-i-15-dd" version="1"/>
@@ -26,12 +28,17 @@
       </vehicleModels>
       <deckPlans>
         <DeckPlan id="ITR:DeckPlan:bn-i-15-dd" version="1">
+          <deckLevels>
+            <DeckLevel id="ITR:DeckLevel:bn-i-15-dd-lower" version="1"/>
+            <DeckLevel id="ITR:DeckLevel:bn-i-15-dd-upper" version="1"/>
+          </deckLevels>
           <decks>
             <Deck id="ITR:Deck:bn-i-15-dd-1" version="1">
               <keyList>
                 <KeyValue><Key>3dbus:length_mm</Key><Value>14900</Value></KeyValue>
                 <KeyValue><Key>3dbus:axles_mm</Key><Value>2700,9500,10900</Value></KeyValue>
               </keyList>
+              <DeckLevelRef ref="ITR:DeckLevel:bn-i-15-dd-lower" version="1"/>
               <deckSpaces>
                 <PassengerSpace id="ITR:PassengerSpace:bn-i-15-dd-1" version="1">
                   <deckEntrances>
@@ -54,6 +61,9 @@
                   </deckEntrances>
                 </PassengerSpace>
               </deckSpaces>
+            </Deck>
+            <Deck id="ITR:Deck:bn-i-15-dd-upper" version="1">
+              <DeckLevelRef ref="ITR:DeckLevel:bn-i-15-dd-upper" version="1"/>
             </Deck>
           </decks>
         </DeckPlan>

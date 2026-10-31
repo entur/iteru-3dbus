@@ -188,14 +188,51 @@ test('rejects an entrance on the wheel arch, as the render input does', () =>
   rejects(fromNetex(patch(ARTIC, '<netex:DistanceFromFront>4.8</netex:DistanceFromFront>', '<netex:DistanceFromFront>2.0</netex:DistanceFromFront>')),
     'Deck 3dbus:Deck:lead: sections[0]', 'axle 1'));
 
-test('rejects a Deck on a second DeckLevel', () => {
-  const xml = patch(ARTIC, `<netex:DeckLevelRef ref="3dbus:DeckLevel:main" version="1"/>
-                  <netex:deckSpaces>
-                    <netex:PassengerSpace id="3dbus:PassengerSpace:trailer"`, `<netex:DeckLevelRef ref="3dbus:DeckLevel:upper" version="1"/>
-                  <netex:deckSpaces>
-                    <netex:PassengerSpace id="3dbus:PassengerSpace:trailer"`);
-  rejects(fromNetex(xml), '3dbus:Deck:trailer', 'not supported');
+const LEVELS = '<netex:DeckLevel id="3dbus:DeckLevel:main" version="1"/>', BASE = '<netex:KeyValue><netex:Key>3dbus:base_color';
+/** xml with the VehicleType KeyValues `kvs` added. */
+const withKvs = (xml, kvs) => patch(xml, BASE, `${kvs}${BASE}`);
+/** ARTIC with an upper DeckLevel and one Deck on it, and the VehicleType KeyValues `kvs`. */
+const upper = (kvs = '') => withKvs(patch(patch(ARTIC,
+  LEVELS, `${LEVELS}<netex:DeckLevel id="3dbus:DeckLevel:upper" version="1"/>`),
+  '</netex:decks>', '<netex:Deck id="3dbus:Deck:upper" version="1"><netex:DeckLevelRef ref="3dbus:DeckLevel:upper" version="1"/></netex:Deck></netex:decks>'), kvs);
+const kv = (k, v) => `<netex:KeyValue><netex:Key>3dbus:${k}</netex:Key><netex:Value>${v}</netex:Value></netex:KeyValue>`;
+
+test('a Deck on a second DeckLevel adds no section; the upper band comes from the VehicleType', () => {
+  const res = fromNetex(upper(kv('upper_win_band_height_mm', 900) + kv('band_between_decks_mm', 450)));
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.deepEqual(res.inp.sections, fromNetex(ARTIC).inp.sections);
+  assert.deepEqual([res.inp.upper_win_band_height_mm, res.inp.band_between_decks_mm, res.warns], [900, 450, []]);
 });
+
+test('warns when a second DeckLevel has no upper band, and when an upper band has no second DeckLevel', () => {
+  const lone = fromNetex(upper());
+  assert.equal(lone.ok, true, JSON.stringify(lone));
+  assert.equal(lone.inp.upper_win_band_height_mm, undefined);
+  assert.equal(lone.warns.length, 1);
+  assert.match(lone.warns[0], /3dbus:Deck:upper.*3dbus:upper_win_band_height_mm/);
+  const band = fromNetex(withKvs(ARTIC, kv('upper_win_band_height_mm', 900)));
+  assert.equal(band.ok, true, JSON.stringify(band));
+  assert.equal(band.inp.upper_win_band_height_mm, 900);
+  assert.equal(band.warns.length, 1);
+  assert.match(band.warns[0], /3dbus:upper_win_band_height_mm.*second DeckLevel/);
+});
+
+test('a VehicleType without a DeckPlan takes the upper band from its KeyValues alone, with no warning', () => {
+  const res = fromNetex(patch(RIGID, '<KeyValue><Key>3dbus:base_color', `<KeyValue><Key>3dbus:upper_win_band_height_mm</Key><Value>900</Value></KeyValue><KeyValue><Key>3dbus:base_color`));
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.deepEqual([res.inp.upper_win_band_height_mm, res.warns], [900, []]);
+});
+
+test('rejects a Deck on a third DeckLevel', () => {
+  const xml = patch(patch(upper(kv('upper_win_band_height_mm', 900)),
+    '<netex:DeckLevel id="3dbus:DeckLevel:upper" version="1"/>', '<netex:DeckLevel id="3dbus:DeckLevel:upper" version="1"/><netex:DeckLevel id="3dbus:DeckLevel:top" version="1"/>'),
+    '</netex:decks>', '<netex:Deck id="3dbus:Deck:top" version="1"><netex:DeckLevelRef ref="3dbus:DeckLevel:top" version="1"/></netex:Deck></netex:decks>');
+  rejects(fromNetex(xml), '3dbus:Deck:top', 'not supported');
+});
+
+test('the double-deck examples read as one section with an upper band', () =>
+  all().filter(({ id }) => id.endsWith('-dd')).forEach(({ id, inp, warns }) =>
+    assert.deepEqual([inp.sections.length, inp.upper_win_band_height_mm, inp.band_between_decks_mm, warns], [1, 900, 400, []], id)));
 
 const LEAD_LEVEL = `<netex:DeckLevelRef ref="3dbus:DeckLevel:main" version="1"/>
                   <netex:deckSpaces>
@@ -219,9 +256,8 @@ test('the first level is the first DeckLevel declared, whichever Deck comes firs
     '<netex:DeckLevel id="3dbus:DeckLevel:main" version="1"/><netex:DeckLevel id="3dbus:DeckLevel:upper" version="1"/>'),
     LEAD_LEVEL, LEAD_LEVEL.replace('3dbus:DeckLevel:main', '3dbus:DeckLevel:upper')),
     TRAILER_LEVEL, unref(TRAILER_LEVEL));
-  const res = fromNetex(xml);
-  rejects(res, '3dbus:Deck:lead', '3dbus:DeckLevel:upper', 'not supported');
-  assert.equal(res.errs.some((e) => e.includes('3dbus:Deck:trailer')), false, JSON.stringify(res.errs));
+  // the lead is upper, so the trailer, on the first level, is the first section
+  rejects(fromNetex(xml), '3dbus:Deck:trailer', 'bellows_ahead_mm is for a Deck behind another');
 });
 
 test('asks for an id when the file has two VehicleTypes', () => {
@@ -273,4 +309,11 @@ test('an error on the number of sections names the DeckPlan', () => {
     [d, ...[1, 2].map((n) => d.replace('3dbus:Deck:trailer', `3dbus:Deck:extra${n}`))].join(''));
   assert.notEqual(four, ARTIC);
   rejects(fromNetex(four), 'DeckPlan 3dbus:DeckPlan:citaro-g: /sections');
+});
+
+test('a DeckLevel with no id does not count as a level, and labels keep the Deck\'s place in the file', () => {
+  const res = fromNetex(patch(upper(kv('upper_win_band_height_mm', 900)), LEVELS, `<netex:DeckLevel version="1"/>${LEVELS}`));
+  assert.deepEqual([res.ok, res.warns], [true, []], JSON.stringify(res));
+  const lone = fromNetex(patch(upper(), '<netex:Deck id="3dbus:Deck:upper"', '<netex:Deck'));
+  assert.match(lone.warns[0], /^Deck #3: on a second DeckLevel/);
 });

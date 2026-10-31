@@ -1,11 +1,13 @@
 import Ajv from 'ajv/dist/2020.js';
-import { clashes } from './derive.js';
+import { clashes, lintel, upper } from './derive.js';
+import { CLEARANCE } from './dims.js';
 import schema from '../schema/bus-input.schema.json' with { type: 'json' };
 
 const ajv = new Ajv({ allErrors: true, strict: false, formats: { 'uri-reference': true } });
 const chk = ajv.compile(schema);
+const LOW = CLEARANCE + schema.properties.win_band_height_mm.minimum;  // rule (6): the lowest top of the lower windows
 
-/** Cross-field rules (1) and (4) from the schema's top-level $comment. (5) is door clashes. */
+/** Cross-field rules (1), (4) and (6) from the schema's top-level $comment. (5) is door clashes. */
 const rules = [
   (inp) =>
     inp.sections.flatMap((s, i) => [
@@ -18,6 +20,12 @@ const rules = [
         .filter((d) => (d.axle_gap ?? 0) >= Math.max(s.axles_mm.length - 1, d.zone === 'between_axles' ? 0 : 1))
         .map((d) => `sections[${i}] has no axle gap ${d.axle_gap ?? 0}`),
     ),
+  (inp) => {
+    const top = upper(inp) ? lintel(inp) : LOW;
+    return top < LOW
+      ? [`/upper_win_band_height_mm with the bands above the lower windows leaves their top at ${top} mm, under the ${LOW} mm they need (skirt plus win_band_height_mm's minimum)`]
+      : [];
+  },
 ];
 
 /** Rule (5), after (1) and (4): one message per clash of a placed door. */

@@ -7,17 +7,17 @@ import slice from '../schema/netex/vehicle-type.schema.json' with { type: 'json'
 
 /** Default prefix of the KeyValues B reads. */
 export const PREFIX = '3dbus:';
+const DECKLESS = ['axles_mm', 'windows_count', 'doors_hint'];  // VehicleType keys read only when there is no DeckPlan
+const ROOT = ['roof_equipment_mm', 'band_above_mm', 'upper_win_band_height_mm', 'band_between_decks_mm', 'win_band_height_mm', 'band_below_grill_mm',
+  'band_below_windshield_mm'];
 /** The KeyValue suffixes B reads, per element. */
 export const KEYS = {
-  vehicleType: ['tyre_size', 'tyre_diameter_mm', 'tyre_rear_twin', 'base_color', 'roof_equipment_mm', 'band_above_mm',
-    'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'axles_mm', 'windows_count', 'doors_hint'],
+  vehicleType: ['tyre_size', 'tyre_diameter_mm', 'tyre_rear_twin', 'base_color', ...ROOT, ...DECKLESS],
   deck: ['length_mm', 'axles_mm', 'bellows_ahead_mm', 'windows_count'],
   entrance: ['leaves', 'glazed'],
 };
 
 const MM_PER_M = 1000, LENGTH_TOL = 10;  // NeTEx LengthType is metres; the Length check's slack, mm
-const DECKLESS = ['axles_mm', 'windows_count', 'doors_hint'];  // VehicleType keys read only when there is no DeckPlan
-const ROOT = ['roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm'];
 const RIGHT = new Set(['rightSide', undefined]);  // entrance sides that are doors on the drawn side
 const LISTS = new Set(['VehicleType', 'DeckPlan', 'VehicleModel', 'Deck', 'DeckLevel', 'PassengerSpace', 'PassengerEntrance', 'KeyValue']);
 /** Elements the slice types as numbers: the only tag values parsed as such. */
@@ -113,27 +113,32 @@ const entrances = (deck, prefix) =>
       return { at: e.DistanceFromFront, width: e.Width, vals: k.vals, errs: [...missing, ...k.errs] };
     });
 
-/** A Deck with no DeckLevelRef is on the first level; one naming another level is not. */
-const onOther = (d, level) => d.DeckLevelRef?.ref !== undefined && d.DeckLevelRef.ref !== level;
-
-/** Step 4 for a DeckPlan: per Deck its keys and entrances. The first level is the first DeckLevel declared, else the first one referenced. */
+/**
+ * Step 4 for a DeckPlan: per Deck on the first level its keys and entrances; a Deck on the second
+ * level adds no section, only says the bus has two decks. Levels count in the order declared, then
+ * referenced; a Deck with no DeckLevelRef is on the first.
+ */
 const readDecks = (deckPlan, prefix) => {
-  const decks = deckPlan.decks?.Deck ?? [];
-  const level = deckPlan.deckLevels?.DeckLevel?.[0]?.id ?? decks.map((d) => d.DeckLevelRef?.ref).find((r) => r !== undefined);
-  const read = decks.map((d, i) => {
-    const label = named('Deck', d, i), k = keys(d, label, prefix, KEYS.deck, ['length_mm', 'axles_mm', ...(i ? ['bellows_ahead_mm'] : [])]);
+  const ds = deckPlan.decks?.Deck ?? [], ref = (d) => d.DeckLevelRef?.ref;
+  const levels = [...new Set([...(deckPlan.deckLevels?.DeckLevel ?? []).map((l) => l.id), ...ds.map(ref)].filter((r) => r !== undefined))];
+  const at = ds.map((d, n) => ({ d, n, level: ref(d) === undefined ? 0 : levels.indexOf(ref(d)) }));
+  const on = (is) => at.filter(({ level }) => is(level));
+  const decks = on((l) => l === 0);
+  const over = on((l) => l > 1).map(({ d, n }) => `${named('Deck', d, n)}: DeckLevel ${ref(d)} is a third deck level, which is not supported`);
+  const read = decks.map(({ d, n }, i) => {
+    const label = named('Deck', d, n), k = keys(d, label, prefix, KEYS.deck, ['length_mm', 'axles_mm', ...(i ? ['bellows_ahead_mm'] : [])]);
     const ents = entrances(d, prefix);
     return {
       label, vals: k.vals, ents,
       errs: [
-        ...(onOther(d, level) ? [`${label}: DeckLevel ${d.DeckLevelRef.ref} is not the first deck level; a second level is not supported`] : []),
         ...k.errs,
         ...(!i && k.has('bellows_ahead_mm') ? [`${label}: ${prefix}bellows_ahead_mm is for a Deck behind another`] : []),
         ...ents.flatMap((e) => e.errs),
       ],
     };
   });
-  return { read, errs: [...(decks.length ? [] : [`DeckPlan ${deckPlan.id}: no Deck`]), ...read.flatMap((d) => d.errs)] };
+  const upper = on((l) => l === 1).map(({ d, n }) => named('Deck', d, n));
+  return { read, upper, errs: [...(decks.length ? [] : [`DeckPlan ${deckPlan.id}: no Deck${ds.length ? ' on the first DeckLevel' : ''}`]), ...over, ...read.flatMap((d) => d.errs)] };
 };
 
 /** Sections of a DeckPlan, doors placed from the front of their own section. */
@@ -231,5 +236,9 @@ export const fromNetex = (xml, { prefix = PREFIX, id } = {}) => {
 
   const len = vt.Length === undefined ? undefined : mm(vt.Length), sum = total(inp);
   const long = plan && len !== undefined && Math.abs(len - sum) > LENGTH_TOL ? [`${label}: Length ${len} mm differs from the sections' ${sum} mm`] : [];
-  return { ok: true, inp, warns: [...warns, ...long] };
+  const band = vals.upper_win_band_height_mm !== undefined, key = `${prefix}upper_win_band_height_mm`;
+  const levels = !plan || band === decks.upper.length > 0 ? []
+    : band ? [`${label}: ${key}, but ${named('DeckPlan', plan, 0)} has no Deck on a second DeckLevel; drawn as two decks`]
+    : [`${decks.upper.join(', ')}: on a second DeckLevel, but ${label} has no ${key}; drawn as one deck`];
+  return { ok: true, inp, warns: [...warns, ...long, ...levels] };
 };
