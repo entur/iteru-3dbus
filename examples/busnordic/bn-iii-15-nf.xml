@@ -9,9 +9,10 @@
           <keyList>
             <KeyValue><Key>3dbus:tyre_size</Key><Value>295/80 R22.5</Value></KeyValue>
             <KeyValue><Key>3dbus:base_color</Key><Value>#3A4750</Value></KeyValue>
+            <KeyValue><Key>3dbus:axles_mm</Key><Value>2900,9700,11100</Value></KeyValue>
+            <KeyValue><Key>3dbus:doors_hint</Key><Value>front_overhang:1,between_axles:1:rear</Value></KeyValue>
           </keyList>
           <Name>III:15 NF</Name>
-          <DeckPlanRef ref="ITR:DeckPlan:bn-iii-15-nf" version="1"/>
           <Length>14.9</Length>
           <Width>2.55</Width>
           <Height>3.8</Height>
@@ -24,40 +25,6 @@
           <Manufacturer>BusNordic</Manufacturer>
         </VehicleModel>
       </vehicleModels>
-      <deckPlans>
-        <DeckPlan id="ITR:DeckPlan:bn-iii-15-nf" version="1">
-          <decks>
-            <Deck id="ITR:Deck:bn-iii-15-nf-1" version="1">
-              <keyList>
-                <KeyValue><Key>3dbus:length_mm</Key><Value>14900</Value></KeyValue>
-                <KeyValue><Key>3dbus:axles_mm</Key><Value>2900,9700,11100</Value></KeyValue>
-              </keyList>
-              <deckSpaces>
-                <PassengerSpace id="ITR:PassengerSpace:bn-iii-15-nf-1" version="1">
-                  <deckEntrances>
-                    <PassengerEntrance id="ITR:PassengerEntrance:bn-iii-15-nf-1" version="1">
-                      <keyList>
-                        <KeyValue><Key>3dbus:leaves</Key><Value>1</Value></KeyValue>
-                      </keyList>
-                      <Width>0.9</Width>
-                      <VehicleSide>rightSide</VehicleSide>
-                      <DistanceFromFront>0.626</DistanceFromFront>
-                    </PassengerEntrance>
-                    <PassengerEntrance id="ITR:PassengerEntrance:bn-iii-15-nf-2" version="1">
-                      <keyList>
-                        <KeyValue><Key>3dbus:leaves</Key><Value>1</Value></KeyValue>
-                      </keyList>
-                      <Width>0.9</Width>
-                      <VehicleSide>rightSide</VehicleSide>
-                      <DistanceFromFront>7.901</DistanceFromFront>
-                    </PassengerEntrance>
-                  </deckEntrances>
-                </PassengerSpace>
-              </deckSpaces>
-            </Deck>
-          </decks>
-        </DeckPlan>
-      </deckPlans>
     </ResourceFrame>
   </dataObjects>
 </PublicationDelivery>

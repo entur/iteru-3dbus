@@ -7,7 +7,7 @@ import slice from '../schema/netex/vehicle-type.schema.json' with { type: 'json'
 
 /** Default prefix of the KeyValues B reads. */
 export const PREFIX = '3dbus:';
-const DECKLESS = ['axles_mm', 'windows_count'];  // VehicleType keys read only when there is no DeckPlan
+const DECKLESS = ['axles_mm', 'windows_count', 'doors_hint'];  // VehicleType keys read only when there is no DeckPlan
 const ROOT = ['roof_equipment_mm', 'band_above_mm', 'upper_win_band_height_mm', 'band_between_decks_mm', 'win_band_height_mm', 'band_below_grill_mm',
   'band_below_windshield_mm'];
 /** The KeyValue suffixes B reads, per element. */
@@ -23,14 +23,18 @@ const LISTS = new Set(['VehicleType', 'DeckPlan', 'VehicleModel', 'Deck', 'DeckL
 /** Elements the slice types as numbers: the only tag values parsed as such. */
 const NUMS = new Set(Object.values(slice.definitions)
   .flatMap((d) => Object.entries(d.properties ?? {}).filter(([, p]) => p.type === 'number').map(([k]) => k)));
-const INT = /^\d+$/;
+const INT = /^\d+$/, HINT = /^([a-z_]+):(\d+)(?::([a-z]*))?(?::(\d+))?$/;  // a door hint: zone:leaves[:bias][:axle_gap]
 const READ = {
   int: (v) => (INT.test(v ?? '') ? Number(v) : undefined),
   list: (v) => ((v ?? '').split(',').map((x) => x.trim()).every((x) => INT.test(x)) ? v.split(',').map(Number) : undefined),
   bool: (v) => (v === 'true' ? true : v === 'false' ? false : undefined),
   text: (v) => v || undefined,
+  hints: (v) => {
+    const m = (v ?? '').split(',').map((x) => HINT.exec(x.trim()));
+    return m.every(Boolean) ? m.map(([, zone, leaves, bias, gap]) => defined({ zone, leaves: Number(leaves), bias: bias || undefined, axle_gap: gap && Number(gap) })) : undefined;
+  },
 };
-const EXPECT = { int: 'a whole number', list: 'whole mm, comma-separated', bool: 'true or false', text: 'text' };
+const EXPECT = { int: 'a whole number', list: 'whole mm, comma-separated', bool: 'true or false', text: 'text', hints: 'zone:leaves[:bias][:axle_gap], comma-separated' };
 
 const parser = new XMLParser({
   ignoreAttributes: false, attributeNamePrefix: '', removeNSPrefix: true, parseTagValue: false,
@@ -41,7 +45,7 @@ const shape = new Ajv({ allErrors: true, strict: false }).compile(slice);
 
 const mm = (m) => Math.round(m * MM_PER_M);
 const defined = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
-const kind = (s) => (s === 'axles_mm' ? 'list' : /_mm$|_count$|^leaves$/.test(s) ? 'int' : /^(glazed|tyre_rear_twin)$/.test(s) ? 'bool' : 'text');
+const kind = (s) => (s === 'axles_mm' ? 'list' : s === 'doors_hint' ? 'hints' : /_mm$|_count$|^leaves$/.test(s) ? 'int' : /^(glazed|tyre_rear_twin)$/.test(s) ? 'bool' : 'text');
 
 /** An empty element parses to '': drop it from its parent, or make it an empty one in a list. */
 const tidy = (n) =>
@@ -219,7 +223,10 @@ export const fromNetex = (xml, { prefix = PREFIX, id } = {}) => {
     ...(maker === undefined ? {} : { front: { badge_text: maker } }),
     sections: plan
       ? deckSections(decks.read)
-      : [defined({ length_mm: mm(vt.Length), axles_mm: vals.axles_mm, windows_hint: vals.windows_count === undefined ? undefined : { count: vals.windows_count } })],
+      : [defined({
+        length_mm: mm(vt.Length), axles_mm: vals.axles_mm, doors_hint: vals.doors_hint,
+        windows_hint: vals.windows_count === undefined ? undefined : { count: vals.windows_count },
+      })],
   };
   const errs = validate(inp).map(blame({
     decks: plan ? decks.read.map((d) => d.label) : [label], label, prefix,

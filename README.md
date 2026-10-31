@@ -50,7 +50,9 @@ fields removed and `schema_version` set to `"3.0"`.
 
 A is the input above. B is NeTEx: a `VehicleType`, with its `DeckPlan` (one `Deck` per section, `PassengerEntrance`
 per door) and `VehicleModel` (the badge) when the file has them. What NeTEx has no element for goes in
-`KeyValue`s under the prefix `3dbus:` (`KEYS` lists them per element).
+`KeyValue`s under the prefix `3dbus:` (`KEYS` lists them per element). A `VehicleType` without a `DeckPlan` is one
+section: `axles_mm`, `windows_count` and `doors_hint` (`zone:leaves[:bias][:axle_gap]`, comma-separated, e.g.
+`front_overhang:2,between_axles:2:rear`) are its KeyValues, so its doors are hints.
 
 ```js
 import { fromNetex, validate, limits } from "@entur/iteru-3dbus";
