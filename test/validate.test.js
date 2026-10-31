@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validate } from '../src/validate.js';
-import { clashes, dash, doorWidth, doors, grill, layout, lintel, sill, spans, total, tyreDia, windows, windowsLeft } from '../src/derive.js';
+import { clashes, dash, doorWidth, doors, grill, layout, lintel, sill, spans, total, tyreDia, upper, windows, windowsLeft } from '../src/derive.js';
 import { all, load } from './examples.js';
 
 const BUSNORDIC_ROWS = 17;
@@ -64,6 +64,23 @@ test('doors and windows end 250 mm below the body top, or as far as given', () =
   assert.equal(lintel(volvo), 3050);
   assert.equal(lintel(citaro), 2600);
   assert.equal(lintel({ ...volvo, band_above_mm: 330 }), 2970);
+});
+
+test('two decks: the upper band hangs from the band above, the doors and lower windows from the band between', () => {
+  const dd = load('busnordic/bn-ii-15-dd');
+  assert.deepEqual([upper(dd), lintel(dd), sill(dd)], [[3050, 3950], 2650, 1250]);
+  assert.equal(lintel({ ...dd, band_between_decks_mm: undefined }), 2650);
+  assert.equal(lintel({ ...dd, band_between_decks_mm: 600, upper_win_band_height_mm: 1000 }), 2350);
+  assert.equal(upper(volvo), undefined);
+  assert.equal(lintel({ ...volvo, band_between_decks_mm: 600 }), 3050);
+});
+
+test('rule (6): the bands above the lower windows leave room for them above the skirt', () => {
+  const dd = load('busnordic/bn-ii-15-dd');
+  assert.deepEqual(validate({ ...dd, upper_win_band_height_mm: 2500, band_between_decks_mm: 800 }), []);
+  const errs = validate({ ...dd, upper_win_band_height_mm: 2500, band_between_decks_mm: 1000 });
+  assert.equal(errs.length, 1);
+  assert.match(errs[0], /^\/upper_win_band_height_mm .*450 mm.*620/);
 });
 
 test('the grille stands 35 mm above the lower edge of the flat front, or as far as given', () => {

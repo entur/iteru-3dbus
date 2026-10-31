@@ -180,3 +180,22 @@ test('a front_display text is shown on a display at the top of the windscreen, s
   const low = shown('21', { band_below_windshield_mm: 2360 });  // a windscreen too low for a display
   assert.deepEqual([low.pane.height, low.sign], [190, []]);
 });
+
+test('two decks: an upper band of panes on both sides, one over each lower pane and door, the doors under the band between', () => {
+  const dd = load('busnordic/bn-ii-15-dd'), { right, left } = faces(dd);
+  const rows = (f) => Object.groupBy(glass(f), (g) => down(g).join());
+  assert.deepEqual(Object.keys(rows(right[0])), ['1550,2950', '250,1150']);
+  assert.deepEqual([rows(right[0])['250,1150'].length, rows(right[0])['1550,2950'].length, drawn(right[0]).length], [10, 8, 2]);
+  assert.deepEqual(rows(left[0])['250,1150'].map(across), rows(left[0])['1550,2950'].map(across));
+  assert.deepEqual(down(drawn(right[0])[0].frame)[0], 1550);
+  assert.deepEqual(Object.keys(Object.groupBy(glass(faces(volvo).right[0]), (g) => down(g).join())), ['250,1650']);
+});
+
+test('two decks: an upper windscreen across the upper band, the display in the band between above the lower one', () => {
+  const dd = { ...load('busnordic/bn-ii-15-dd'), front_display: '21 Tjuvholmen' }, [f] = faces(dd).front;
+  assert.deepEqual(part(f, 'windscreen').map((s) => down(s.kids[0].attrs)[0]), [160, 1460]);
+  assert.deepEqual(down(part(f, 'windscreen')[0].kids[0].attrs), [160, 1060]);
+  const [{ kids: [quad] }] = part(f, 'display');
+  assert.deepEqual([quad.attrs.y, quad.attrs.height], [1100, 300]);
+  assert.deepEqual(part(faces({ ...dd, band_between_decks_mm: 150 }).front[0], 'display'), []);
+});
