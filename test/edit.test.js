@@ -6,7 +6,7 @@ import { doors, total } from '../src/derive.js';
 import { validate } from '../src/validate.js';
 import { load } from './examples.js';
 
-const EDITABLE = ['width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
+const EDITABLE = ['width_mm', 'height_mm', 'roof_equipment_mm', 'band_above_mm', 'upper_win_band_height_mm', 'band_between_decks_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm', 'tyre.size', 'tyre.diameter_mm', 'tyre.rear_twin', 'base_color.hex', 'front.badge_text', 'front_display'];
 const SEC_EDITABLE = ['length_mm', 'bellows_ahead_mm', 'axles_mm', 'doors_hint', 'doors', 'windows_hint.count'];
 
 const schema = JSON.parse(readFileSync(new URL('../schema/bus-input.schema.json', import.meta.url), 'utf8'));
@@ -128,8 +128,9 @@ test('the windows row hints at the panes drawn while no count is given', () => {
 });
 
 test('the bands are rows of Dimensions, their schema defaults as hints', () => {
-  const rows = FIELDS.filter((f) => ['band_above_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm'].includes(f.path?.[0]));
-  assert.deepEqual(rows.map((f) => [f.group, f.hint(volvo)]), [['Dimensions', 250], ['Dimensions', 1400], ['Dimensions', 35], ['Dimensions', 1040]]);
+  const rows = FIELDS.filter((f) => ['band_above_mm', 'band_between_decks_mm', 'win_band_height_mm', 'band_below_grill_mm', 'band_below_windshield_mm'].includes(f.path?.[0]));
+  assert.deepEqual(rows.map((f) => [f.group, f.hint(volvo)]), [['Dimensions', 250], ['Dimensions', 400], ['Dimensions', 1400], ['Dimensions', 35], ['Dimensions', 1040]]);
+  assert.equal(FIELDS.find((f) => f.path?.[0] === 'upper_win_band_height_mm').hint, undefined);  // empty: one deck
   assert.equal(rows.at(-1).hint({ ...volvo, band_below_windshield_mm: 300, win_band_height_mm: 1000 }), 1440);
 });
 

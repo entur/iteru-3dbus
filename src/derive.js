@@ -6,7 +6,7 @@ const SIZE = /^(\d{3})\/(\d{2}) ?R(\d{2}(?:\.\d)?)$/;
 const DOOR_W = { 1: 900, 2: 1250 }, DOOR_END = 150, DOOR_ARCH = 300;  // width by leaves; kept clear of a body end and of an arch
 const BIAS = { front: 0, middle: 0.5, rear: 1 };  // share of a zone's slack ahead of the door
 const BAND_ABOVE = schema.properties.band_above_mm.default, WIN_BAND = schema.properties.win_band_height_mm.default;
-const BAND_BELOW = schema.properties.band_below_grill_mm.default;
+const BAND_BELOW = schema.properties.band_below_grill_mm.default, BETWEEN = schema.properties.band_between_decks_mm.default;
 const SCREEN_DROP = 200;  // windshield ends this far below the side windows' lower edge
 const WIN_W = 1400, WIN_MIN = 300;  // pane width aimed at; narrowest pane drawn
 const PILLAR = 80, WIN_END = 200;  // body between two panes and beside a door; kept clear of a body end
@@ -40,12 +40,27 @@ export const bodyTop = (inp) => inp.height_mm - (inp.roof_equipment_mm ?? 0);
  */
 export const endH = (inp) => bodyTop(inp) - CORNER - END_EDGE;
 
+/** The body top less the band above the topmost side windows. */
+const roofline = (inp) => bodyTop(inp) - (inp.band_above_mm ?? BAND_ABOVE);
+
 /**
- * The line the doors and side windows reach up to: the body top less the band above them.
+ * The upper deck's window band, on a bus with two decks: it hangs from the body top less the band above.
+ * @param {object} inp validated bus input
+ * @returns {[number, number] | undefined} its lower and upper edge, mm above ground; undefined on one deck
+ */
+export const upper = (inp) =>
+  inp.upper_win_band_height_mm === undefined ? undefined : [roofline(inp) - inp.upper_win_band_height_mm, roofline(inp)];
+
+/**
+ * The line the doors and side windows reach up to: the body top less the band above them, on two
+ * decks also less the upper band and the band between the decks.
  * @param {object} inp validated bus input
  * @returns {number} mm above ground
  */
-export const lintel = (inp) => bodyTop(inp) - (inp.band_above_mm ?? BAND_ABOVE);
+export const lintel = (inp) => {
+  const up = upper(inp);
+  return up ? up[0] - (inp.band_between_decks_mm ?? BETWEEN) : roofline(inp);
+};
 
 /**
  * The line the side windows reach down to: the window band hangs from the lintel, and stops at
