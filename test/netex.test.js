@@ -37,6 +37,30 @@ test('maps a VehicleType without a DeckPlan to one section', () => {
   assert.deepEqual(res.warns, []);
 });
 
+/** RIGID with a 3dbus:doors_hint KeyValue on its VehicleType. */
+const hinted = (v) => patch(RIGID, '<KeyValue><Key>3dbus:base_color', `<KeyValue><Key>3dbus:doors_hint</Key><Value>${v}</Value></KeyValue><KeyValue><Key>3dbus:base_color`);
+
+test('a VehicleType without a DeckPlan takes its doors as hints: zone:leaves[:bias][:axle_gap], comma-separated', () => {
+  const res = fromNetex(hinted('front_overhang:2, between_axles:1:rear'));
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.deepEqual(res.inp.sections[0].doors_hint, [{ zone: 'front_overhang', leaves: 2 }, { zone: 'between_axles', leaves: 1, bias: 'rear' }]);
+  assert.deepEqual(res.warns, []);
+});
+
+test('rejects an unreadable door hint, and one the render input rejects, on the VehicleType', () => {
+  rejects(fromNetex(hinted('front_overhang')), 'VehicleType 3dbus:VehicleType:8900-12.4: 3dbus:doors_hint "front_overhang" must be zone:leaves[:bias][:axle_gap]');
+  rejects(fromNetex(hinted('middle_of_bus:2')), 'VehicleType 3dbus:VehicleType:8900-12.4', 'doors_hint/0/zone');
+  rejects(fromNetex(hinted('between_axles:2::1')), 'VehicleType 3dbus:VehicleType:8900-12.4', 'no axle gap 1');
+});
+
+test('a third of the simple examples are VehicleType only, their doors hinted', () => {
+  const simple = all().filter(({ id, inp }) => inp.sections.length === 1 && !id.endsWith('-dd'));
+  const hint = simple.filter(({ inp }) => inp.sections[0].doors_hint);
+  assert.ok(hint.length * 3 >= simple.length, `${hint.length} of ${simple.length}`);
+  assert.deepEqual(hint.find(({ id }) => id === 'bn-ii-13.5-le').inp.sections[0].doors_hint,
+    [{ zone: 'front_overhang', leaves: 2 }, { zone: 'between_axles', leaves: 2, bias: 'rear' }]);
+});
+
 test('maps Decks to sections and right-side entrances to absolute doors', () => {
   const res = fromNetex(ARTIC);
   assert.equal(res.ok, true, JSON.stringify(res));

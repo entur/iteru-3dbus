@@ -9,10 +9,11 @@
           <keyList>
             <KeyValue><Key>3dbus:tyre_size</Key><Value>275/70 R22.5</Value></KeyValue>
             <KeyValue><Key>3dbus:base_color</Key><Value>#1F6FB2</Value></KeyValue>
+            <KeyValue><Key>3dbus:axles_mm</Key><Value>2700,8600</Value></KeyValue>
+            <KeyValue><Key>3dbus:doors_hint</Key><Value>front_overhang:2,between_axles:2,rear_overhang:2</Value></KeyValue>
             <KeyValue><Key>3dbus:roof_equipment_mm</Key><Value>250</Value></KeyValue>
           </keyList>
           <Name>I:13.5 LF</Name>
-          <DeckPlanRef ref="ITR:DeckPlan:bn-i-13.5-lf" version="1"/>
           <Length>12</Length>
           <Width>2.55</Width>
           <Height>3.3</Height>
@@ -25,48 +26,6 @@
           <Manufacturer>BusNordic</Manufacturer>
         </VehicleModel>
       </vehicleModels>
-      <deckPlans>
-        <DeckPlan id="ITR:DeckPlan:bn-i-13.5-lf" version="1">
-          <decks>
-            <Deck id="ITR:Deck:bn-i-13.5-lf-1" version="1">
-              <keyList>
-                <KeyValue><Key>3dbus:length_mm</Key><Value>12000</Value></KeyValue>
-                <KeyValue><Key>3dbus:axles_mm</Key><Value>2700,8600</Value></KeyValue>
-              </keyList>
-              <deckSpaces>
-                <PassengerSpace id="ITR:PassengerSpace:bn-i-13.5-lf-1" version="1">
-                  <deckEntrances>
-                    <PassengerEntrance id="ITR:PassengerEntrance:bn-i-13.5-lf-1" version="1">
-                      <keyList>
-                        <KeyValue><Key>3dbus:leaves</Key><Value>2</Value></KeyValue>
-                      </keyList>
-                      <Width>1.25</Width>
-                      <VehicleSide>rightSide</VehicleSide>
-                      <DistanceFromFront>0.367</DistanceFromFront>
-                    </PassengerEntrance>
-                    <PassengerEntrance id="ITR:PassengerEntrance:bn-i-13.5-lf-2" version="1">
-                      <keyList>
-                        <KeyValue><Key>3dbus:leaves</Key><Value>2</Value></KeyValue>
-                      </keyList>
-                      <Width>1.25</Width>
-                      <VehicleSide>rightSide</VehicleSide>
-                      <DistanceFromFront>5.025</DistanceFromFront>
-                    </PassengerEntrance>
-                    <PassengerEntrance id="ITR:PassengerEntrance:bn-i-13.5-lf-3" version="1">
-                      <keyList>
-                        <KeyValue><Key>3dbus:leaves</Key><Value>2</Value></KeyValue>
-                      </keyList>
-                      <Width>1.25</Width>
-                      <VehicleSide>rightSide</VehicleSide>
-                      <DistanceFromFront>10.033</DistanceFromFront>
-                    </PassengerEntrance>
-                  </deckEntrances>
-                </PassengerSpace>
-              </deckSpaces>
-            </Deck>
-          </decks>
-        </DeckPlan>
-      </deckPlans>
     </ResourceFrame>
   </dataObjects>
 </PublicationDelivery>
