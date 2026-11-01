@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 Boxy 3D bus rendered in three.js from one input JSON (`schema/bus-input.schema.json`, contract v3.0: only what is drawn) (A). A NeTEx `VehicleType` file (B) is read into that input by `fromNetex`.
-This is v1: no ML branch (no VLM, no OpenCV).
-`docs/flowchart.html` shows the full intended pipeline including the ML branch, for reference only.
+ML (reading a bus from photos: VLM, OpenCV) is delegated to consumers of the package: they produce A or B.
+`docs/flowchart.html` sketches such a pipeline, for reference only; none of it lives here.
 
 Plain ES modules, no TypeScript, no framework, no linter. Vite for the browser app, `node --test` for tests.
 The renderer is a library of plain functions: `faces(inp)` gives the 2D face maps, `mkBus(inp, maps)` the
@@ -22,7 +22,7 @@ npm run build
 npm run build:lib                             # the library as ES modules in dist-lib/, three and ajv external
 npm test                                      # node --test, picks up test/*.test.js
 node --test --test-name-pattern='derives'     # single test by name
-npm run validate -- examples/*.xml            # .xml through fromNetex, anything else as input JSON; exit 1 on any failure
+npm run validate -- examples/*.xml examples/busnordic/*.xml   # .xml through fromNetex, anything else as input JSON; exit 1 on any failure
 npm pack --dry-run                            # what a release ships; prepack builds dist-lib/ first
 ```
 
@@ -219,7 +219,7 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
 - `vite.config.js` sets `assetsInlineLimit: 0` on purpose: the input card's Original XML link must point at a
   real file, not a `data:` URL.
 
-## Not done yet (v1)
+## Not done yet
 
 Tracked in `README.md`:
 

@@ -64,8 +64,9 @@ const errs = r.ok ? [...validate(r.inp), ...limits(r.inp)] : r.errs; // limits a
 `fromNetex` parses, picks, checks the NeTEx shape (a slice of the schema, made by
 [`scripts/netex-slice.js`](scripts/netex-slice.js)), reads the KeyValues, builds the input and runs `validate`; every
 error names its element or key. `limits` holds the Nordic length, width, height and door-count limits; **its Bus Nordic
-2.0 numbers have not been checked against the document.** The demo app has a "Nordic-limited | Fantasy bus" switch
-for them. A `Length` more than 10 mm off the sections' sum is a warning; a second deck level is not supported.
+2.0 numbers have not been checked against the document.** The demo app has a "Size limits" switch (Nordic | Free)
+for them. A `Length` more than 10 mm off the sections' sum is a warning; a second `DeckLevel` gives the upper window
+band (see Limits).
 
 ### As a custom element
 
@@ -95,9 +96,13 @@ flowchart LR
 `faces` is the single source of surface detail: the same maps are the model's textures and the demo app's map card.
 `mkBus` extrudes each section, cuts the wheel arches, adds wheels, bellows and roof pod, and maps the textures on.
 
-## Limits (v1)
+## Not in the package
 
-- No ML branch yet (full pipeline: [`docs/flowchart.html`](docs/flowchart.html)).
+ML, reading a bus from photos (VLM, OpenCV), is left to consumers: they produce the input (A) or NeTEx (B), and the
+package draws it. [`docs/flowchart.html`](docs/flowchart.html) sketches such a pipeline.
+
+## Limits
+
 - One generic front; rear templates are not drawn.
 - Doors on the right side only.
 - At most two decks: a third DeckLevel is rejected. The upper deck is a window band (`upper_win_band_height_mm`), drawn the same along the whole bus.
