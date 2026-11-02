@@ -34,7 +34,7 @@ test('core loads without a DOM', async () => {
 test('the library loads without a DOM', async () => {
   const lib = await import('../src/index.js');
   assert.deepEqual(Object.keys(lib.VIEWS), ['quarter', 'left', 'right', 'front', 'rear', 'top']);
-  ['faces', 'mkBus', 'mapErrs', 'mkStage', 'mkStageShot', 'mkViews', 'fromNetex'].forEach((n) => assert.equal(typeof lib[n], 'function', n));
+  ['faces', 'mkBus', 'mapErrs', 'mkStage', 'mkStageShot', 'ready', 'mkViews', 'fromNetex'].forEach((n) => assert.equal(typeof lib[n], 'function', n));
 });
 
 test('the guide element needs the package entry only', async () => {

@@ -140,12 +140,13 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   and `shot()` a PNG `Blob` once the textures are in (`ready`). `bgOf(el)` gives the colour a picture lies on.
 - **`views.js`** — `VIEWS` and animated flights between them (registered as a stage tick). No buttons.
 - **`guide/bus-3d.js`** — `<bus-3d>`, not in the package: needs both `inp` and `faces`; setting
-  either queues one rebuild in a microtask. The first rebuild aims at `view`, later ones keep the
+  either queues one rebuild in a microtask; the new model goes on stage once `ready` (its textures are in, else it
+  would show black sides), the last one staying until then, and a later rebuild drops it. The first rebuild aims at `view`, later ones keep the
   camera, so a host that wants a re-aim calls `go()` on `busrender`. An invalid `inp`, or maps that
   do not fit its sections, fire `buserror` and leave the last render. Disconnecting disposes the
   stage; reconnecting rebuilds. It imports `src/index.js` alone, as a host imports the package.
 - **`core.js`**, **`index.js`** — package entries (`./core`, `.`); `./faces` is `vector.js` itself, `./limits` and `./netex` are
-  `limits.js` and `netex.js`. `core.js` has `limits`; `index.js` adds `fromNetex`, `KEYS`, `PREFIX`, `faces`, `mkBus`, `mapErrs`, `mkStage`, `mkStageShot`, `mkViews` and `VIEWS` to core.
+  `limits.js` and `netex.js`. `core.js` has `limits`; `index.js` adds `fromNetex`, `KEYS`, `PREFIX`, `faces`, `mkBus`, `mapErrs`, `mkStage`, `mkStageShot`, `ready`, `mkViews` and `VIEWS` to core.
 - **`edit.js`** — pure, node-safe: `FIELDS` / `SECTION` list every schema value as a row (group,
   path, label) and mark the editable ones, which are the values the renderer draws.
   The total length is the one derived row that is editable: `to` names the input value its edits
