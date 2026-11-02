@@ -122,6 +122,10 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   drawing of the left one (`src/headlight.svg`, imported as text and parsed, or
   `faces(inp, { headlight })`), placed again mirrored. `test/raw.js` lets node load that
   `?raw` import; a test file reaching `vector.js` imports it first.
+  `faces(inp, { css })` takes a stylesheet as a JS object (`sheet`: selector to declarations, camelCase or
+  kebab-case, numbers in px but where React writes none, `&` the root, the rest scoped under `.face`, flat so any SVG
+  renderer reads it), put as a `<style>` first in every map; every drawn part has a class, the root its side and, inline,
+  `--body` / `--frame` / `--glass`.
   `test/vector.test.js` runs `faces` against a stand-in `document`.
 - **`bus.js`** — `mkBus(inp, maps, { detail })` (`detail` scales the face textures' density, 1 for the viewer): per section an extruded side profile with arch cut-outs, liners,
   wheels; bellows between sections; roof pod of `roof_equipment_mm` on a body drawn to

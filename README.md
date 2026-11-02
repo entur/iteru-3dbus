@@ -27,6 +27,22 @@ const maps = faces(inp); // SVG maps per box side, in mm; { headlight: svg } swa
 scene.add(mkBus(inp, maps)); // a THREE.Group in metres: front end at x = 0, ground at y = 0
 ```
 
+`faces(inp, { css })` restyles the maps, and so the model's textures, with a stylesheet written as an object, as React and
+CSS-in-JS libraries write one: camelCase or kebab-case names, numbers in px unless the property takes none, `&` for
+the map root (`face` plus its side: `right`, `left`, `front`, `rear`), every other selector scoped under it:
+
+```js
+const css = {
+  ".pane": { fill: "#2a3d4a" }, // every pane of glass; ".pane.solid" is an unglazed door leaf
+  ".frame": { fill: "var(--glass)", opacity: 0.8 }, // --body, --frame and --glass are the colours drawn (read-only)
+  "&.front .badge": { fill: "#c00", stroke: "#fff", strokeWidth: 12 },
+};
+scene.add(mkBus(inp, faces(inp, { css })));
+```
+
+The classes: `body`, `door` / `window` / `windscreen` holding a `frame` and its `pane`s, `badge`, `badge-text`,
+`headlight`, `display` holding `display-box` and `display-text`. Look only: positions and sizes stay as drawn.
+
 `inp` is one object against [`schema/bus-input.schema.json`](https://github.com/entur/iteru-3dbus/blob/main/schema/bus-input.schema.json)
 (contract v3.0), lengths in mm. [`examples/`](https://github.com/entur/iteru-3dbus/tree/main/examples) has two
 concrete buses as NeTEx XML and, in `busnordic/`, one bus per row of the Bus Nordic 2.0 "Examples of bus types" tables (17). The
