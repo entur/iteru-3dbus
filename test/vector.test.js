@@ -208,13 +208,15 @@ test('two decks: the upper windscreen stays inside the front map and clear of th
   assert.ok(low.every(([, y1]) => y1 <= badge.attrs.y - 180), JSON.stringify(low));
 });
 
-const all = (inp, opts) => Object.values(faces(inp, opts)).flat();
+const maps = (inp, opts) => Object.values(faces(inp, opts)).flat();
 
 test('a css object is put first in every map as a style, scoped to the map root', () => {
-  const css = { '.pane, .frame': { fill: '#223', strokeWidth: 20, fillOpacity: 0.5 }, '&.front .badge': { 'stroke-dasharray': '4 2', '--glass': '#000' } };
-  const text = '.face .pane, .face .frame { fill: #223; stroke-width: 20px; fill-opacity: 0.5; }\n.face.front .badge { stroke-dasharray: 4 2; --glass: #000; }';
-  assert.ok(all(citaro, { css }).every((f) => f.svg.kids[0].tag === 'style' && f.svg.kids[0].kids[0] === text));
-  assert.ok(all(citaro).every((f) => f.svg.kids.every((k) => k.tag !== 'style')));
+  const css = { '.pane, .frame': { fill: '#223', strokeWidth: 20, fillOpacity: 0.5, rx: 8 }, '&.front .badge': { 'stroke-dasharray': '4 2', '--x': 3 }, '@font-face': { fontFamily: 'Bus' } };
+  const text = '.face .pane, .face .frame { fill: #223; stroke-width: 20; fill-opacity: 0.5; rx: 8px; }\n.face.front .badge { stroke-dasharray: 4 2; --x: 3; }\n@font-face { font-family: Bus; }';
+  assert.ok(maps(citaro, { css }).every((f) => f.svg.kids[0].tag === 'style' && f.svg.kids[0].kids[0] === text));
+  assert.ok(maps(citaro).every((f) => f.svg.kids.every((k) => k.tag !== 'style')));
+  const one = (sel) => faces(citaro, { css: { [sel]: { fill: 'red' } } }).rear[0].svg.kids[0].kids[0];
+  assert.equal(one('&:is(.front, .rear) .body, [title="a,b"]'), '.face:is(.front, .rear) .body, .face [title="a,b"] { fill: red; }');
 });
 
 test('every drawn part has a class to match on, the root its side and the colours drawn', () => {
@@ -226,5 +228,5 @@ test('every drawn part has a class to match on, the root its side and the colour
   assert.deepEqual(classes(faces(dd).front[0]), ['badge', 'badge-text', 'body', 'display-box', 'display-text', 'frame', 'headlight', 'pane']);
   assert.deepEqual(classes(faces(dd).rear[0]), ['body']);
   Object.entries(faces(citaro)).forEach(([k, fs]) => fs.forEach((f) => assert.equal(f.svg.attrs.class, `face ${k}`)));
-  assert.match(faces(citaro).left[0].svg.attrs.style, new RegExp(`^--body: ${citaro.base_color.hex}; --frame: #\\w+; --glass: #\\w+$`));
+  assert.equal(faces(citaro).left[0].svg.attrs.style, `--body: ${citaro.base_color.hex}; --frame: #4a5c68; --glass: #6f8797;`);
 });

@@ -23,20 +23,21 @@ ES modules only. `three` is a peer: the host brings its own.
 import { validate, faces, mkBus } from "@entur/iteru-3dbus";
 
 const errs = validate(inp); // string[], empty when valid; faces and mkBus take a valid inp
-const maps = faces(inp, { css }); // SVG maps per box side, in mm; { headlight: svg } swaps the headlight drawing
+const maps = faces(inp); // SVG maps per box side, in mm; { headlight: svg } swaps the headlight drawing
 scene.add(mkBus(inp, maps)); // a THREE.Group in metres: front end at x = 0, ground at y = 0
 ```
 
-`css` restyles the maps, and so the model's textures, with a stylesheet written as an object, as React and
+`faces(inp, { css })` restyles the maps, and so the model's textures, with a stylesheet written as an object, as React and
 CSS-in-JS libraries write one: camelCase or kebab-case names, numbers in px unless the property takes none, `&` for
 the map root (`face` plus its side: `right`, `left`, `front`, `rear`), every other selector scoped under it:
 
 ```js
 const css = {
   ".pane": { fill: "#2a3d4a" }, // every pane of glass; ".pane.solid" is an unglazed door leaf
-  ".frame": { fill: "var(--glass)", opacity: 0.8 }, // --body, --frame and --glass are the colours drawn
+  ".frame": { fill: "var(--glass)", opacity: 0.8 }, // --body, --frame and --glass are the colours drawn (read-only)
   "&.front .badge": { fill: "#c00", stroke: "#fff", strokeWidth: 12 },
 };
+scene.add(mkBus(inp, faces(inp, { css })));
 ```
 
 The classes: `body`, `door` / `window` / `windscreen` holding a `frame` and its `pane`s, `badge`, `badge-text`,

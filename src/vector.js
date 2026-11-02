@@ -12,7 +12,7 @@ const DISPLAY = '#14181b', DISPLAY_EDGE = 'darkgray', DISPLAY_INK = '#ffb000';
 const DOOR_SILL = 40;  // door sill above the skirt
 const FRAME = '#4a5c68', FRAME_W = 45, FRAME_R = 30;  // around every pane of a door or window: colour, width, corner radius
 const GLASS = '#6f8797';
-const UNITLESS = /opacity|font-weight|miterlimit/;  // CSS properties whose numbers take no px, as React has it
+const UNITLESS = new Set(['opacity', 'fill-opacity', 'stroke-opacity', 'flood-opacity', 'stop-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-miterlimit', 'font-weight', 'line-height', 'scale', 'zoom']);  // the properties a map can use that React writes a number for without px
 const SCREEN_SIDE = 110, SCREEN_GAP = 180;  // windscreen: body left beside it, and at least this much between it and the badge
 const LAMP_SIDE = 110, LAMP_GAP = 70;  // headlight: body left outside it, gap to the badge
 
@@ -22,7 +22,7 @@ const svg = (tag, attrs = {}, ...kids) => {
   e.append(...kids);
   return e;
 };
-const face = (w, h, ...kids) => ({ w, h, svg: svg('svg', { viewBox: `0 0 ${w} ${h}`, class: 'face' }, ...kids) });
+const face = (w, h, ...kids) => ({ w, h, svg: svg('svg', { viewBox: `0 0 ${w} ${h}` }, ...kids) });
 const plain = (w, h, fill) => svg('rect', { class: 'body', x: 0, y: 0, width: w, height: h, fill });
 
 /** A frame on a side face across a span, from y down to y1, with n panes of one fill and class side by side in it. */
@@ -37,7 +37,7 @@ const framed = (cls, { x0, x1 }, y, y1, n, fill, pc = 'pane') => {
 };
 
 /** A door on a side face, from y down to its sill at y1: a frame with one pane per leaf, glass or body colour. */
-const door = (y, y1, fill) => (d) => framed('door', d, y, y1, d.leaves, ...(d.glazed ? [GLASS] : [fill, 'pane solid']));
+const door = (y, y1, fill) => (d) => framed('door', d, y, y1, d.leaves, d.glazed ? GLASS : fill, d.glazed ? 'pane' : 'pane solid');
 
 /** A window on a side face, from y down to y1: one pane of glass in a frame like a door's. */
 const pane = (y, y1) => (w) => framed('window', w, y, y1, 1, GLASS);
@@ -78,17 +78,24 @@ const display = (text, x, y, w, h) => {
   )];
 };
 
+/** Declarations of a style object as React writes them: names camelCase or kebab-case, a number in px unless the property takes none. */
+const decls = (o) => Object.entries(o).map(([k, v]) => {
+  const name = k.startsWith('--') ? k : k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+  return `${name}: ${typeof v === 'number' && !name.startsWith('--') && !UNITLESS.has(name) ? `${v}px` : v};`;
+}).join(' ');
+
+/** A selector list split at its top-level commas: one inside :is(a, b) or [title="a,b"] stays. */
+const list = (sel) => [...sel].reduce(({ out, d }, c) => (c === ',' && !d
+  ? { out: [...out, ''], d }
+  : { out: [...out.slice(0, -1), out.at(-1) + c], d: d + '(['.includes(c) - ')]'.includes(c) }), { out: [''], d: 0 }).out.map((s) => s.trim());
+
 /**
- * The text of a stylesheet object, as React and CSS-in-JS libraries write one: selector to
- * declarations, names camelCase or kebab-case, a number in px unless the property takes none.
- * & stands for the map root; any other selector is scoped under it.
+ * The text of a stylesheet object, flat so that any SVG renderer reads it: & stands for the map
+ * root, any other selector is scoped under it, an at-rule (@font-face) is left as it is.
  */
-const sheet = (css) => Object.entries(css).map(([sel, decl]) => {
-  // shortcut: splits selectors on every comma, so :is(a, b) breaks; parse them when someone needs one
-  const at = sel.split(',').map((s) => s.trim()).map((s) => (s.includes('&') ? s.replaceAll('&', '.face') : `.face ${s}`));
-  const body = Object.entries(decl).map(([k, v]) => [k.startsWith('--') ? k : k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`), v])
-    .map(([k, v]) => `${k}: ${typeof v === 'number' && !UNITLESS.test(k) ? `${v}px` : v};`);
-  return `${at.join(', ')} { ${body.join(' ')} }`;
+const sheet = (css) => Object.entries(css).map(([sel, o]) => {
+  const at = sel.startsWith('@') ? sel : list(sel).map((s) => (s.includes('&') ? s.replaceAll('&', '.face') : `.face ${s}`)).join(', ');
+  return `${at} { ${decls(o)} }`;
 }).join('\n');
 
 let parsed;
@@ -147,8 +154,8 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, l
  *   part has a class to match on: the root `face` and its side (`right`, `left`, `front`, `rear`),
  *   `body`, `door` / `window` / `windscreen` each holding a `frame` and its `pane`s (`pane solid`
  *   for an unglazed leaf), `badge`, `badge-text`, `headlight`, `display` holding `display-box` and
- *   `display-text`. The root sets `--body`, `--frame` and `--glass` to the colours drawn. A rule
- *   beats the colours set in code. Look only: `x`, `y`, `width`, `height` stay as drawn, and a
+ *   `display-text`. The root sets `--body`, `--frame` and `--glass` to the colours drawn, in its
+ *   own style, which no rule overrides. A rule beats the colours set in code. Look only: `x`, `y`, `width`, `height` stay as drawn, and a
  *   rule on the font size, spacing or family of a text can push it out of its box. A map is
  *   loaded as an image: no `@import`, no `url()` to the network, `@font-face` only from a
  *   `data:` URL.
@@ -170,7 +177,7 @@ export const faces = (inp, { headlight: light, css } = {}) => {
     front: [front(w, h, fill, inp.front?.badge_text ?? '', lines, light ?? headlight(), inp.front_display)],
     rear: [face(w, h, plain(w, h, fill))],
   };
-  const style = css && sheet(css), vars = `--body: ${fill}; --frame: ${FRAME}; --glass: ${GLASS}`;
+  const style = css && sheet(css), vars = decls({ '--body': fill, '--frame': FRAME, '--glass': GLASS });  // per map: a <style> in a page is global
   Object.entries(maps).forEach(([k, fs]) => fs.forEach((f) => {
     attr(f.svg, { class: `face ${k}`, style: vars });
     if (style) f.svg.prepend(svg('style', {}, style));
