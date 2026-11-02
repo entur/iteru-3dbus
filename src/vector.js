@@ -10,8 +10,9 @@ const DISPLAY_H = 300, DISPLAY_MIN = 120, DISPLAY_GAP = 40, DISPLAY_PAD = 50;  /
 const DISPLAY_FONT = 200, DISPLAY_FILL = 0.7, DISPLAY_SPACING = 10, DISPLAY_EDGE_W = 20;  // text size aimed at and its largest share of the display's height
 const DISPLAY = '#14181b', DISPLAY_EDGE = 'darkgray', DISPLAY_INK = '#ffb000';
 const DOOR_SILL = 40;  // door sill above the skirt
-const FRAME = '#2b3136', FRAME_W = 45, FRAME_R = 30;  // around every pane of a door or window: colour, width, corner radius
+const FRAME = '#4a5c68', FRAME_W = 45, FRAME_R = 30;  // around every pane of a door or window: colour, width, corner radius
 const GLASS = '#6f8797';
+const UNITLESS = /opacity|font-weight|miterlimit/;  // CSS properties whose numbers take no px, as React has it
 const SCREEN_SIDE = 110, SCREEN_GAP = 180;  // windscreen: body left beside it, and at least this much between it and the badge
 const LAMP_SIDE = 110, LAMP_GAP = 70;  // headlight: body left outside it, gap to the badge
 
@@ -22,21 +23,21 @@ const svg = (tag, attrs = {}, ...kids) => {
   return e;
 };
 const face = (w, h, ...kids) => ({ w, h, svg: svg('svg', { viewBox: `0 0 ${w} ${h}`, class: 'face' }, ...kids) });
-const plain = (w, h, fill) => svg('rect', { x: 0, y: 0, width: w, height: h, fill });
+const plain = (w, h, fill) => svg('rect', { class: 'body', x: 0, y: 0, width: w, height: h, fill });
 
-/** A frame on a side face across a span, from y down to y1, with n panes of one fill side by side in it. */
-const framed = (cls, { x0, x1 }, y, y1, n, fill) => {
+/** A frame on a side face across a span, from y down to y1, with n panes of one fill and class side by side in it. */
+const framed = (cls, { x0, x1 }, y, y1, n, fill, pc = 'pane') => {
   const h = y1 - y, pw = (x1 - x0 - (n + 1) * FRAME_W) / n;
   return svg(
     'g', { class: cls },
-    svg('rect', { x: x0, y, width: x1 - x0, height: h, rx: FRAME_R, fill: FRAME }),
+    svg('rect', { class: 'frame', x: x0, y, width: x1 - x0, height: h, rx: FRAME_R, fill: FRAME }),
     ...Array.from({ length: n }, (_, i) =>
-      svg('rect', { x: x0 + FRAME_W + i * (pw + FRAME_W), y: y + FRAME_W, width: pw, height: h - 2 * FRAME_W, rx: FRAME_R, fill })),
+      svg('rect', { class: pc, x: x0 + FRAME_W + i * (pw + FRAME_W), y: y + FRAME_W, width: pw, height: h - 2 * FRAME_W, rx: FRAME_R, fill })),
   );
 };
 
 /** A door on a side face, from y down to its sill at y1: a frame with one pane per leaf, glass or body colour. */
-const door = (y, y1, fill) => (d) => framed('door', d, y, y1, d.leaves, d.glazed ? GLASS : fill);
+const door = (y, y1, fill) => (d) => framed('door', d, y, y1, d.leaves, ...(d.glazed ? [GLASS] : [fill, 'pane solid']));
 
 /** A window on a side face, from y down to y1: one pane of glass in a frame like a door's. */
 const pane = (y, y1) => (w) => framed('window', w, y, y1, 1, GLASS);
@@ -52,15 +53,15 @@ const flip = (len) => (d) => ({ ...d, x0: len - d.x1, x1: len - d.x0 });
 const side = (len, top, fill, ds, rows) => {
   const h = top - CLEARANCE, c = CORNER, hi = rows[0][1][1];
   const d = `M${c},${h} L${len - c},${h} Q${len},${h} ${len},${h - c} L${len},${c} Q${len},0 ${len - c},0 L${c},0 Q0,0 0,${c} L0,${h - c} Q0,${h} ${c},${h} Z`;
-  return face(len, h, svg('path', { d, fill }), ...rows.flatMap(([ws, [lo, up]]) => ws.map(pane(top - up, top - lo))), ...ds.map(door(top - hi, h - DOOR_SILL, fill)));
+  return face(len, h, svg('path', { class: 'body', d, fill }), ...rows.flatMap(([ws, [lo, up]]) => ws.map(pane(top - up, top - lo))), ...ds.map(door(top - hi, h - DOOR_SILL, fill)));
 };
 
 /** Font size at which a text stays inside a width: the full size, or smaller for a long text. track is the letter spacing per font size. */
 const fit = (text, width, full, track) => Math.min(full, width / (text.length * (GLYPH + track)));
 
 /** A text on a front map, centred on x, y. track is its letter spacing per font size. */
-const label = (text, x, y, size, track, fill) =>
-  svg('text', { x, y, fill, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text);
+const label = (cls, text, x, y, size, track, fill) =>
+  svg('text', { class: cls, x, y, fill, 'font-family': FONT, 'font-size': size, 'font-weight': 600, 'letter-spacing': size * track, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, text);
 
 /**
  * The destination display at the top of the windscreen's pane, which lies at x, y and is w by h:
@@ -72,10 +73,23 @@ const display = (text, x, y, w, h) => {
   const size = Math.min(fit(text, dw - 2 * DISPLAY_PAD, DISPLAY_FONT, track), dh * DISPLAY_FILL);
   return dh < DISPLAY_MIN ? [] : [svg(
     'g', { class: 'display' },
-    svg('rect', { x: x + DISPLAY_GAP, y: y + DISPLAY_GAP, width: dw, height: dh, fill: DISPLAY, stroke: DISPLAY_EDGE, 'stroke-width': DISPLAY_EDGE_W }),
-    label(text, x + w / 2, y + DISPLAY_GAP + dh / 2, size, track, DISPLAY_INK),
+    svg('rect', { class: 'display-box', x: x + DISPLAY_GAP, y: y + DISPLAY_GAP, width: dw, height: dh, fill: DISPLAY, stroke: DISPLAY_EDGE, 'stroke-width': DISPLAY_EDGE_W }),
+    label('display-text', text, x + w / 2, y + DISPLAY_GAP + dh / 2, size, track, DISPLAY_INK),
   )];
 };
+
+/**
+ * The text of a stylesheet object, as React and CSS-in-JS libraries write one: selector to
+ * declarations, names camelCase or kebab-case, a number in px unless the property takes none.
+ * & stands for the map root; any other selector is scoped under it.
+ */
+const sheet = (css) => Object.entries(css).map(([sel, decl]) => {
+  // shortcut: splits selectors on every comma, so :is(a, b) breaks; parse them when someone needs one
+  const at = sel.split(',').map((s) => s.trim()).map((s) => (s.includes('&') ? s.replaceAll('&', '.face') : `.face ${s}`));
+  const body = Object.entries(decl).map(([k, v]) => [k.startsWith('--') ? k : k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`), v])
+    .map(([k, v]) => `${k}: ${typeof v === 'number' && !UNITLESS.test(k) ? `${v}px` : v};`);
+  return `${at.join(', ')} { ${body.join(' ')} }`;
+}).join('\n');
 
 let parsed;
 /** The default headlight: the drawing in headlight.svg, the left one as the front map shows it. Parsed once, on first use. */
@@ -105,7 +119,7 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, l
     left,
     svg('g', { class: 'headlight', transform: `translate(${w},0) scale(-1,1)` }, left.cloneNode(true)),
     svg('rect', { class: 'badge', x: bx, y: by, width: w * BADGE_W, height: BADGE_H, rx: BADGE_R, fill: BADGE }),
-    label(name, w / 2, cy, size, track, BADGE_INK),
+    label('badge-text', name, w / 2, cy, size, track, BADGE_INK),
   );
 };
 
@@ -127,16 +141,27 @@ const front = (w, h, fill, text, { lintel: y, grill: y1, dash: y2, upper: u }, l
  * @param {SVGSVGElement} [opts.headlight] drawing of the left headlight as the front map shows
  *   it, with a viewBox; it is fitted beside the badge and mirrored for the right one. Left
  *   untouched: the map holds copies.
+ * @param {Record<string, Record<string, string|number>>} [opts.css] a stylesheet as an object,
+ *   e.g. `{ '.pane': { fill: '#223' }, '&.front .frame': { strokeWidth: 20, stroke: 'var(--glass)' } }`,
+ *   put as a `<style>` first in every map, so the textures and any copy of a map take it. Every
+ *   part has a class to match on: the root `face` and its side (`right`, `left`, `front`, `rear`),
+ *   `body`, `door` / `window` / `windscreen` each holding a `frame` and its `pane`s (`pane solid`
+ *   for an unglazed leaf), `badge`, `badge-text`, `headlight`, `display` holding `display-box` and
+ *   `display-text`. The root sets `--body`, `--frame` and `--glass` to the colours drawn. A rule
+ *   beats the colours set in code. Look only: `x`, `y`, `width`, `height` stay as drawn, and a
+ *   rule on the font size, spacing or family of a text can push it out of its box. A map is
+ *   loaded as an image: no `@import`, no `url()` to the network, `@font-face` only from a
+ *   `data:` URL.
  * @returns {Record<'right'|'left'|'front'|'rear', {svg: SVGSVGElement, w: number, h: number}[]>}
  */
-export const faces = (inp, { headlight: light } = {}) => {
+export const faces = (inp, { headlight: light, css } = {}) => {
   const top = bodyTop(inp), fill = inp.base_color.hex;
   const boxes = layout(inp), placed = doors(inp), glass = windows(inp), across = windowsLeft(inp), band = [sill(inp), lintel(inp)];
   const up = (mm) => top - CORNER - mm;  // mm above ground as y on an end map, which starts CORNER below the body top
   const w = inp.width_mm, h = endH(inp);
   const deck = upper(inp), high = (ws) => (deck ? [[ws, deck]] : []);
   const lines = { lintel: Math.max(up(band[1]), 0), grill: up(grill(inp)), dash: up(dash(inp)), upper: deck && [Math.max(up(deck[1]), 0), up(deck[0])] };
-  return {
+  const maps = {
     right: boxes.map((b, i) => {
       const f = flip(b.len);
       return side(b.len, top, fill, placed[i].map(f), [[glass[i].map(f), band], ...high(across[i].map(f))]);
@@ -145,4 +170,10 @@ export const faces = (inp, { headlight: light } = {}) => {
     front: [front(w, h, fill, inp.front?.badge_text ?? '', lines, light ?? headlight(), inp.front_display)],
     rear: [face(w, h, plain(w, h, fill))],
   };
+  const style = css && sheet(css), vars = `--body: ${fill}; --frame: ${FRAME}; --glass: ${GLASS}`;
+  Object.entries(maps).forEach(([k, fs]) => fs.forEach((f) => {
+    attr(f.svg, { class: `face ${k}`, style: vars });
+    if (style) f.svg.prepend(svg('style', {}, style));
+  }));
+  return maps;
 };
