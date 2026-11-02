@@ -44,7 +44,7 @@ fields removed and `schema_version` set to `"3.0"`.
 | `@entur/iteru-3dbus/limits` | `limits`: the Nordic limits as messages, on top of `validate` | nothing: runs in node |
 | `@entur/iteru-3dbus/netex` | `fromNetex`, `KEYS`, `PREFIX`: a NeTEx `VehicleType` read into the input | nothing: runs in node; `fast-xml-parser` and `ajv` are dependencies |
 | `@entur/iteru-3dbus/faces` | `faces`: the SVG maps alone | a DOM, no three |
-| `@entur/iteru-3dbus` | all of the above (`./netex` too), `mkBus`, `mapErrs`; an optional stage (`mkStage`, `mkStageShot`) and camera views (`mkViews`, `VIEWS`) | a DOM and three |
+| `@entur/iteru-3dbus` | all of the above (`./netex` too), `mkBus`, `mapErrs`; an optional stage (`mkStage`, `mkStageShot`, `ready`: the model's textures are in) and camera views (`mkViews`, `VIEWS`) | a DOM and three |
 
 ### A and B
 

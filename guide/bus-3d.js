@@ -1,6 +1,6 @@
 // The user guide's example host: the library wrapped as one custom element. Not part of the
 // package. A host of the published package imports the same names from '@entur/iteru-3dbus'.
-import { MM, VIEWS, mapErrs, mkBus, mkStage, mkViews, total, validate } from '../src/index.js';
+import { MM, VIEWS, mapErrs, mkBus, mkStage, mkViews, ready, total, validate } from '../src/index.js';
 
 const TAG = 'bus-3d', FIRST = 'quarter';
 const CSS = ':host{display:block}:host([hidden]){display:none}div{width:100%;height:100%;overflow:hidden}canvas{display:block;touch-action:none}';
@@ -37,8 +37,9 @@ const check = (inp, maps) => {
  *   last render in place
  *
  * Nothing is drawn until both `inp` and `faces` are set. Setting either schedules one rebuild in
- * a microtask, so setting both in a row rebuilds once. The first rebuild aims at `view`; later
- * ones keep the camera where it is.
+ * a microtask, so setting both in a row rebuilds once. A rebuilt bus is shown once its face maps
+ * are rasterised, the last one staying until then; a later rebuild overtakes it. The first
+ * rebuild aims at `view`; later ones keep the camera where it is.
  */
 export class Bus3d extends Base {
   static observedAttributes = ['view', 'offset-x'];
@@ -49,6 +50,7 @@ export class Bus3d extends Base {
   #fly = null;
   #cur = null;
   #len = 0;
+  #gen = 0;  // the latest rebuild: one that is overtaken while its textures load is dropped
   #queued = false;
   #quiet = false;
   #aim = false;  // the first aim is still due: it waits for the box to have a size
@@ -146,13 +148,15 @@ export class Bus3d extends Base {
     });
   }
 
-  /** Swaps in the model for the current inp and faces, centred on the origin, front towards -x. */
-  #build() {
-    const inp = this.#inp, maps = this.#faces;
-    if (!this.#stage || !inp || !maps) return;
+  /** Swaps in the model for the current inp and faces once its textures are in, centred on the origin, front towards -x. */
+  async #build() {
+    const inp = this.#inp, maps = this.#faces, stage = this.#stage, gen = ++this.#gen;
+    if (!stage || !inp || !maps) return;
     const errs = check(inp, maps);
     if (errs.length) return emit(this, 'buserror', { errors: errs });
     const next = mkBus(inp, maps);  // before the drop: a build that throws leaves the last render
+    await ready(next);  // a model shown before its face maps are rasterised has black sides
+    if (gen !== this.#gen || stage !== this.#stage) return stage.drop(next);
     this.#aim ||= !this.#cur;
     this.#cur && this.#stage.drop(this.#cur);
     this.#len = total(inp) * MM;
