@@ -35,7 +35,7 @@ const hints = (ls, axles, first) =>
 
 /** Parses `"2+2+2"` or `[2, 2, 2]` into leaves per door. */
 const leaves = (doors = []) =>
-  (typeof doors === 'string' ? doors.split(/\s*\+\s*/).filter(Boolean).map(Number) : doors);
+  (typeof doors === 'string' ? (doors.trim() === '' ? [] : doors.split(/\s*\+\s*/).map(Number)) : doors);
 
 /** A realistic tyre size: small for a midibus, wide for a double-decker, the usual 22.5" otherwise. */
 const tyreOf = (L, decks) => (decks === 'double' ? '315/70 R22.5' : L <= MIDI ? '235/75 R17.5' : '295/80 R22.5');
