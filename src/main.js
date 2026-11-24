@@ -36,7 +36,8 @@ const cls = (b) => ORDER[b.set]?.indexOf(b.id.split('-')[1]) ?? -1, len = (b) =>
 // the cards in order: the files directly in examples/ by name, then each directory, the rejected files last in it, by its ORDER
 const listed = [...buses].sort((a, b) =>
   !!a.set - !!b.set || (a.set ?? '').localeCompare(b.set ?? '') || !a.inp - !b.inp || cls(a) - cls(b) || len(a) - len(b) || a.file.localeCompare(b.file));
-const cards = document.getElementById('cards'), pages = {};
+const cards = document.getElementById('cards'), pages = {}, simple = document.getElementById('simple');
+simple.href = `${BASE}simple.html`;  // the editor of a few properties, its own page; the link is on the list
 const bus = document.querySelector('bus-3d');
 const info = document.getElementById('info'), err = document.getElementById('err');
 const [bar, link, mod] = fileBar(), drift = document.getElementById('drift');
@@ -138,7 +139,7 @@ effect(() => {
 effect(() => {
   const list = route.value?.page === 'list';
   document.body.toggleAttribute('data-page', list);
-  cards.hidden = !list;
+  cards.hidden = simple.hidden = !list;
   list && cards.replaceChildren((pages[dark.value] ??= gallery(listed, (to) => show({ page: 'bus', file: to }, 'push'))));
 });
 // on the list, only why a bus could not be shown
