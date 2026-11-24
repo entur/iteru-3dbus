@@ -6,8 +6,7 @@ import { validate } from './validate.js';
  * @property {number} length_mm total length, bellows included
  * @property {number} width_mm
  * @property {number} height_mm
- * @property {{tyre: string|number, twin?: boolean}[]} axles front to rear; `tyre` is a size
- *   string ("295/80 R22.5") or a diameter in mm. Rigid: 2-3 axles, articulated: 3-4
+ * @property {number} axles how many: rigid 2-3, articulated 3-4. The first is single, the rest twin, on a realistic tyre for the bus
  * @property {(1|2)[]|string} [doors] leaves of each door, front to rear: `[2, 2, 2]` or `"2+2+2"`. Missing or empty: no doors
  * @property {'single'|'double'} [decks] default single
  * @property {boolean} [articulated] default false
@@ -20,6 +19,7 @@ const COLOR = '#E9ECEC', BELLOWS = 600, LEAD = 0.58, PAIR = 1400;
 const FRONT = 0.22, REAR2 = 0.26, REAR3 = 0.2;           // overhangs of a rigid bus, of its length
 const ART_FRONT = 0.255, ART_REAR = 0.81, TRAIL_AT = 0.67, TRAIL_PAIR = 0.55;  // axle places in an articulated bus's sections
 const WIN_LOW = 1500, WIN_HIGH = 1250;                   // side window band, mm: low floor | high floor
+const MIDI = 9000;  // mm: up to this length a bus runs on 17.5" tyres
 const MIN_FRONT = 1700;  // mm: a front overhang that still takes a door
 const UPPER = 0.2, SIZE = /^\d{3}\/\d{2} ?R\d{2}(\.\d)?$/;
 
@@ -37,30 +37,29 @@ const hints = (ls, axles, first) =>
 const leaves = (doors = []) =>
   (typeof doors === 'string' ? doors.split(/\s*\+\s*/).filter(Boolean).map(Number) : doors);
 
-const tyreOf = (t) => (typeof t === 'number' || /^\d+$/.test(t) ? { diameter_mm: Number(t) } : SIZE.test(t) ? { size: t } : null);
+/** A realistic tyre size: small for a midibus, wide for a double-decker, the usual 22.5" otherwise. */
+const tyreOf = (L, decks) => (decks === 'double' ? '315/70 R22.5' : L <= MIDI ? '235/75 R17.5' : '295/80 R22.5');
 
 /**
  * Builds a bus input from a few facts, with proportions of a typical bus filled in: where the axles
  * and doors lie, how the body splits when articulated, the bands for windows. Images from it are
- * rough but have the right proportions. The first axle's tyre sets the tyre, the last axle's `twin` the twinning.
+ * rough but have the right proportions.
  * @param {Spec} spec
  * @returns {{ok: true, inp: object} | {ok: false, errs: string[]}}
  */
 export const fromSpec = (spec) => {
-  const { length_mm: L, width_mm, height_mm, axles = [], decks = 'single', articulated = false, low_floor = false, color = COLOR } = spec ?? {};
+  const { length_mm: L, width_mm, height_mm, axles, decks = 'single', articulated = false, low_floor = false, color = COLOR } = spec ?? {};
   const ls = leaves(spec?.doors);
-  const tyre = axles.length ? tyreOf(axles[0].tyre) : null;
   const errs = [
     ...(Number.isFinite(L) ? [] : ['length_mm must be a number']),
-    ...(axles.length >= 2 && axles.length <= (articulated ? 4 : 3) ? [] : [`${articulated ? 'an articulated' : 'a rigid'} bus takes ${articulated ? '3-4' : '2-3'} axles`]),
-    ...(tyre ? [] : ['the first axle needs a tyre: a size like "295/80 R22.5" or a diameter in mm']),
+    ...(Number.isInteger(axles) && axles >= 2 && axles <= (articulated ? 4 : 3) ? [] : [`${articulated ? 'an articulated' : 'a rigid'} bus takes ${articulated ? '3-4' : '2-3'} axles`]),
     ...(ls.every((l) => l === 1 || l === 2) ? [] : ['doors are 1 or 2 leaves each']),
     ...(decks === 'single' || decks === 'double' ? [] : ['decks is single or double']),
     ...(articulated && decks === 'double' ? ['an articulated double-decker is not drawn'] : []),
   ];
   if (errs.length) return { ok: false, errs };
 
-  const n = axles.length;
+  const n = axles;
   const ends = articulated ? [Math.round((L - BELLOWS) * LEAD), L - BELLOWS - Math.round((L - BELLOWS) * LEAD)] : [L];
   const lead = articulated ? 2 : n;
   const front = articulated ? Math.round(ends[0] * ART_FRONT) : Math.max(Math.round(L * FRONT), MIN_FRONT);
@@ -84,7 +83,7 @@ export const fromSpec = (spec) => {
   const two = decks === 'double';
   const inp = {
     schema_version: '3.0', width_mm, height_mm,
-    tyre: { ...tyre, rear_twin: axles.at(-1).twin ?? true },
+    tyre: { size: tyreOf(L, decks), rear_twin: true },
     base_color: { hex: color },
     win_band_height_mm: low_floor ? WIN_LOW : WIN_HIGH,
     ...(two && { upper_win_band_height_mm: Math.round(height_mm * UPPER / 50) * 50 }),

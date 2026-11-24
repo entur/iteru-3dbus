@@ -70,14 +70,14 @@ band (see Limits).
 
 ### From a few facts
 
-When only length, width, height, axles (tyre, twin), doors, decks, articulated and low floor are known,
+When only length, width, height, number of axles, doors, decks, articulated and low floor are known,
 `fromSpec` fills in the rest from the proportions of a typical bus and returns the same input as `fromNetex`:
 
 ```js
 import { fromSpec, faces, mkBus } from '@entur/iteru-3dbus';
 const r = fromSpec({
   length_mm: 18000, width_mm: 2550, height_mm: 3200,
-  axles: [{ tyre: '295/80 R22.5' }, { tyre: '295/80 R22.5', twin: true }, { tyre: 925, twin: true }],  // size or diameter in mm
+  axles: 3,                // the first single, the rest twin, on a realistic tyre
   doors: '2+2+2',          // leaves per door, front to rear; or [2, 2, 2]
   decks: 'single', articulated: true, low_floor: true,
 });

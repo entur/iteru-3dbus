@@ -138,9 +138,6 @@ body.simple .f span, body.simple legend { color: var(--steel); font-size: 14px; 
 body.simple input:not([type="checkbox"]), body.simple select { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; }
 body.simple .chk { display: flex; align-items: center; gap: 6px; }
 body.simple fieldset { border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
-body.simple .axles { display: flex; flex-direction: column; gap: 6px; }
-body.simple .axle { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-body.simple .axle input:not([type="checkbox"]) { flex: 1; min-width: 0; }
 body.simple #err { left: 340px; }
 body.simple #views { left: calc(50% + 160px); }
 @media (max-width: 720px) {
