@@ -13,6 +13,7 @@ const node = (tag, attrs = {}, kids = []) => ({
   tag, attrs, kids,
   setAttribute(k, v) { this.attrs[k] = v; },
   append(...ks) { this.kids.push(...ks); },
+  prepend(...ks) { this.kids.unshift(...ks); },
   cloneNode() { return node(tag, { ...this.attrs }, this.kids.map((k) => (typeof k === 'string' ? k : k.cloneNode()))); },
 });
 globalThis.document = { createElementNS: (_, tag) => node(tag) };
@@ -205,4 +206,27 @@ test('two decks: the upper windscreen stays inside the front map and clear of th
   const [badge] = part(faces({ ...dd, band_below_grill_mm: 1200 }).front[0], 'badge');
   const low = frames({ ...dd, upper_win_band_height_mm: 2500, band_between_decks_mm: 800, band_below_grill_mm: 1200 });
   assert.ok(low.every(([, y1]) => y1 <= badge.attrs.y - 180), JSON.stringify(low));
+});
+
+const maps = (inp, opts) => Object.values(faces(inp, opts)).flat();
+
+test('a css object is put first in every map as a style, scoped to the map root', () => {
+  const css = { '.pane, .frame': { fill: '#223', strokeWidth: 20, fillOpacity: 0.5, rx: 8 }, '&.front .badge': { 'stroke-dasharray': '4 2', '--x': 3 }, '@font-face': { fontFamily: 'Bus' } };
+  const text = '.face .pane, .face .frame { fill: #223; stroke-width: 20; fill-opacity: 0.5; rx: 8px; }\n.face.front .badge { stroke-dasharray: 4 2; --x: 3; }\n@font-face { font-family: Bus; }';
+  assert.ok(maps(citaro, { css }).every((f) => f.svg.kids[0].tag === 'style' && f.svg.kids[0].kids[0] === text));
+  assert.ok(maps(citaro).every((f) => f.svg.kids.every((k) => k.tag !== 'style')));
+  const one = (sel) => faces(citaro, { css: { [sel]: { fill: 'red' } } }).rear[0].svg.kids[0].kids[0];
+  assert.equal(one('&:is(.front, .rear) .body, [title="a,b"]'), '.face:is(.front, .rear) .body, .face [title="a,b"] { fill: red; }');
+});
+
+test('every drawn part has a class to match on, the root its side and the colours drawn', () => {
+  const dd = { ...load('busnordic/bn-ii-15-dd'), front_display: '21' };
+  const leaves = (e) => (e.attrs.class === 'headlight' ? [e] : e.tag === 'g' ? e.kids.flatMap(leaves) : [e]);
+  const classes = (f) => [...new Set(f.svg.kids.flatMap(leaves).map((e) => e.attrs.class))].sort();
+  const solid = hinted(volvo, { zone: 'front_overhang', leaves: 1, glazed: false }, { zone: 'between_axles', leaves: 2 });
+  assert.deepEqual(classes(faces(solid).right[0]), ['body', 'frame', 'pane', 'pane solid']);
+  assert.deepEqual(classes(faces(dd).front[0]), ['badge', 'badge-text', 'body', 'display-box', 'display-text', 'frame', 'headlight', 'pane']);
+  assert.deepEqual(classes(faces(dd).rear[0]), ['body']);
+  Object.entries(faces(citaro)).forEach(([k, fs]) => fs.forEach((f) => assert.equal(f.svg.attrs.class, `face ${k}`)));
+  assert.equal(faces(citaro).left[0].svg.attrs.style, `--body: ${citaro.base_color.hex}; --frame: #4a5c68; --glass: #6f8797;`);
 });
