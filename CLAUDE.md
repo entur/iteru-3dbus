@@ -131,8 +131,8 @@ package entry. Tabs, caption, view bar, header and cards are host chrome, not pa
   groups are re-split so the two caps (right, left) take separate face textures; the SVGs are
   rasterised via data URLs and placed with texture `repeat`/`offset` on metre-valued UVs. A face
   (`skin`) is drawn in `base_color` until its texture is in, which it holds in `userData.map`
-  meanwhile (a map not loaded yet draws black); `ready` and `drop` in `scene.js` read it there. Face
-  maps are read-only for consumers: `tex` rasterises a clone.
+  meanwhile (a map not loaded yet draws black); `ready` in `scene.js` reads it there. Face
+  maps are read-only for consumers: `skin` rasterises a clone.
 - **`scene.js`** — `mkStage(el)`: renderer, sky/fog, lights, shadows, ground, orbit controls;
   day/night palette from the OS colour scheme. The canvas follows `el` through a `ResizeObserver`.
   `ticks` are per-frame callbacks, `fits` per-resize ones; `drop` disposes geometry, materials and

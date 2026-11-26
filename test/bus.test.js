@@ -35,13 +35,20 @@ test('maps of another bus do not fit', () => assert.equal(mapErrs(citaro, maps(v
 
 Object.entries(bad).forEach(([name, f]) => test(`rejects ${name}`, () => assert.equal(mapErrs(citaro, f(maps(citaro))).length, 1)));
 
-/** Face maps whose clones note the width tex rasterises them at. */
+/** Face maps whose clones note the width skin rasterises them at. */
 const noted = (inp, ws) => maps(inp, (w, h) => ({ w, h, svg: { cloneNode: () => ({ setAttribute: (k, v) => k === 'width' && ws.push(v) }) } }));
 
-test('detail scales every face texture, 1 by default', (t) => {
+/** Stands in the DOM three's texture loader needs; returns the images it makes, each with its load listener. */
+const dom = (t) => {
+  const imgs = [];
   globalThis.XMLSerializer = class { serializeToString() { return '<svg/>'; } };
-  globalThis.document = { createElementNS: () => ({ addEventListener() {}, removeEventListener() {}, style: {} }) };
+  globalThis.document = { createElementNS: () => { const img = { addEventListener(k, f) { k === 'load' && (img.load = f); }, removeEventListener() {}, style: {} }; imgs.push(img); return img; } };
   t.after(() => (delete globalThis.XMLSerializer, delete globalThis.document));
+  return imgs;
+};
+
+test('detail scales every face texture, 1 by default', (t) => {
+  dom(t);
   const widths = (o) => {
     const ws = [];
     mkBus(citaro, noted(citaro, ws), o);
@@ -54,14 +61,10 @@ test('detail scales every face texture, 1 by default', (t) => {
 });
 
 test('a face shows the base colour until its map is in, then the map', (t) => {
-  const imgs = [];
-  globalThis.XMLSerializer = class { serializeToString() { return '<svg/>'; } };
-  globalThis.document = { createElementNS: () => { const img = { addEventListener(k, f) { k === 'load' && (img.load = f); }, removeEventListener() {}, style: {} }; imgs.push(img); return img; } };
-  t.after(() => (delete globalThis.XMLSerializer, delete globalThis.document));
-  const skins = [];
+  const imgs = dom(t), skins = [];
   mkBus(citaro, noted(citaro, [])).traverse((o) => skins.push(...[o.material ?? []].flat().filter((m) => m.userData.map)));
   assert.equal(skins.length, imgs.length);
-  skins.forEach((m) => (assert.equal(m.map, null), assert.equal(m.color.getHexString(), new THREE.Color(citaro.base_color.hex).getHexString())));
+  skins.forEach((m) => (assert.equal(m.map, null), assert.ok(m.color.equals(new THREE.Color(citaro.base_color.hex)))));
   imgs.forEach((img) => img.load.call(img));
-  skins.forEach((m) => (assert.equal(m.map, m.userData.map), assert.equal(m.color.getHex(), 0xffffff)));
+  skins.forEach((m) => (assert.equal(m.map, m.userData.map), assert.ok(m.color.equals(new THREE.Color(0xffffff)))));
 });
