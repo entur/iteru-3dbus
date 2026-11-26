@@ -3,3 +3,4 @@ export * from './derive.js';
 export { MM } from './dims.js';
 export { validate } from './validate.js';
 export { limits } from './limits.js';
+export { fromSpec } from './spec.js';
