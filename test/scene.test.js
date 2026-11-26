@@ -40,7 +40,7 @@ test('bgOf composites an element and its ancestors, skipping what has no colour'
 test('ready waits for every texture image, and gives up after ms', async (t) => {
   globalThis.requestAnimationFrame = (f) => setTimeout(f, 1);
   t.after(() => delete globalThis.requestAnimationFrame);
-  const tex = {}, root = { traverse: (f) => [{ material: [{ map: tex }, {}] }, {}].forEach(f) };
+  const tex = {}, root = { traverse: (f) => [{ material: [{ userData: { map: tex } }, {}] }, {}].forEach(f) };
   let done = false;
   const p = ready(root).then(() => (done = true));
   await new Promise((r) => setTimeout(r, 20));

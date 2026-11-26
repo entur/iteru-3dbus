@@ -14,10 +14,11 @@ const SHOT_W = 640, SHOT_H = 360;  // a picture's default size in css px
 const SHADOW_A = 0.3, SHADE_LIFT = 0.005;  // a picture's shadow: its darkness on the plane, its disc's lift above the plane in m
 
 const mats = (o) => [o.material ?? []].flat();
+const map = (m) => m.userData?.map ?? m.map;  // mkBus keeps a face's map in userData until it is in
 const dispose = (g) =>
   g.traverse((o) => {
     o.geometry?.dispose();
-    mats(o).forEach((m) => (m.map?.dispose(), m.dispose()));
+    mats(o).forEach((m) => (map(m)?.dispose(), m.dispose()));
   });
 
 /** Relative luminance of sRGB channels 0–1, not linearised: enough to tell a light background from a dark one. */
@@ -73,7 +74,7 @@ export const bgOf = (el) =>
  */
 export const ready = (root, ms = READY_MS) => {
   const maps = [], t0 = performance.now();
-  root.traverse((o) => maps.push(...mats(o).flatMap((m) => m.map ?? [])));
+  root.traverse((o) => maps.push(...mats(o).flatMap((m) => map(m) ?? [])));
   return new Promise((res) => {
     const chk = () => (maps.every((t) => t.image) || performance.now() - t0 > ms ? res() : requestAnimationFrame(chk));
     chk();

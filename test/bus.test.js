@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { mapErrs, mkBus } from '../src/bus.js';
 import { bodyTop, endH, layout } from '../src/derive.js';
 import { CLEARANCE } from '../src/dims.js';
@@ -50,4 +51,17 @@ test('detail scales every face texture, 1 by default', (t) => {
   assert.deepEqual(full, widths({ detail: 1 }));
   assert.equal(half.length, full.length);
   half.forEach((w, i) => assert.ok(Math.abs(w - full[i] / 2) <= 1, `${w} is not half of ${full[i]}`));
+});
+
+test('a face shows the base colour until its map is in, then the map', (t) => {
+  const imgs = [];
+  globalThis.XMLSerializer = class { serializeToString() { return '<svg/>'; } };
+  globalThis.document = { createElementNS: () => { const img = { addEventListener(k, f) { k === 'load' && (img.load = f); }, removeEventListener() {}, style: {} }; imgs.push(img); return img; } };
+  t.after(() => (delete globalThis.XMLSerializer, delete globalThis.document));
+  const skins = [];
+  mkBus(citaro, noted(citaro, [])).traverse((o) => skins.push(...[o.material ?? []].flat().filter((m) => m.userData.map)));
+  assert.equal(skins.length, imgs.length);
+  skins.forEach((m) => (assert.equal(m.map, null), assert.equal(m.color.getHexString(), new THREE.Color(citaro.base_color.hex).getHexString())));
+  imgs.forEach((img) => img.load.call(img));
+  skins.forEach((m) => (assert.equal(m.map, m.userData.map), assert.equal(m.color.getHex(), 0xffffff)));
 });
