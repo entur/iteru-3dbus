@@ -19,15 +19,17 @@ const axial = (r, len, seg, mat) => {
 
 /**
  * A face: a copy of face map f rasterised into a texture, drawn in colour hex until that texture is in
- * (a map not loaded yet draws black), userData.map holding it meanwhile; repeat/offset place it on UVs given in metres.
+ * (a map not loaded yet draws black), userData.map holding it until then; repeat/offset place it on UVs given in metres.
  */
 const skin = (hex, f, px, repeat = [1, 1], offset = [0, 0]) => {
   const svg = f.svg.cloneNode(true);
   svg.setAttribute('width', Math.round(f.w * px));
   svg.setAttribute('height', Math.round(f.h * px));
   const m = std(hex, { roughness: BODY_ROUGH, metalness: BODY_METAL });
-  const t = new THREE.TextureLoader().load(`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`, (map) =>
-    Object.assign(m, { map, needsUpdate: true }).color.set(0xffffff));
+  const t = new THREE.TextureLoader().load(`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`, (map) => {
+    delete m.userData.map;  // a texture in userData would be serialised by Material.copy and toJSON
+    Object.assign(m, { map, needsUpdate: true }).color.set(0xffffff);
+  });
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = ANISO;
   t.repeat.set(...repeat);

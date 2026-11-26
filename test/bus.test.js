@@ -65,6 +65,7 @@ test('a face shows the base colour until its map is in, then the map', (t) => {
   mkBus(citaro, noted(citaro, [])).traverse((o) => skins.push(...[o.material ?? []].flat().filter((m) => m.userData.map)));
   assert.equal(skins.length, imgs.length);
   skins.forEach((m) => (assert.equal(m.map, null), assert.ok(m.color.equals(new THREE.Color(citaro.base_color.hex)))));
+  const pending = skins.map((m) => m.userData.map);
   imgs.forEach((img) => img.load.call(img));
-  skins.forEach((m) => (assert.equal(m.map, m.userData.map), assert.ok(m.color.equals(new THREE.Color(0xffffff)))));
+  skins.forEach((m, i) => (assert.equal(m.map, pending[i]), assert.equal(m.userData.map, undefined), assert.ok(m.color.equals(new THREE.Color(0xffffff)))));
 });
