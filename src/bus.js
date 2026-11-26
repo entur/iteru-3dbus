@@ -17,17 +17,25 @@ const axial = (r, len, seg, mat) => {
   return m;
 };
 
-/** Rasterises a copy of a face map into a texture; repeat/offset place it on UVs given in metres. */
-const tex = (f, px, repeat = [1, 1], offset = [0, 0]) => {
+/**
+ * A face: a copy of face map f rasterised into a texture, drawn in colour hex until that texture is in
+ * (a map not loaded yet draws black), userData.map holding it until then; repeat/offset place it on UVs given in metres.
+ */
+const skin = (hex, f, px, repeat = [1, 1], offset = [0, 0]) => {
   const svg = f.svg.cloneNode(true);
   svg.setAttribute('width', Math.round(f.w * px));
   svg.setAttribute('height', Math.round(f.h * px));
-  const t = new THREE.TextureLoader().load(`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`);
+  const m = std(hex, { roughness: BODY_ROUGH, metalness: BODY_METAL });
+  const t = new THREE.TextureLoader().load(`data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`, (map) => {
+    delete m.userData.map;  // a texture in userData would be serialised by Material.copy and toJSON
+    Object.assign(m, { map, needsUpdate: true }).color.set(0xffffff);
+  });
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = ANISO;
   t.repeat.set(...repeat);
   t.offset.set(...offset);
-  return t;
+  m.userData.map = t;
+  return m;
 };
 
 /** Side profile of one section in metres: rounded box with an arch cut out over each axle. */
@@ -109,20 +117,19 @@ export const mkBus = (inp, maps, { detail = 1 } = {}) => {
   const w = inp.width_mm, r = tyreDia(inp.tyre) / 2;
   const top = bodyTop(inp), roof = inp.roof_equipment_mm ?? 0;  // body stops below the roof pod
   const twin = inp.tyre.rear_twin ?? true;
-  const zo = w / 2 - TYRE_INSET;
+  const zo = w / 2 - TYRE_INSET, base = inp.base_color.hex;
   const mats = {
-    body: std(inp.base_color.hex, { roughness: BODY_ROUGH, metalness: BODY_METAL }),
+    body: std(base, { roughness: BODY_ROUGH, metalness: BODY_METAL }),
     tyre: std(TYRE, { roughness: 0.9 }),
     rim: std(RIM, { roughness: 0.35, metalness: 0.6 }),
     hub: std(HUB, { roughness: 0.5, metalness: 0.5 }),
     liner: std(LINER, { roughness: 1, side: THREE.BackSide }),
     bellows: std(BELLOWS, { roughness: 0.9 }),
-    pod: std(inp.base_color.hex, { roughness: 0.5 }),
+    pod: std(base, { roughness: 0.5 }),
   };
   const wh = wheel(r, mats), ln = liner(r, w, mats.liner);  // one of each, cloned per axle: clones share geometry
-  const skin = (map) => std(0xffffff, { map, roughness: BODY_ROUGH, metalness: BODY_METAL });
   const end = (f, x, rot) => {
-    const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(tex(f, END_PX * detail))), x, END_EDGE + f.h / 2, 0);
+    const m = at(new THREE.Mesh(new THREE.PlaneGeometry(f.w * MM, f.h * MM), skin(base, f, END_PX * detail)), x, END_EDGE + f.h / 2, 0);
     m.rotation.y = rot;
     return m;
   };
@@ -137,9 +144,9 @@ export const mkBus = (inp, maps, { detail = 1 } = {}) => {
     geo.addGroup(caps.start + n, n, 1);
     geo.addGroup(walls.start, walls.count, 2);
     const h = top - CLEARANCE, L = s.len * MM, v = [1 / (h * MM), -CLEARANCE / h];
-    const sides = [tex(maps.right[i], SIDE_PX * detail, [-1 / L, v[0]], [1, v[1]]), tex(maps.left[i], SIDE_PX * detail, [1 / L, v[0]], [0, v[1]])];
+    const sides = [skin(base, maps.right[i], SIDE_PX * detail, [-1 / L, v[0]], [1, v[1]]), skin(base, maps.left[i], SIDE_PX * detail, [1 / L, v[0]], [0, v[1]])];
     return [
-      at(new THREE.Mesh(geo, [...sides.map(skin), mats.body]), s.x0, 0, 0),
+      at(new THREE.Mesh(geo, [...sides, mats.body]), s.x0, 0, 0),
       ...(i === 0 ? [end(maps.front[0], -END_GAP, -Math.PI / 2)] : []),
       ...(i === maps.left.length - 1 ? [end(maps.rear[0], s.x0 + s.len + END_GAP, Math.PI / 2)] : []),
       ...(s.bellows

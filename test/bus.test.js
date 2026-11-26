@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { mapErrs, mkBus } from '../src/bus.js';
 import { bodyTop, endH, layout } from '../src/derive.js';
 import { CLEARANCE } from '../src/dims.js';
@@ -34,13 +35,20 @@ test('maps of another bus do not fit', () => assert.equal(mapErrs(citaro, maps(v
 
 Object.entries(bad).forEach(([name, f]) => test(`rejects ${name}`, () => assert.equal(mapErrs(citaro, f(maps(citaro))).length, 1)));
 
-/** Face maps whose clones note the width tex rasterises them at. */
+/** Face maps whose clones note the width skin rasterises them at. */
 const noted = (inp, ws) => maps(inp, (w, h) => ({ w, h, svg: { cloneNode: () => ({ setAttribute: (k, v) => k === 'width' && ws.push(v) }) } }));
 
-test('detail scales every face texture, 1 by default', (t) => {
+/** Stands in the DOM three's texture loader needs; returns the images it makes, each with its load listener. */
+const dom = (t) => {
+  const imgs = [];
   globalThis.XMLSerializer = class { serializeToString() { return '<svg/>'; } };
-  globalThis.document = { createElementNS: () => ({ addEventListener() {}, removeEventListener() {}, style: {} }) };
+  globalThis.document = { createElementNS: () => { const img = { addEventListener(k, f) { k === 'load' && (img.load = f); }, removeEventListener() {}, style: {} }; imgs.push(img); return img; } };
   t.after(() => (delete globalThis.XMLSerializer, delete globalThis.document));
+  return imgs;
+};
+
+test('detail scales every face texture, 1 by default', (t) => {
+  dom(t);
   const widths = (o) => {
     const ws = [];
     mkBus(citaro, noted(citaro, ws), o);
@@ -50,4 +58,14 @@ test('detail scales every face texture, 1 by default', (t) => {
   assert.deepEqual(full, widths({ detail: 1 }));
   assert.equal(half.length, full.length);
   half.forEach((w, i) => assert.ok(Math.abs(w - full[i] / 2) <= 1, `${w} is not half of ${full[i]}`));
+});
+
+test('a face shows the base colour until its map is in, then the map', (t) => {
+  const imgs = dom(t), skins = [];
+  mkBus(citaro, noted(citaro, [])).traverse((o) => skins.push(...[o.material ?? []].flat().filter((m) => m.userData.map)));
+  assert.equal(skins.length, imgs.length);
+  skins.forEach((m) => (assert.equal(m.map, null), assert.ok(m.color.equals(new THREE.Color(citaro.base_color.hex)))));
+  const pending = skins.map((m) => m.userData.map);
+  imgs.forEach((img) => img.load.call(img));
+  skins.forEach((m, i) => (assert.equal(m.map, pending[i]), assert.equal(m.userData.map, undefined), assert.ok(m.color.equals(new THREE.Color(0xffffff)))));
 });

@@ -73,7 +73,8 @@ export const bgOf = (el) =>
  */
 export const ready = (root, ms = READY_MS) => {
   const maps = [], t0 = performance.now();
-  root.traverse((o) => maps.push(...mats(o).flatMap((m) => m.map ?? [])));
+  // mkBus keeps a face's map in userData until it is in
+  root.traverse((o) => maps.push(...mats(o).flatMap((m) => m.userData?.map ?? m.map ?? [])));
   return new Promise((res) => {
     const chk = () => (maps.every((t) => t.image) || performance.now() - t0 > ms ? res() : requestAnimationFrame(chk));
     chk();
